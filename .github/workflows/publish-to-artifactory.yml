@@ -3,6 +3,7 @@ name: Publish to Artifactory
 on:
   push:
     branches:
+      - main
       - clawbee
       - litellm
     paths:

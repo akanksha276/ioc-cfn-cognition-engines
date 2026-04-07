@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [clawbee]
+    branches: [main, clawbee]
     tags: ["*"]
   pull_request:
-    branches: [clawbee]
+    branches: [main, clawbee]
   workflow_dispatch:
 
 permissions:
