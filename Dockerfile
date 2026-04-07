@@ -59,15 +59,15 @@ RUN pip install --no-cache-dir onnxruntime onnx
 # model-builder is intermediate; its layers never reach the final image
 RUN mkdir -p /fastembed_cache/ibm-granite/granite-embedding-30m-english && \
     cd /fastembed_cache/ibm-granite/granite-embedding-30m-english && \
-    curl --insecure -fsSL -o config.json \
+    curl --insecure --retry 5 --retry-delay 5 --retry-max-time 300 -fsSL -o config.json \
     "https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/9b5b096411652ec1189c68fcfb90d0a82c5b45af/config.json" && \
-    curl --insecure -fsSL -o tokenizer.json \
+    curl --insecure --retry 5 --retry-delay 5 --retry-max-time 300 -fsSL -o tokenizer.json \
     "https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/9b5b096411652ec1189c68fcfb90d0a82c5b45af/tokenizer.json" && \
-    curl --insecure -fsSL -o tokenizer_config.json \
+    curl --insecure --retry 5 --retry-delay 5 --retry-max-time 300 -fsSL -o tokenizer_config.json \
     "https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/9b5b096411652ec1189c68fcfb90d0a82c5b45af/tokenizer_config.json" && \
-    curl --insecure -fsSL -o special_tokens_map.json \
+    curl --insecure --retry 5 --retry-delay 5 --retry-max-time 300 -fsSL -o special_tokens_map.json \
     "https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/9b5b096411652ec1189c68fcfb90d0a82c5b45af/special_tokens_map.json" && \
-    curl --insecure -fsSL -o model.onnx \
+    curl --insecure --retry 5 --retry-delay 5 --retry-max-time 300 -fsSL -o model.onnx \
     "https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/9b5b096411652ec1189c68fcfb90d0a82c5b45af/model.onnx"
 
 RUN python3 -c "from onnxruntime.quantization import quantize_dynamic, QuantType; quantize_dynamic('/fastembed_cache/ibm-granite/granite-embedding-30m-english/model.onnx', '/fastembed_cache/ibm-granite/granite-embedding-30m-english/model_optimized.onnx', weight_type=QuantType.QUInt8)"
