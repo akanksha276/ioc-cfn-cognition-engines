@@ -94,7 +94,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --from=model-builder /fastembed_cache /tmp/fastembed_cache
 
 # Bundle local model (avoids build-time download and SSL issues)
-COPY --chown=1000:1000 models/granite-embedding-30m-english/ /app/granite-embedding-30m-english/
+COPY --from=model-builder --chown=1000:1000 /fastembed_cache/ibm-granite/granite-embedding-30m-english/ /app/granite-embedding-30m-english/
 
 # Copy each service into its own subdirectory (unified app runs from /app with PYTHONPATH=/app)
 COPY --chown=1000:1000 gateway/app/            /app/gateway/app/
