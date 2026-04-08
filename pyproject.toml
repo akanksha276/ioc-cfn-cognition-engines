@@ -59,7 +59,7 @@ python-dotenv = ">=1.0.1"
 # no PyTorch / CUDA dependency, image stays small.
 fastembed = ">=0.4.0"
 typer = ">=0.9.0"
-litellm = "==1.82.3"
+litellm = "1.83.4"   # exact pin; 1.82.x and below had known vulnerabilities
 numpy = ">=1.26,<3"
 
 # Text splitting (RAG chunking in ingestion)
