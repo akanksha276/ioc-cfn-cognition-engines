@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ingestion.app.api import routes as api_routes
-from ingestion.app.dependencies import get_ingest_data_service, get_concept_vector_store
+from ingestion.app.dependencies import get_ingest_data_service, get_vector_store
 from ingestion.app.main import app
 from ingestion.tests.conftest import build_extraction_request
 
@@ -76,7 +76,7 @@ def client(monkeypatch, stub_ingest_service, stub_vector_store):
         api_routes, "get_knowledge_processor", lambda: _IdentityProcessor()
     )
     app.dependency_overrides[get_ingest_data_service] = lambda: stub_ingest_service
-    app.dependency_overrides[get_concept_vector_store] = lambda: stub_vector_store
+    app.dependency_overrides[get_vector_store] = lambda: stub_vector_store
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -301,7 +301,7 @@ class TestKnowledgeExtractionEndpoint:
             api_routes, "get_knowledge_processor", lambda: _IdentityProcessor()
         )
         app.dependency_overrides[get_ingest_data_service] = lambda: stub_ingest_service
-        app.dependency_overrides[get_concept_vector_store] = lambda: _FailingVectorStore()
+        app.dependency_overrides[get_vector_store] = lambda: _FailingVectorStore()
         with TestClient(app) as local_client:
             resp = local_client.post("/api/knowledge-mgmt/extraction", json=sample_request_body)
             assert resp.status_code == 200

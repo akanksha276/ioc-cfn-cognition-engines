@@ -62,12 +62,11 @@ from evidence.app.api.routes import router as evidence_api_router
 async def lifespan(app: FastAPI):
     """Create one CachingLayer and attach it to ingestion and evidence sub-app state."""
     logger.info("Unified app startup: creating shared CachingLayer")
-    cache_layer = _create_shared_caching_layer()
-    app.state.cache_layer = cache_layer
 
-    _ingestion_app.state.cache_layer = cache_layer
-    _evidence_app.state.cache_layer = cache_layer
-    logger.info("Unified app: cache_layer attached to ingestion and evidence sub-apps")
+    app.state.cache_layer = _create_shared_caching_layer()
+    app.state.rag_cache_layer = _create_shared_caching_layer()
+
+    logger.info("Unified app: cache_layer and rag_cache_layer attached to unified app")
 
     # Auto-register cognition engines with management plane
     from .registration import register_cognition_engines

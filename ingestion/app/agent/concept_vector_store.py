@@ -82,14 +82,16 @@ class VectorStore:
     ) -> None:
         if cache_layer is not None:
             self._cache = cache_layer
-        if rag_cache_layer is not None:
-            self._rag_cache = rag_cache_layer
         else:
             self._cache = CachingLayer(
                 vector_dimension=vector_dimension,
                 metric=metric,
                 embed_fn=embed_fn,
             )
+
+        if rag_cache_layer is not None:
+            self._rag_cache = rag_cache_layer
+        else:
             self._rag_cache = CachingLayer(
                 vector_dimension=vector_dimension,
                 metric=metric,

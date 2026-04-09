@@ -18,7 +18,7 @@ from ..dependencies import (
     get_ingest_data_service,
     get_knowledge_processor,
     get_data_repository,
-    get_concept_vector_store,
+    get_vector_store,
 )
 from ..agent.ingest_data import IngestDataService
 from ..agent.service import TelemetryExtractionService
@@ -43,7 +43,7 @@ extraction_router = APIRouter(prefix="/api/knowledge-mgmt", tags=["knowledge-mgm
 async def knowledge_extraction(
     body: ExtractionRequest,
     ingest_service: IngestDataService = Depends(get_ingest_data_service),
-    vector_store=Depends(get_concept_vector_store),
+    vector_store=Depends(get_vector_store),
 ):
     """
     Unified knowledge extraction endpoint.
@@ -102,6 +102,7 @@ async def knowledge_extraction(
         result = processor.process(result)
 
         _store_concepts_in_faiss(result.get("concepts", []), vector_store)
+        _store_rag_chunks_in_faiss(result.get("rag_chunks", []), vector_store)
 
         return ExtractionResponseModel(
             header=body.header,
@@ -144,6 +145,22 @@ def _store_concepts_in_faiss(concepts: list, vector_store=None) -> None:
         vector_store.store_concepts(concepts)
     except Exception:
         logger.exception("FAISS storage failed; extraction result is still valid")
+
+
+def _store_rag_chunks_in_faiss(rag_chunks: list, vector_store=None) -> None:
+    """
+    Persist concepts in the in-process FAISS index (fire-and-log).
+
+    vector_store is injected from Depends(get_concept_vector_store); when None, skip.
+    Failures are logged but never bubble up to the caller so the
+    extraction response is always returned.
+    """
+    if vector_store is None:
+        return
+    try:
+        vector_store.store_rag_chunks(rag_chunks)
+    except Exception:
+        logger.exception("FAISS storage failed for RAG chunks; extraction result is still valid")
 
 
 # ============== Operational Endpoints ==============

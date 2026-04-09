@@ -77,8 +77,7 @@ def get_knowledge_processor() -> KnowledgeProcessor:
         embedding_manager=get_embedding_manager(),
     )
 
-
-def get_concept_vector_store(request: Request):
+def get_vector_store(request: Request):
     """
     In-process FAISS vector store. When running under the unified app, uses
     the shared CachingLayer from request.app.state.cache_layer (Option A).
@@ -90,10 +89,10 @@ def get_concept_vector_store(request: Request):
         return None
 
     cache_layer = getattr(request.app.state, "cache_layer", None)
-    if cache_layer is not None:
+    rag_cache_layer = getattr(request.app.state, "rag_cache_layer", None)
+    if cache_layer is not None or rag_cache_layer is not None:
         from .agent.concept_vector_store import VectorStore
-        return VectorStore(cache_layer=cache_layer)
-
+        return VectorStore(cache_layer=cache_layer, rag_cache_layer=rag_cache_layer)
     try:
         from .agent.concept_vector_store import VectorStore
         store = VectorStore(
