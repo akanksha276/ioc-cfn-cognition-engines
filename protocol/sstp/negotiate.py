@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, Field
 
@@ -73,3 +73,48 @@ class SSTPNegotiateMessage(_STBaseMessage):
 
     # Override: narrow semantic_context to the SAO-specific subtype
     semantic_context: NegotiateSemanticContext  # type: ignore[override]
+
+
+# Optional SSTP envelope fields omitted from negotiate wire JSON.
+_NEGOTIATE_SLIM_ENVELOPE_KEYS: Final[tuple[str, ...]] = (
+    "state_object_id",
+    "parent_ids",
+    "logical_clock",
+    "payload_refs",
+    "confidence_score",
+    "ttl_seconds",
+    "merge_strategy",
+    "risk_score",
+)
+
+# Shared with FastAPI ``response_model_exclude`` for negotiate endpoints.
+NEGOTIATE_MESSAGE_JSON_EXCLUDE: Final[dict[str, Any]] = {
+    "provenance": True,
+    "policy_labels": True,
+    **{k: True for k in _NEGOTIATE_SLIM_ENVELOPE_KEYS},
+    "semantic_context": {
+        "sao_state": True,
+        "sao_response": True,
+        "nmi": True,
+    },
+}
+
+
+def dump_negotiate_message_json(msg: SSTPNegotiateMessage) -> dict[str, Any]:
+    """JSON-ready dict for API/trace/callback; omits verbose envelope/context fields."""
+    data = msg.model_dump(mode="json", exclude=NEGOTIATE_MESSAGE_JSON_EXCLUDE)
+    # Belt-and-suspenders: ensure omitted keys never appear (e.g. as null) on any Pydantic version.
+    sc = data.get("semantic_context")
+    if isinstance(sc, dict):
+        for key in ("sao_state", "sao_response", "nmi"):
+            sc.pop(key, None)
+    for key in (
+        "policy_labels",
+        "provenance",
+        *_NEGOTIATE_SLIM_ENVELOPE_KEYS,
+    ):
+        data.pop(key, None)
+    pl = data.get("payload")
+    if isinstance(pl, dict):
+        pl.pop("is_shadow_call", None)
+    return data

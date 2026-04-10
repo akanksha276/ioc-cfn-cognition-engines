@@ -86,7 +86,12 @@ from .evidence_bundle import EvidenceBundleMessage
 from .intent import IntentMessage
 from .knowledge import KnowledgeMessage
 from .memory_delta import MemoryDeltaMessage
-from .negotiate import SSTPNegotiateMessage, NegotiateSemanticContext
+from .negotiate import (
+    NEGOTIATE_MESSAGE_JSON_EXCLUDE,
+    NegotiateSemanticContext,
+    SSTPNegotiateMessage,
+    dump_negotiate_message_json,
+)
 from .query import QueryMessage
 
 # ---------------------------------------------------------------------------
@@ -152,8 +157,10 @@ __all__ = [
     "SSTPCommitMessage",
     "MemoryDeltaMessage",
     "EvidenceBundleMessage",
+    "NEGOTIATE_MESSAGE_JSON_EXCLUDE",
     "NegotiateSemanticContext",
     "SSTPNegotiateMessage",
+    "dump_negotiate_message_json",
     # Union
     "STPMessage",
 ]

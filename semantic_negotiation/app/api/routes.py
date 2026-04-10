@@ -25,6 +25,7 @@ if _workspace_root not in sys.path:
     sys.path.insert(0, _workspace_root)
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
+from protocol.sstp.negotiate import dump_negotiate_message_json  # noqa: E402
 from protocol.sstp._base import (
     Origin,
     PolicyLabels,
@@ -106,8 +107,6 @@ def _wrap_sstp_response(
 
 @router.post(
     "/negotiate/initiate",
-    response_model=SSTPNegotiateMessage,
-    response_model_exclude_none=True,
     summary="Initiate a semantic negotiation from a mission description",
     description=(
         "Accepts a mission description and a list of agents, then runs:\n\n"
@@ -126,7 +125,7 @@ def _wrap_sstp_response(
 async def negotiate_initiate(
     body: SSTPNegotiateMessage,
     pipeline: SemanticNegotiationPipeline = Depends(get_pipeline),
-) -> SSTPNegotiateMessage:
+) -> JSONResponse:
     """Run Components 1+2, seed round 1, return first-round messages."""
     session_id = body.semantic_context.session_id
     request_id = body.message_id
@@ -146,7 +145,7 @@ async def negotiate_initiate(
             n_steps=n_steps,
             content_text=content_text,
             agents_raw=agents_raw,
-            initiate_message=body.model_dump(mode="json"),
+            initiate_message=dump_negotiate_message_json(body),
         )
     except ValueError as exc:
         trace = NegotiationTrace(rounds=[], timedout=False, broken=True)
@@ -162,8 +161,8 @@ async def negotiate_initiate(
         )
         return JSONResponse(
             status_code=400,
-            content=_wrap_sstp_response(session_id, request_id, error_resp).model_dump(
-                mode="json"
+            content=dump_negotiate_message_json(
+                _wrap_sstp_response(session_id, request_id, error_resp)
             ),
         )
     except Exception:
@@ -183,12 +182,13 @@ async def negotiate_initiate(
         )
         return JSONResponse(
             status_code=500,
-            content=_wrap_sstp_response(session_id, request_id, error_resp).model_dump(
-                mode="json"
+            content=dump_negotiate_message_json(
+                _wrap_sstp_response(session_id, request_id, error_resp)
             ),
         )
 
-    return _wrap_sstp_response(session_id, request_id, result)
+    envelope = _wrap_sstp_response(session_id, request_id, result)
+    return JSONResponse(content=dump_negotiate_message_json(envelope))
 
 
 # ============== Decide (turn-by-turn) ==============

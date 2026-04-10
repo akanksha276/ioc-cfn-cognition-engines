@@ -138,7 +138,7 @@ if _workspace_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext, dump_negotiate_message_json  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,6 @@ class SSTPCallbackNegotiator(SAONegotiator):
         """
         issues = self._issue_names()
         options_per_issue = self._options_per_issue(issues)
-        is_my_turn = self._is_my_proposing_turn(state)
         payload: dict[str, Any] = {
             "action": "propose",
             "participant_id": self._participant_id,
@@ -218,7 +217,6 @@ class SSTPCallbackNegotiator(SAONegotiator):
             "allowed_actions": [
                 "counter_offer"
             ],  # only valid reply: submit an offer dict
-            "is_shadow_call": not is_my_turn,  # True = NegMAS seeding; agent should skip tracing
             "issues": issues,
             "options_per_issue": options_per_issue,
         }
@@ -288,9 +286,6 @@ class SSTPCallbackNegotiator(SAONegotiator):
             "round": state.step + 1,
             "n_steps": self._n_steps(),
             "allowed_actions": ["accept", "reject"],  # the only valid reply actions
-            "is_shadow_call": self._is_my_proposing_turn(
-                state
-            ),  # True = proposer responding to own offer
             "issues": issues,
             "options_per_issue": options_per_issue,
             "current_offer": current_offer,
@@ -336,7 +331,7 @@ class SSTPCallbackNegotiator(SAONegotiator):
         try:
             resp = self._http.post(
                 self._callback_url,
-                json=[message.model_dump(mode="json")],  # always a list
+                json=[dump_negotiate_message_json(message)],  # always a list
                 headers={"Content-Type": "application/json"},
             )
             resp.raise_for_status()
@@ -456,25 +451,6 @@ class SSTPCallbackNegotiator(SAONegotiator):
             return self.nmi.n_steps
         except Exception:
             return None
-
-    def _is_my_proposing_turn(self, state: SAOState) -> bool:
-        """Return True only when this agent is the designated SAO proposer for *state*.
-
-        NegMAS calls ``propose()`` on *all* negotiators at step 0 to seed their
-        opening offers before the alternation loop begins.  We use each agent's
-        position in ``nmi.negotiator_ids`` to decide whose turn it really is::
-
-            expected_proposer = nmi.negotiator_ids[state.step % n_negotiators]
-
-        This means only the "true" proposer has ``next_proposer_id`` pointing
-        to their *own* successor; shadow-call agents get the same value since
-        they are not in the actual rotation.
-        """
-        try:
-            ids = list(self.nmi.negotiator_ids)
-            return ids[state.step % len(ids)] == self.id
-        except Exception:
-            return True  # safe fallback: treat every propose() as a real turn
 
     def _next_proposer_id(self, state: SAOState) -> str:
         """Return the participant id of whoever proposes in the *next* round.

@@ -177,11 +177,10 @@ class SemanticAlignmentValidationPipeline:
               at least one message after the initiate)
             - ``options_per_issue`` — dict mapping each issue to a list of options
               (non-empty on at least one message)
-            - ``sao_state`` — dict with ``current_offer`` (non-None on all messages
-              that carry a ``sao_state``)
-            - ``sao_response`` (on agent-reply messages) — dict with ``response``
-              (``"ACCEPT_OFFER"`` / ``"REJECT_OFFER"`` / ``"END_NEGOTIATION"``) and
-              ``outcome`` (non-None when ``response == "ACCEPT_OFFER"``)
+            - ``sao_state`` (optional on wire) — when present, dict with
+              ``current_offer`` (must be non-None)
+            - ``sao_response`` (optional on wire; typical on agent-reply messages)
+              — when present, dict with ``response`` and ``outcome`` as above
 
         Additionally:
 

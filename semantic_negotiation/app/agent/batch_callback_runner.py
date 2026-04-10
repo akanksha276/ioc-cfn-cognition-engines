@@ -31,8 +31,7 @@ Round semantics
   - **Responders** (all others): receive ``action=respond`` with
     ``current_offer`` = the standing offer from the previous round.
     Return ``{ "action": "accept" | "reject" }``.
-  - ``is_shadow_call`` is **always** ``false`` — every message represents a
-    real decision.
+  Every message represents a real decision (no shadow / seeding flag on wire).
 
 Evaluation after each call
 --------------------------
@@ -63,7 +62,10 @@ if _workspace_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
+from protocol.sstp.negotiate import (  # noqa: E402
+    NegotiateSemanticContext,
+    dump_negotiate_message_json,
+)
 from protocol.sstp.negmas_sao import SAOState  # noqa: E402
 
 from .negotiation_model import (  # noqa: E402  (same package)
@@ -402,7 +404,6 @@ class BatchCallbackRunner:
                     "round": round_num,
                     "n_steps": self.n_steps,
                     "allowed_actions": ["accept", "reject", "counter_offer"],
-                    "is_shadow_call": False,
                     "current_offer": standing_offer,
                     "proposer_id": standing_offer_proposer_id,
                 },
@@ -414,7 +415,9 @@ class BatchCallbackRunner:
             )
             messages: list[SSTPNegotiateMessage] = [broadcast_msg]
 
-            sstp_message_trace.extend(m.model_dump(mode="json") for m in messages)
+            sstp_message_trace.extend(
+                dump_negotiate_message_json(m) for m in messages
+            )
             self._store_sao_checksums(messages, session_id, round_num)
             replies_raw = self._post_batch(
                 callback_url,
@@ -661,7 +664,6 @@ class BatchCallbackRunner:
                 "round": 1,
                 "n_steps": self.n_steps,
                 "allowed_actions": ["accept", "reject", "counter_offer"],
-                "is_shadow_call": False,
                 "current_offer": standing_offer,
                 "proposer_id": "server",
             },
@@ -672,7 +674,7 @@ class BatchCallbackRunner:
             options_per_issue=options_per_issue,
         )
 
-        serialised = [broadcast_msg.model_dump(mode="json")]
+        serialised = [dump_negotiate_message_json(broadcast_msg)]
         sess.sstp_message_trace.extend(serialised)
         sess.round_next_proposer = round_next_proposer
         return sess, serialised
@@ -918,7 +920,6 @@ class BatchCallbackRunner:
                 "round": round_num,
                 "n_steps": sess.n_steps,
                 "allowed_actions": ["accept", "reject", "counter_offer"],
-                "is_shadow_call": False,
                 "current_offer": sess.standing_offer,
                 "proposer_id": sess.standing_offer_proposer_id,
             },
@@ -928,7 +929,7 @@ class BatchCallbackRunner:
             issues=issues,
             options_per_issue=options_per_issue,
         )
-        serialised = [respond_broadcast.model_dump(mode="json")]
+        serialised = [dump_negotiate_message_json(respond_broadcast)]
         sess.sstp_message_trace.extend(serialised)
         sess.phase = "respond"
         logger.info(
@@ -964,7 +965,7 @@ class BatchCallbackRunner:
         try:
             resp = self._http.post(
                 callback_url,
-                json=[m.model_dump(mode="json") for m in messages],
+                json=[dump_negotiate_message_json(m) for m in messages],
                 headers={"Content-Type": "application/json"},
             )
             resp.raise_for_status()
@@ -1044,9 +1045,9 @@ class BatchCallbackRunner:
     ) -> None:
         """Verify that each reply's echoed ``sao_state`` matches the stored checksum.
 
-        Logs a WARNING if tampering is detected (checksum mismatch) or if the
-        reply is missing the ``sao_state`` field that was sent.  Logs DEBUG on
-        successful verification.
+        Outbound negotiate JSON omits ``semantic_context.sao_state``, so agents
+        often omit it in replies — those cases are skipped without a warning.
+        Logs WARNING on checksum mismatch; DEBUG on successful verification.
         """
         for msg, reply in zip(messages, replies_raw):
             participant_id = (msg.payload or {}).get("participant_id", "unknown")
@@ -1060,14 +1061,6 @@ class BatchCallbackRunner:
                 sc_dict.get("sao_state") if isinstance(sc_dict, dict) else None
             )
             if echoed_sao_dict is None:
-                logger.warning(
-                    "[%s] round %d — participant '%s' reply is missing sao_state "
-                    "in semantic_context (expected checksum …%s)",
-                    session_id,
-                    round_num,
-                    participant_id,
-                    stored_ck[-8:],
-                )
                 continue
 
             echoed_ck = hashlib.sha256(
