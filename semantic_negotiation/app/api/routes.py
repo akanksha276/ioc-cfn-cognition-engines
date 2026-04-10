@@ -48,7 +48,7 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["negotiation"])
+router = APIRouter(tags=["negotiation"])
 
 
 # ============== Helpers ==============

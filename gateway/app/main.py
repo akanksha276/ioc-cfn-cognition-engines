@@ -53,9 +53,11 @@ def _create_shared_caching_layer():
 # Import sub-apps once (used in lifespan and for mount)
 from ingestion.app.main import app as _ingestion_app
 from evidence.app.main import app as _evidence_app
+from semantic_negotiation.app.main import app as _semantic_negotiation_app
 # Routers for Confluence paths (no /ingestion or /evidence prefix)
 from ingestion.app.api.routes import extraction_router as ingestion_extraction_router
 from evidence.app.api.routes import router as evidence_api_router
+from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
 
 
 @asynccontextmanager
@@ -87,9 +89,12 @@ app = FastAPI(
 app.mount("/ingestion", _ingestion_app)
 app.mount("/evidence", _evidence_app)
 
+app.mount("/semantic-negotiation", _semantic_negotiation_app)
+
 # Confluence paths: /api/knowledge-mgmt/... (no /ingestion or /evidence prefix)
 app.include_router(ingestion_extraction_router)
 app.include_router(evidence_api_router, prefix="/api/knowledge-mgmt")
+app.include_router(semantic_negotiation_api_router, prefix="/api/semantic-negotiation")
 
 
 @app.get("/health")
