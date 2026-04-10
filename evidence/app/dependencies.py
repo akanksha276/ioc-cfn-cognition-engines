@@ -19,9 +19,9 @@ def _repository(
 ):
     # Graph (neighbors, paths, concepts/by_ids, etc.) uses HTTP when the data layer URL is set.
     # In-memory cache_layer on app.state is injected into ConceptRepository for similar-concept search.
-    if settings.DATA_LAYER_BASE_URL:
+    if settings.CFN_URL:
         return HttpDataRepository(
-            base_url=settings.DATA_LAYER_BASE_URL,
+            base_url=settings.CFN_URL,
             workspace_id=workspace_id,
             mas_id=mas_id,
         )

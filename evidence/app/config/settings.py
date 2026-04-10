@@ -7,7 +7,7 @@ import os
 
 class Settings:
     # Use mocked DB (data layer) when set (e.g. http://localhost:8088); otherwise in-process mock repo
-    DATA_LAYER_BASE_URL: str | None = os.getenv("MOCKED_DB_BASE_URL") or os.getenv("DATA_LAYER_BASE_URL")
+    CFN_URL: str | None = os.getenv("MOCKED_DB_BASE_URL") or os.getenv("CFN_URL")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "openai/gpt-4o")
     LLM_API_KEY: str | None = os.getenv("LLM_API_KEY")
     LLM_BASE_URL: str | None = os.getenv("LLM_BASE_URL")

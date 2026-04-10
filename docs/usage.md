@@ -735,7 +735,7 @@ AWS_REGION=us-east-1
 BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
 
 # ─── Optional Settings ──────────────────────────────────────────────────────
-DATA_LAYER_BASE_URL=http://localhost:8088  # External data layer
+CFN_URL=http://localhost:9002               # CFN
 EG_MAX_DEPTH=4                              # Evidence graph traversal depth
 EG_PATH_LIMIT=20                            # Max evidence paths to explore
 EMBEDDING_MODEL_PATH=                       # Local bge-small-en-v1.5 path

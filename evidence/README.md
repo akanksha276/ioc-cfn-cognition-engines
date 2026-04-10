@@ -126,7 +126,7 @@ Set in `.env` or export before running. The app loads `.env` at startup.
 
 | Variable | Description |
 |----------|-------------|
-| `MOCKED_DB_BASE_URL` or `DATA_LAYER_BASE_URL` | Base URL of mocked DB (e.g. `http://localhost:8088`). If unset, in-process mock repo is used. |
+| `MOCKED_DB_BASE_URL` or `CFN_URL` | Base URL of mocked DB (e.g. `http://localhost:8088`). If unset, in-process mock repo is used. |
 | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` | For LLM clients (entity extraction, decomposition, judge, ranker). |
 | `EG_MAX_DEPTH`, `EG_PATH_LIMIT` | Tuning for path search (if used). |
 
@@ -159,7 +159,7 @@ The HTTP API contract stays the same; callers do not send cache parameters.
 
 ## Switching data sources
 
-`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `DATA_LAYER_BASE_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph calls use `/api/workspaces/.../multi-agentic-systems/.../graph/...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/v1/graph/...`. When **`cache_layer`** is on the app and **`DATA_LAYER_BASE_URL`** is set, **similar concepts** come from in-process FAISS via `ConceptRepository`, and **graph calls** use **`HttpDataRepository`**.
+`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `CFN_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph calls use `/api/workspaces/.../multi-agentic-systems/.../graph/...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/v1/graph/...`. When **`cache_layer`** is on the app and **`CFN_URL`** is set, **similar concepts** come from in-process FAISS via `ConceptRepository`, and **graph calls** use **`HttpDataRepository`**.
 
 ## Tests
 

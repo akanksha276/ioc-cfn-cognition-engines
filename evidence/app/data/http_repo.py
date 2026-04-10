@@ -5,7 +5,7 @@
 """
 HTTP client for the graph / mocked-db service.
 
-Configuration: set MOCKED_DB_BASE_URL or DATA_LAYER_BASE_URL to the service origin (no trailing slash).
+Configuration: set MOCKED_DB_BASE_URL or CFN_URL to the service origin (no trailing slash).
 Evidence wiring: dependencies.builds this when that URL is set; graph prefix depends on workspace/MAS:
 
   • Both workspace_id and mas_id non-empty (POST /reasoning/evidence):
@@ -42,7 +42,7 @@ class HttpDataRepository:
         mid = (mas_id or "").strip()
         if wid and mid:
             self._graph_prefix = (
-                f"/api/workspaces/{quote(wid, safe='')}/multi-agentic-systems/{quote(mid, safe='')}/graph"
+                f"/api/internal/workspaces/{quote(wid, safe='')}/multi-agentic-systems/{quote(mid, safe='')}/graph"
             )
         else:
             self._graph_prefix = _LEGACY_GRAPH_PREFIX

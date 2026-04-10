@@ -8,7 +8,7 @@ A collection of cognitive agents for processing OpenTelemetry data and evidence 
 - **[Evidence Gathering Service](evidence/)** – Retrieves relevant evidence from the knowledge graph (e.g. “What does Miss-Marple do?”).
 - **[Semantic Negotiation Agent](semantic_negotiation/)** – Handles multi-party semantic negotiation using NegMAS and SSTP (Semantic State Transfer Protocol).
 
-The evidence service can use an optional **mocked DB** (Neo4j-backed graph API). For that setup, run the mocked-db service and set `DATA_LAYER_BASE_URL` or `MOCKED_DB_BASE_URL`; see [evidence/README.md](evidence/README.md). When running via the **unified gateway** (Docker or local), the in-memory cache is used and no external data layer is required.
+The evidence service can use an optional **mocked DB** (Neo4j-backed graph API). For that setup, run the mocked-db service and set `CFN_URL` or `MOCKED_DB_BASE_URL`; see [evidence/README.md](evidence/README.md). When running via the **unified gateway** (Docker or local), the in-memory cache is used and no external data layer is required.
 
 ## Quick Start
 
@@ -329,7 +329,7 @@ The **unified gateway** runs ingestion and evidence in one process with a shared
                       (optional)       ▼
               ┌───────────────────────────────┐
               │ External graph (e.g. Neo4j)   │
-              │ when DATA_LAYER_BASE_URL set  │
+              │ when CFN_URL set  │
               └───────────────────────────────┘
 ```
 
