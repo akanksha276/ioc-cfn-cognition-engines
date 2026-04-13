@@ -101,6 +101,8 @@ COPY --chown=1000:1000 gateway/app/            /app/gateway/app/
 COPY --chown=1000:1000 ingestion/app/          /app/ingestion/app/
 COPY --chown=1000:1000 evidence/app/           /app/evidence/app/
 COPY --chown=1000:1000 caching/app/            /app/caching/app/
+COPY --chown=1000:1000 semantic_negotiation/   /app/semantic_negotiation/
+COPY --chown=1000:1000 protocol/               /app/protocol/
 
 RUN adduser --disabled-password --gecos "" --uid 1000 app 2>/dev/null || true
 
