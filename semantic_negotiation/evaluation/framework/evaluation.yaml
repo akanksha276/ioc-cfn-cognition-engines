@@ -1,0 +1,37 @@
+# Copyright 2026 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Evaluation configuration for run_evaluation.py
+#
+# mechanism: "direct"   — self-contained, no external server needed
+#            "callback" — requires the negotiation server at environment.neg_server
+
+mechanism: callback
+
+environment:
+  agent_port: 8092
+  neg_timeout: 120.0
+  neg_server: http://localhost:8089
+
+agents:
+  - agent_id: agent-a
+    prefer_low: true
+    params:
+      exponent: 2.0
+      min_reservation: 0.0
+
+  - agent_id: agent-b
+    prefer_low: false
+    params:
+      exponent: 2.0
+      min_reservation: 0.0
+
+  - agent_id: agent-c
+    prefer_low: true
+    params:
+      exponent: 0.5
+      min_reservation: 0.0
+
+missions:
+  path: missions.yaml

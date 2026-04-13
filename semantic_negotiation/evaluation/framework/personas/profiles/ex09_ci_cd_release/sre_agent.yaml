@@ -1,0 +1,3 @@
+persona_parts:
+  - personas/preferences/ex09_sre_agent.yaml
+  - personas/strategies/negotiate_v1_0.yaml

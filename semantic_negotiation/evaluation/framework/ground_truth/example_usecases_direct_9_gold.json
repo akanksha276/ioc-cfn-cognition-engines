@@ -1,0 +1,362 @@
+[
+  {
+    "id": "example_01",
+    "sentence": "Clean my inbox but don't lose anything important.",
+    "context": "Email automation policy alignment across deletion, archiving, and compliance controls.",
+    "domain": "email_automation",
+    "gold_issues": [
+      "important emails",
+      "promotion handling",
+      "retention window",
+      "compliance exceptions"
+    ],
+    "gold_options": {
+      "important emails": [
+        "Anything tied to finance, legal, contracts, security, or active customer threads",
+        "Any email the user has opened, starred, replied to, or received in the last 30 days",
+        "Only messages explicitly labeled as important or sent from approved high-priority senders"
+      ],
+      "promotion handling": [
+        "Delete all promotional emails immediately unless they match an active shopping or billing thread",
+        "Archive promotional emails for 30 days before deletion unless manually restored",
+        "Keep promotional emails only if they include receipts, invoices, warranties, or account actions"
+      ],
+      "retention window": [
+        "Delete non-important clutter after 14 days",
+        "Archive non-important mail for 30 days before deletion",
+        "Retain all non-flagged mail for 90 days before any destructive action"
+      ],
+      "compliance exceptions": [
+        "Never delete emails containing legal, financial, tax, HR, or contract-related content",
+        "Require a compliance check before deleting anything from regulated senders or domains",
+        "Allow deletion only after compliance-safe emails are tagged and excluded automatically"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 01 - Email Automation"
+    }
+  },
+  {
+    "id": "example_02",
+    "sentence": "Read, summarize, and respond to this thread.",
+    "context": "Inbox workflow coordination between summarization and drafting agents.",
+    "domain": "inbox_workflow",
+    "gold_issues": [
+      "step ownership",
+      "execution order",
+      "handoff trigger",
+      "response authority"
+    ],
+    "gold_options": {
+      "step ownership": [
+        "Bob owns summarization and Julie owns drafting",
+        "Julie drafts only after Bob produces a summary and recommendation",
+        "Both contribute but Bob is responsible for summary quality and Julie for final wording"
+      ],
+      "execution order": [
+        "Read thread, summarize, approve summary, then draft response",
+        "Read and summarize in parallel with a draft skeleton that is finalized after summary",
+        "Bob summarizes first, Julie drafts second, Bob reviews third"
+      ],
+      "handoff trigger": [
+        "Summary complete when action items, decision points, and recipient intent are explicitly listed",
+        "Handoff occurs only after the summary is approved by both agents",
+        "Julie can begin drafting once Bob marks the summary as decision-ready"
+      ],
+      "response authority": [
+        "Julie has final authority over tone and wording once the summary is accepted",
+        "Bob approves factual accuracy and Julie approves final phrasing",
+        "Final response requires a simple two-step sign-off from both agents"
+      ]
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 02 - Inbox Thread Workflow"
+    }
+  },
+  {
+    "id": "example_03",
+    "sentence": "Plan a great week for me.",
+    "context": "Personal planning conflict across fitness, work, and family scheduling priorities.",
+    "domain": "personal_planning",
+    "gold_issues": [
+      "definition of a great week",
+      "morning allocation",
+      "priority order",
+      "conflict resolution rule"
+    ],
+    "gold_options": {
+      "definition of a great week": [
+        "A balanced week with visible progress in health, work, and family time",
+        "A work-first week that protects essential family commitments and minimum exercise",
+        "A family-centered week with sustainable work output and realistic wellness goals"
+      ],
+      "morning allocation": [
+        "Assign fixed mornings by day: some for workouts, some for deep work, some for family",
+        "Split mornings into protected blocks for two priorities each day",
+        "Reserve mornings primarily for one priority and move the others to other times"
+      ],
+      "priority order": [
+        "Family first, work second, fitness third",
+        "Work first, family second, fitness third",
+        "No single fixed order; prioritize based on pre-agreed weekly targets"
+      ],
+      "conflict resolution rule": [
+        "The highest-priority weekly target wins the slot conflict",
+        "Use a rotating schedule so no agent permanently controls mornings",
+        "Require a compromise swap whenever one agent displaces another from a preferred slot"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 03 - Personal Planning"
+    }
+  },
+  {
+    "id": "example_04",
+    "sentence": "Plan a relaxing Italy trip.",
+    "context": "Travel planning negotiation over flights, accommodation, and itinerary pace.",
+    "domain": "travel_planning",
+    "gold_issues": [
+      "definition of relaxing",
+      "flight tradeoff",
+      "hotel standard",
+      "daily itinerary pace"
+    ],
+    "gold_options": {
+      "definition of relaxing": [
+        "Minimize transit friction and preserve free time each day",
+        "Accept some transit inconvenience in exchange for better accommodation comfort",
+        "Keep a moderate sightseeing schedule with one major activity per day"
+      ],
+      "flight tradeoff": [
+        "Choose the cheapest flight with longer layovers if total travel time stays reasonable",
+        "Choose a mid-priced flight with one manageable connection",
+        "Choose the fastest or most direct flight even at higher cost"
+      ],
+      "hotel standard": [
+        "Budget hotel in a practical location to free budget for activities",
+        "Central mid-range hotel balancing comfort and location",
+        "Premium centrally located hotel optimized for comfort and convenience"
+      ],
+      "daily itinerary pace": [
+        "Light pace with one anchor activity and long breaks",
+        "Moderate pace with two planned activities and flexible free time",
+        "Dense sightseeing schedule maximizing major landmarks each day"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 04 - Travel Planning"
+    }
+  },
+  {
+    "id": "example_05",
+    "sentence": "Recommend the best treatment for this cancer patient.",
+    "context": "Healthcare treatment recommendation across oncology, genomics, and trial enrollment perspectives.",
+    "domain": "healthcare",
+    "gold_issues": [
+      "primary treatment goal",
+      "evidence basis",
+      "trial participation",
+      "treatment aggressiveness"
+    ],
+    "gold_options": {
+      "primary treatment goal": [
+        "Maximize overall survival even with higher toxicity",
+        "Balance survival benefit with quality of life and tolerability",
+        "Prioritize eligibility for promising targeted or experimental options"
+      ],
+      "evidence basis": [
+        "Standard-of-care population evidence should dominate the decision",
+        "Patient-specific genomic evidence should strongly steer treatment choice",
+        "Use population evidence as baseline and override it only with strong mutation or biomarker evidence"
+      ],
+      "trial participation": [
+        "Pursue clinical trial enrollment first if eligibility is clear",
+        "Use standard treatment first and consider a trial only on progression",
+        "Offer trial participation only if expected benefit is at least comparable to standard-of-care"
+      ],
+      "treatment aggressiveness": [
+        "Aggressive multi-modal treatment with maximum disease control intent",
+        "Moderate-intensity treatment that preserves function and tolerability",
+        "Stepwise escalation starting with the least burdensome viable therapy"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 05 - Healthcare Treatment"
+    }
+  },
+  {
+    "id": "example_06",
+    "sentence": "Submit my expenses quickly but correctly.",
+    "context": "Expense submission workflow across speed, compliance validation, and audit completeness.",
+    "domain": "finance_expense",
+    "gold_issues": [
+      "submission timing",
+      "validation depth",
+      "missing documentation handling",
+      "exception approval path"
+    ],
+    "gold_options": {
+      "submission timing": [
+        "Submit immediately and resolve only high-risk flags before filing",
+        "Submit once mandatory validation checks are complete and non-critical items are tagged pending",
+        "Delay submission until all receipts and checks are fully complete"
+      ],
+      "validation depth": [
+        "Full validation for all items regardless of amount",
+        "Tiered validation based on amount, category, and policy risk",
+        "Minimal pre-submit validation with more review after submission"
+      ],
+      "missing documentation handling": [
+        "Block any item missing required documentation",
+        "Allow low-risk items to submit with a pending-documentation flag",
+        "Permit temporary exceptions when a manager attests the expense is legitimate"
+      ],
+      "exception approval path": [
+        "Manager approval before submission for policy exceptions",
+        "Finance approval only for items above a defined threshold",
+        "Post-submit audit review for low-value exceptions with full pre-approval only for high-risk cases"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 06 - Expense Submission"
+    }
+  },
+  {
+    "id": "example_07",
+    "sentence": "Optimize my portfolio for growth with low risk.",
+    "context": "Investment portfolio negotiation over return, volatility, and execution discipline.",
+    "domain": "finance_investment",
+    "gold_issues": [
+      "portfolio objective",
+      "sector exposure",
+      "rebalancing trigger",
+      "risk ceiling"
+    ],
+    "gold_options": {
+      "portfolio objective": [
+        "Maximize long-term growth while tolerating above-average volatility",
+        "Balance growth and risk through diversified target allocations",
+        "Prioritize capital preservation with selective growth exposure"
+      ],
+      "sector exposure": [
+        "Increase technology exposure materially above benchmark",
+        "Keep sector exposure near benchmark weights with mild tilts",
+        "Cap technology concentration tightly to reduce drawdown risk"
+      ],
+      "rebalancing trigger": [
+        "Rebalance immediately when current allocation deviates from target",
+        "Rebalance only when drift exceeds a defined threshold or market regime changes",
+        "Use scheduled periodic rebalancing with limited discretionary overrides"
+      ],
+      "risk ceiling": [
+        "Accept higher volatility for stronger expected returns",
+        "Set a moderate volatility and drawdown ceiling",
+        "Use strict risk controls even if they materially reduce upside"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 07 - Investment Portfolio"
+    }
+  },
+  {
+    "id": "example_08",
+    "sentence": "Resolve this stockout efficiently.",
+    "context": "Supply chain recovery negotiation across procurement cost, logistics speed, and finance controls.",
+    "domain": "supply_chain",
+    "gold_issues": [
+      "definition of efficiency",
+      "supplier choice",
+      "shipping method",
+      "spend ceiling"
+    ],
+    "gold_options": {
+      "definition of efficiency": [
+        "Restore stock as fast as possible regardless of premium logistics cost",
+        "Balance cost and speed using a target service-restoration window",
+        "Minimize total spend unless the stockout cost clearly exceeds the premium"
+      ],
+      "supplier choice": [
+        "Choose the cheapest qualified supplier",
+        "Choose the supplier with the shortest reliable lead time",
+        "Split volume between a cheap supplier and a fast supplier"
+      ],
+      "shipping method": [
+        "Use fastest available expedited shipping",
+        "Use standard shipping unless downtime cost exceeds a defined threshold",
+        "Use a mixed mode with expedited partial replenishment and standard remainder"
+      ],
+      "spend ceiling": [
+        "Allow emergency overspend with later approval",
+        "Stay within a pre-defined emergency budget unless executive approval is obtained",
+        "Treat stockout recovery as exempt from normal spend caps for critical items"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 08 - Supply Chain Stockout"
+    }
+  },
+  {
+    "id": "example_09",
+    "sentence": "Deploy this release safely and fast.",
+    "context": "CI/CD release governance across deployment urgency, quality gates, and operational risk.",
+    "domain": "devops_cicd",
+    "gold_issues": [
+      "release gate criteria",
+      "testing threshold",
+      "risk tolerance",
+      "rollback trigger"
+    ],
+    "gold_options": {
+      "release gate criteria": [
+        "Release immediately unless there is a known critical blocker",
+        "Release only after mandatory quality and risk checks pass",
+        "Allow release with explicit sign-off when deadline pressure is high and residual risk is documented"
+      ],
+      "testing threshold": [
+        "All tests must pass before release",
+        "Critical-path and changed-code tests must pass while non-critical failures can be waived",
+        "Known flaky or non-blocking tests may fail if regression risk is judged low"
+      ],
+      "risk tolerance": [
+        "Delay any release when system risk indicators are elevated",
+        "Permit release if risk is mitigated by canary rollout and monitoring",
+        "Accept moderate operational risk to meet a fixed business deadline"
+      ],
+      "rollback trigger": [
+        "Rollback immediately on defined error-rate or latency threshold breach",
+        "Monitor briefly after release and rollback only if the signal persists",
+        "Rollback only after both technical threshold breach and human confirmation"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 09 - CI/CD Release"
+    }
+  }
+]

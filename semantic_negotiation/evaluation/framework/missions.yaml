@@ -1,0 +1,197 @@
+# missions.yaml — negotiation missions run by test_via_semantic_neg_agents.py
+#
+# Each entry is one independent negotiation.  Add more entries by appending to
+# this list — no changes to test_via_semantic_neg_agents.py are required.
+#
+# Required fields per mission:
+#   name              : human-readable label (also used as the trace folder slug)
+#   content_text      : free-text description sent to the negotiation server
+#   issues            : ordered list of negotiation issue names
+#   options_per_issue : mapping from issue name → ordered list of options
+#                       (order matters: index 0 = "cheapest/smallest" end)
+#   n_steps           : maximum SAO rounds before a timeout is declared
+
+# Issues and options are discovered dynamically by the semantic negotiation
+# pipeline (Component 1: IntentDiscovery, Component 2: OptionsGeneration).
+# Only name, content_text, and n_steps are required here.
+
+missions:
+
+  - name: "Quick Deal"
+    content_text: >
+      Two parties need to agree on price and delivery speed
+      for an urgent supply order.
+    n_steps: 0  # trigger auto-sizing via compute_n_steps()
+
+  - name: "Cloud Platform"
+    content_text: >
+      Teams need to agree on compute tier, storage quota, support level,
+      deployment region, and contract length for multi-year cloud infrastructure.
+    n_steps: 40
+
+# ── Hard-convergence missions (5) ────────────────────────────────────────────
+
+  - name: "Hard 01 - AI Model Deployment Policy"
+    content_text: >
+      The engineering team and the ethics board must agree on a policy for
+      deploying AI models that is responsible enough to protect users and the
+      company's reputation, competitive enough that the organisation does not
+      fall behind, transparent in how decisions are made, and does not expose
+      proprietary methods or create unacceptable liability.
+    n_steps: 30
+
+  - name: "Hard 02 - Data Platform Architecture"
+    content_text: >
+      The data engineering team and the business units need to agree on a data
+      platform architecture that gives teams genuine ownership of their data,
+      ensures the organisation has reliable and consistent data quality across
+      the board, keeps costs under control without compromising capability, and
+      remains auditable for regulatory purposes.
+    n_steps: 30
+
+  - name: "Hard 03 - Open Source vs Enterprise Platform"
+    content_text: >
+      The infrastructure team and the procurement committee must decide on a
+      platform strategy that is genuinely cost-effective over the long term,
+      gives the organisation full control over its own systems, comes with the
+      level of support the business actually needs when things go wrong, and
+      does not lock the company into a relationship it cannot exit.
+    n_steps: 30
+
+  - name: "Hard 04 - Remote Work and Talent Policy"
+    content_text: >
+      The people team and the executive leadership need to align on a working
+      arrangement that allows the company to attract the best talent regardless
+      of location, keeps teams genuinely collaborative and productive, protects
+      the culture that makes the organisation successful, and treats all
+      employees fairly regardless of where they choose to work.
+    n_steps: 30
+
+  - name: "Hard 05 - Security vs Developer Experience"
+    content_text: >
+      The security team and the product engineering team need to reach an
+      agreement on access controls and deployment practices that adequately
+      protect sensitive systems and customer data, allow developers to move
+      quickly without unnecessary friction, give auditors the visibility they
+      require, and can realistically be adopted and maintained by the teams
+      that have to live with them every day.
+    n_steps: 30
+
+# ── Example use-case missions (9) ──────────────────────────────────────────────────
+
+  - name: "Example 01 - Email Automation"
+    content_text: >
+      Clean my inbox but don't lose anything important.
+      DeleteAgent wants to delete all promos and old emails.
+      ArchiveAgent wants to archive emails older than 30 days.
+      ComplianceAgent wants to block deletion of financial and legal emails.
+      The three agents must agree on what counts as important, in what order
+      actions are taken, and how to handle emails that fall under more than
+      one policy — so that nothing critical is lost and the inbox is actually cleaned.
+    n_steps: 50
+
+  - name: "Example 02 - Inbox Thread Workflow"
+    content_text: >
+      Read, summarize, and respond to this thread.
+      Bob says he will summarize first; Julie says she will draft the response.
+      Bob then tells Julie to wait for the summary; Julie says she needs
+      direction before she can write the response.
+      The two agents must agree on who owns each step, in what order the steps
+      run, and what handoff signal triggers the next step — so the thread is
+      summarized and a reply is sent without either agent waiting indefinitely
+      for the other.
+    n_steps: 50
+
+  - name: "Example 03 - Personal Planning"
+    content_text: >
+      Plan a great week for me.
+      FitnessAgent wants to schedule daily workouts at 6am.
+      WorkAgent wants to block mornings for deep work.
+      FamilyAgent wants to reserve mornings for the kids.
+      All three agents are competing for the same morning time slots and
+      keep overwriting each other's calendar entries.
+      The agents must agree on a shared definition of a great week, a priority
+      ordering of goals, and a time-slot allocation that all three can commit
+      to without continuous conflicts.
+    n_steps: 50
+
+  - name: "Example 04 - Travel Planning"
+    content_text: >
+      Plan a relaxing Italy trip.
+      FlightAgent wants to book the cheapest flight even if it has long layovers.
+      StayAgent wants to book a central premium hotel.
+      ItineraryAgent wants to maximise daily sightseeing.
+      Each agent is optimising for a different dimension and the combined plan
+      is exhausting and incoherent rather than relaxing.
+      The agents must agree on what relaxing means operationally, how to balance
+      cost, comfort, and pace, and how to produce a coherent itinerary that
+      all three planned components support rather than undermine.
+    n_steps: 50
+
+  - name: "Example 05 - Healthcare Treatment"
+    content_text: >
+      Recommend the best treatment for this cancer patient.
+      OncologyAgent wants to maximise survival and recommends aggressive chemotherapy.
+      GenomicsAgent recommends targeted therapy based on the patient's specific mutation.
+      TrialAgent wants to enrol the patient in a clinical trial.
+      All three agents are recommending different treatments and no decision is reached.
+      The agents must agree on what best means for this patient — survival duration,
+      quality of life, or access to experimental therapy — and on the criteria for
+      choosing between population evidence, genomic data, and trial eligibility,
+      so a single coherent treatment recommendation can be produced.
+    n_steps: 50
+
+  - name: "Example 06 - Expense Submission"
+    content_text: >
+      Submit my expenses quickly but correctly.
+      ExpenseAgent wants to submit all receipts now without waiting.
+      ComplianceAgent wants to hold all submissions until validation is complete.
+      AuditAgent wants to flag and resolve all missing documentation first.
+      The agents are blocking each other and no submission goes through.
+      The agents must agree on a submission timing policy, on which validation
+      checks are mandatory blockers versus advisory flags, and on how to handle
+      missing documentation — so the expenses are submitted both quickly and
+      in a way that passes compliance and audit requirements.
+    n_steps: 50
+
+  - name: "Example 07 - Investment Portfolio"
+    content_text: >
+      Optimize my portfolio for growth with low risk.
+      GrowthAgent wants to increase technology sector exposure.
+      RiskAgent wants to reduce volatility by diversifying.
+      ExecutionAgent wants to rebalance immediately.
+      The agents keep making conflicting trades and the portfolio oscillates
+      without converging on a stable state.
+      The agents must agree on a single portfolio objective that balances growth
+      and risk, on the conditions that trigger a rebalance, and on the sector
+      concentration limits that all three agents will respect — so that trades
+      move the portfolio toward a coherent target rather than cancelling each other out.
+    n_steps: 50
+
+  - name: "Example 08 - Supply Chain Stockout"
+    content_text: >
+      Resolve this stockout efficiently.
+      ProcurementAgent wants to order from the cheapest supplier.
+      LogisticsAgent wants to use the fastest shipping method.
+      FinanceAgent wants to minimise total spend.
+      Each agent is pulling in a different direction and the stockout is not
+      resolved — either the order is delayed or costs spike unexpectedly.
+      The agents must agree on what efficiently means in this context, on the
+      relative priority of cost versus speed, and on a supplier and shipping
+      selection framework that all three can apply consistently to resolve the
+      stockout without creating new cost or delay problems.
+    n_steps: 50
+
+  - name: "Example 09 - CI/CD Release"
+    content_text: >
+      Deploy this release safely and fast.
+      DeployAgent wants to release now to meet the business deadline.
+      QAAgent wants to block the release until all tests pass.
+      SREAgent wants to delay because of system risk in the current environment.
+      The pipeline is either stalled by the blocks or the deploy goes out
+      unsafely without proper sign-off.
+      The agents must agree on which gate criteria are mandatory blockers versus
+      overridable with explicit sign-off, on the error rate threshold that
+      triggers a rollback, and on a deployment window policy — so that the
+      release goes out as fast as possible without creating operational risk.
+    n_steps: 50

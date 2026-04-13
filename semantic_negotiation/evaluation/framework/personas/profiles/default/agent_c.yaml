@@ -1,0 +1,3 @@
+persona_parts:
+  - personas/preferences/domain_c.yaml
+  - personas/strategies/negotiate_v1_0.yaml

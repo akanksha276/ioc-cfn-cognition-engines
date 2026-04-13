@@ -1,0 +1,164 @@
+# agent_configs.yaml
+#
+# Defines LLM agent personas for test_via_semantic_neg_agents.py.
+#
+# Structure
+# ---------
+# default_agents:    used for any mission that does NOT declare its own agents
+#                    (e.g., all hard5 missions).
+#
+# mission_agents:    keyed by mission name slug (lowercase, underscores).
+#                    When a mission matches, these agents replace the defaults.
+#
+# Per-agent fields
+# ----------------
+#   id             : participant_id sent to the neg server (must be unique per run)
+#   name           : display name (logged and shown in dialogue traces)
+#   persona_file   : path to a YAML file (relative to this file) containing the
+#                    agent's persona under the key "persona".
+#                    Inline "persona:" is still accepted as a fallback.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Default agents — used for hard5 and any mission without explicit agents
+# ─────────────────────────────────────────────────────────────────────────────
+default_agents:
+  - id: agent-a
+    name: Agent A
+    persona_file: personas/profiles/default/agent_a.yaml
+
+  - id: agent-b
+    name: Agent B
+    persona_file: personas/profiles/default/agent_b.yaml
+
+  - id: agent-c
+    name: Agent C
+    persona_file: personas/profiles/default/agent_c.yaml
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Example use-case mission-specific agents
+# Keys must match the slug of the mission name:
+#   slug = lowercase, spaces/punctuation → underscores, leading/trailing _ stripped
+# ─────────────────────────────────────────────────────────────────────────────
+mission_agents:
+
+  # Example 01 - Email Automation
+  example_01_email_automation:
+    - id: delete-agent
+      name: DeleteAgent
+      persona_file: personas/profiles/ex01_email_automation/delete_agent.yaml
+
+    - id: archive-agent
+      name: ArchiveAgent
+      persona_file: personas/profiles/ex01_email_automation/archive_agent.yaml
+
+    - id: compliance-agent
+      name: ComplianceAgent
+      persona_file: personas/profiles/ex01_email_automation/compliance_agent.yaml
+
+  # Example 02 - Inbox Thread Workflow
+  example_02_inbox_thread_workflow:
+    - id: bob
+      name: Bob
+      persona_file: personas/profiles/ex02_inbox_thread_workflow/bob.yaml
+
+    - id: julie
+      name: Julie
+      persona_file: personas/profiles/ex02_inbox_thread_workflow/julie.yaml
+
+  # Example 03 - Personal Planning
+  example_03_personal_planning:
+    - id: fitness-agent
+      name: FitnessAgent
+      persona_file: personas/profiles/ex03_personal_planning/fitness_agent.yaml
+
+    - id: work-agent
+      name: WorkAgent
+      persona_file: personas/profiles/ex03_personal_planning/work_agent.yaml
+
+    - id: family-agent
+      name: FamilyAgent
+      persona_file: personas/profiles/ex03_personal_planning/family_agent.yaml
+
+  # Example 04 - Travel Planning
+  example_04_travel_planning:
+    - id: flight-agent
+      name: FlightAgent
+      persona_file: personas/profiles/ex04_travel_planning/flight_agent.yaml
+
+    - id: stay-agent
+      name: StayAgent
+      persona_file: personas/profiles/ex04_travel_planning/stay_agent.yaml
+
+    - id: itinerary-agent
+      name: ItineraryAgent
+      persona_file: personas/profiles/ex04_travel_planning/itinerary_agent.yaml
+
+  # Example 05 - Healthcare Treatment
+  example_05_healthcare_treatment:
+    - id: oncology-agent
+      name: OncologyAgent
+      persona_file: personas/profiles/ex05_healthcare_treatment/oncology_agent.yaml
+
+    - id: genomics-agent
+      name: GenomicsAgent
+      persona_file: personas/profiles/ex05_healthcare_treatment/genomics_agent.yaml
+
+    - id: trial-agent
+      name: TrialAgent
+      persona_file: personas/profiles/ex05_healthcare_treatment/trial_agent.yaml
+
+  # Example 06 - Expense Submission
+  example_06_expense_submission:
+    - id: expense-agent
+      name: ExpenseAgent
+      persona_file: personas/profiles/ex06_expense_submission/expense_agent.yaml
+
+    - id: compliance-agent
+      name: ComplianceAgent
+      persona_file: personas/profiles/ex06_expense_submission/compliance_agent.yaml
+
+    - id: audit-agent
+      name: AuditAgent
+      persona_file: personas/profiles/ex06_expense_submission/audit_agent.yaml
+
+  # Example 07 - Investment Portfolio
+  example_07_investment_portfolio:
+    - id: growth-agent
+      name: GrowthAgent
+      persona_file: personas/profiles/ex07_investment_portfolio/growth_agent.yaml
+
+    - id: risk-agent
+      name: RiskAgent
+      persona_file: personas/profiles/ex07_investment_portfolio/risk_agent.yaml
+
+    - id: execution-agent
+      name: ExecutionAgent
+      persona_file: personas/profiles/ex07_investment_portfolio/execution_agent.yaml
+
+  # Example 08 - Supply Chain Stockout
+  example_08_supply_chain_stockout:
+    - id: procurement-agent
+      name: ProcurementAgent
+      persona_file: personas/profiles/ex08_supply_chain_stockout/procurement_agent.yaml
+
+    - id: logistics-agent
+      name: LogisticsAgent
+      persona_file: personas/profiles/ex08_supply_chain_stockout/logistics_agent.yaml
+
+    - id: finance-agent
+      name: FinanceAgent
+      persona_file: personas/profiles/ex08_supply_chain_stockout/finance_agent.yaml
+
+  # Example 09 - CI/CD Release
+  example_09_ci_cd_release:
+    - id: deploy-agent
+      name: DeployAgent
+      persona_file: personas/profiles/ex09_ci_cd_release/deploy_agent.yaml
+
+    - id: qa-agent
+      name: QAAgent
+      persona_file: personas/profiles/ex09_ci_cd_release/qa_agent.yaml
+
+    - id: sre-agent
+      name: SREAgent
+      persona_file: personas/profiles/ex09_ci_cd_release/sre_agent.yaml

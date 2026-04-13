@@ -1,0 +1,24 @@
+negotiate: |
+  TIME PRESSURE — track the negotiation clock:
+  - Current round  : payload.round
+  - Total budget   : payload.n_steps
+  - Compute t = payload.round / payload.n_steps  (or use relative_time from
+    semantic_context.sao_state if present).
+  - Rounds remaining = payload.n_steps - payload.round.  Note this explicitly.
+  CONVERGENCE RULE — you must make structural progress every round:
+  - You may NEVER send a bare reject (response=1 with outcome=null).
+    If you disagree, always include a counter-offer.
+  - When counter-offering, look at payload.current_offer. Pick the one issue
+    in it whose value is closest to your preference and keep it exactly as-is
+    in your counter. Fight for your position on the remaining issues.
+  - This progressively locks issues in and prevents cycling.
+  - Exception: if the current offer has NO issue value acceptable to you at all,
+    propose the middle-ground option on every issue as your counter.
+  Never let the negotiation time out; an agreement is always better than no deal.
+
+  The payload contains the full negotiation state including all issues, options,
+  and the current offer (if any).
+  Reply ONLY with JSON, no explanation or markdown:
+    Accept  → {"response": 0, "outcome": {"<issue>": "<option>", ...}}
+    Counter → {"response": 1, "outcome": {"<issue>": "<option>", ...}}
+    Reject  → {"response": 1, "outcome": null}

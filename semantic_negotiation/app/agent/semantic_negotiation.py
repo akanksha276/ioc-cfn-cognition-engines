@@ -229,15 +229,19 @@ class SemanticNegotiationPipeline:
                 components.
         """
         try:
-            use_fabric = bool(
-                fabric_node_base_url and workspace_id and mas_id
-            )
+            use_fabric = bool(fabric_node_base_url and workspace_id and mas_id)
             logger.info(
                 "discover_and_generate content_len=%d use_fabric=%s",
                 len(content_text or ""),
                 use_fabric,
             )
-            issues = self._intent_discovery.discover(sentence=content_text, agent_names=agent_names, fabric_node_base_url=fabric_node_base_url, workspace_id=workspace_id, mas_id=mas_id)
+            issues = self._intent_discovery.discover(
+                sentence=content_text,
+                agent_names=agent_names,
+                fabric_node_base_url=fabric_node_base_url,
+                workspace_id=workspace_id,
+                mas_id=mas_id,
+            )
             if hasattr(issues, "negotiable_entities"):
                 issues = issues.negotiable_entities
             gen_out = self._options_generation.generate_options(
@@ -265,19 +269,20 @@ class SemanticNegotiationPipeline:
             ) from exc
 
     async def async_execute(
-            self,
-            session_id: str,
-            *,
-            n_steps: int | None = None,
-            content_text: str = "",
-            agents_raw: List[Dict[str, Any]] | None = None,
-            initiate_message: Dict[str, Any] | None = None,
-            agent_replies: List[Dict[str, Any]] | None = None,
-            commit_message_id: str = "",
-            workspace_id: str | None = None,
-            mas_id: str | None = None,
-            fabric_node_base_url: str | None = None,
-            agent_names: List[str] | None = None, ) -> Dict[str, Any]:
+        self,
+        session_id: str,
+        *,
+        n_steps: int | None = None,
+        content_text: str = "",
+        agents_raw: List[Dict[str, Any]] | None = None,
+        initiate_message: Dict[str, Any] | None = None,
+        agent_replies: List[Dict[str, Any]] | None = None,
+        commit_message_id: str = "",
+        workspace_id: str | None = None,
+        mas_id: str | None = None,
+        fabric_node_base_url: str | None = None,
+        agent_names: List[str] | None = None,
+    ) -> Dict[str, Any]:
         return await asyncio.to_thread(
             self.execute,
             session_id,
@@ -290,7 +295,7 @@ class SemanticNegotiationPipeline:
             workspace_id=workspace_id,
             mas_id=mas_id,
             fabric_node_base_url=fabric_node_base_url,
-            agent_names=agent_names
+            agent_names=agent_names,
         )
 
     def execute(
@@ -343,15 +348,17 @@ class SemanticNegotiationPipeline:
                     raise SemanticNegotiationInputError(
                         f"agents information is required to initiate a session"
                     )
-                issues, options_per_issue, options_memory_blob = self.discover_and_generate(
-                    content_text,
-                    workspace_id=workspace_id,
-                    mas_id=mas_id,
-                    fabric_node_base_url=fabric_node_base_url,
-                    agent_names=agent_names,
+                issues, options_per_issue, options_memory_blob = (
+                    self.discover_and_generate(
+                        content_text,
+                        workspace_id=workspace_id,
+                        mas_id=mas_id,
+                        fabric_node_base_url=fabric_node_base_url,
+                        agent_names=agent_names,
+                    )
                 )
-                if n_steps is not None:
-                    # Caller explicitly provided a budget — use it as-is.
+                if n_steps:
+                    # Caller explicitly provided a non-zero budget — use it as-is.
                     effective_n = n_steps
                 else:
                     # Compute a dynamic budget from negotiation complexity.

@@ -1,0 +1,23 @@
+general: |
+  ## GENERAL NEGOTIATION LOGIC
+  # (Domain-agnostic rules that apply to any negotiation)
+  STEP 1 — READ THE OPTIONS:
+  Look at payload.semantic_context.options_per_issue. Read the actual option
+  strings for each issue. Apply the domain preference above to determine
+  your PRIMARY WIN option and THEIR_WIN for all other issues.
+
+  STEP 2 — DECISION RULES:
+  1. Read the current offer from payload.sao_state.current_offer.
+  2. If the offer's primary issue matches your PRIMARY WIN → ACCEPT immediately,
+     regardless of all other issues.
+  3. Otherwise → COUNTER with {primary issue: YOUR WIN, all others: THEIR_WIN}.
+     Give away everything except your primary issue to signal a fair trade.
+  4. You may NEVER bare-reject (response=1, outcome=null). Always counter.
+  5. Only use verbatim option values from options_per_issue. Never invent values.
+  6. Never let the negotiation time out (payload.round / payload.n_steps).
+
+  The payload contains the full negotiation state.
+  Reply ONLY with JSON, no explanation or markdown:
+    Accept  → {"response": 0, "outcome": {"<issue>": "<option>", ...}}
+    Counter → {"response": 1, "outcome": {"<issue>": "<option>", ...}}
+    Reject  → {"response": 1, "outcome": null}

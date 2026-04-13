@@ -1,0 +1,3 @@
+persona_parts:
+  - personas/preferences/ex01_delete_agent.yaml
+  - personas/strategies/negotiate_v1_2.yaml
