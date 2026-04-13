@@ -10,6 +10,8 @@ Wires together:
 2. :class:`~app.agent.options_generation.OptionsGeneration` - generates options per issue.
 3. :class:`~app.agent.batch_callback_runner.BatchCallbackRunner` - runs the turn-by-turn
    SAO negotiation, driven externally via ``/initiate`` + ``/decide``.
+4. :class:`~app.agent.semantic_alignment_validation_pipeline.SemanticAlignmentValidationPipeline`
+   — validates the final agreement before it is committed.
 
 Callers that need the resolved issue space for envelopes (e.g. SSTP
 ``semantic_context``) should use :meth:`SemanticNegotiationPipeline.run`, which
@@ -32,6 +34,10 @@ from .batch_callback_runner import compute_n_steps
 from .intent_discovery import IntentDiscovery
 from .negotiation_model import NegotiationParticipant, NegotiationResult
 from .options_generation import OptionsGeneration
+from .semantic_alignment_validation_pipeline import (
+    SemanticAlignmentValidationPipeline,
+    ValidationResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +111,65 @@ class SemanticNegotiationPipeline:
         self.enable_local_trace = enable_local_trace
         self._intent_discovery = IntentDiscovery()
         self._options_generation = OptionsGeneration()
+        self._alignment_validator = SemanticAlignmentValidationPipeline()
         # session_id → (runner, sess)
         self._sessions: Dict[str, tuple] = {}
         logger.info("SemanticNegotiationPipeline initialized n_steps=%d", n_steps)
+
+    def run_alignment_validation(
+        self,
+        trace: List[Dict[str, Any]],
+    ) -> ValidationResult:
+        """Run Step 4 — semantic alignment validation on the completed negotiation trace.
+
+        Called immediately after the SAO reaches a terminal state and before
+        :meth:`build_commit_envelope`.  Returns a :class:`ValidationResult`
+        that is included in the terminal response so callers can act on the
+        recommendation (``accept``, ``request_justification``,
+        ``restart_negotiation``, or ``escalate``) before persisting the commit.
+
+        Validation errors (malformed trace) are logged and surfaced via the
+        returned result's ``failure_modes`` list rather than propagating as
+        exceptions, so a validation problem never blocks the commit path.
+
+        Args:
+            trace: The ``sstp_message_trace`` list of dicts accumulated during
+                the negotiation session.
+
+        Returns:
+            :class:`ValidationResult` describing detected failure modes and the
+            recommended next action.
+        """
+        logger.info(
+            "run_alignment_validation trace_len=%d",
+            len(trace),
+        )
+        try:
+            validation = self._alignment_validator.run(trace)
+            logger.info(
+                "run_alignment_validation done severity=%s score=%.2f "
+                "needs_intervention=%s recommendation=%s failure_modes=%s",
+                validation.severity,
+                validation.alignment_score,
+                validation.needs_intervention,
+                validation.recommendation,
+                validation.failure_modes,
+            )
+            return validation
+        except Exception as exc:
+            logger.warning(
+                "run_alignment_validation failed — returning degraded result: %s", exc
+            )
+            from .semantic_alignment_validation_pipeline import FailureMode
+
+            return ValidationResult(
+                needs_intervention=False,
+                severity="low",
+                alignment_score=0.0,
+                failure_modes=[FailureMode.COMMUNICATION_BREAKDOWN],
+                reasoning=f"Validation pipeline raised an exception: {exc}",
+                recommendation="accept",
+            )
 
     def start_negotiation(
         self,
@@ -343,27 +405,63 @@ class SemanticNegotiationPipeline:
         try:
             if session_id not in self._sessions:
                 logger.info("execute initiate session_id=%s", session_id)
-                # ── Initiate ──────────────────────────────────────────────
                 if agents_raw is None:
                     raise SemanticNegotiationInputError(
-                        f"agents information is required to initiate a session"
+                        "agents information is required to initiate a session"
                     )
-                issues, options_per_issue, options_memory_blob = (
-                    self.discover_and_generate(
-                        content_text,
-                        workspace_id=workspace_id,
-                        mas_id=mas_id,
-                        fabric_node_base_url=fabric_node_base_url,
-                        agent_names=agent_names,
-                    )
+
+                # ── Step 1: Discover Issues ────────────────────────────────
+                # IntentDiscovery extracts the negotiable entities (issues) from
+                # the free-text description of the negotiation context.
+                issues = self._intent_discovery.discover(
+                    sentence=content_text,
+                    agent_names=agent_names,
+                    fabric_node_base_url=fabric_node_base_url,
+                    workspace_id=workspace_id,
+                    mas_id=mas_id,
                 )
-                if n_steps:
-                    # Caller explicitly provided a non-zero budget — use it as-is.
+                if hasattr(issues, "negotiable_entities"):
+                    issues = issues.negotiable_entities
+                logger.info(
+                    "execute step1 issues_discovered session_id=%s issues=%s",
+                    session_id,
+                    issues,
+                )
+
+                # ── Step 2: Generate Options for Issues ────────────────────
+                # OptionsGeneration produces a candidate list of values for each
+                # discovered issue.  When a cognition fabric node is reachable,
+                # shared-memory evidence is retrieved first and fed into the LLM
+                # prompt; otherwise pure LLM generation is used.
+                gen_out = self._options_generation.generate_options(
+                    issues,
+                    content_text,
+                    agent_names=agent_names,
+                    fabric_node_base_url=fabric_node_base_url,
+                    workspace_id=workspace_id,
+                    mas_id=mas_id,
+                )
+                options_per_issue = gen_out.options_per_issue
+                options_memory_blob = gen_out.memory_blob
+                logger.info(
+                    "execute step2 options_generated session_id=%s options_keys=%d memory_blob=%s",
+                    session_id,
+                    len(options_per_issue),
+                    options_memory_blob is not None,
+                )
+
+                # ── Step 3: Negotiate ──────────────────────────────────────
+                # BatchCallbackRunner runs the SAO (Stacked Alternating Offers)
+                # mechanism turn-by-turn.  start_negotiation seeds the session
+                # and returns the first round of agent messages; subsequent
+                # rounds arrive via /decide → step_negotiation.
+                if n_steps is not None:
+                    # Caller explicitly provided a budget — use it as-is.
                     effective_n = n_steps
                 else:
                     # Compute a dynamic budget from negotiation complexity.
-                    # If settings.negotiation_n_steps > 0 it acts as a hard cap
-                    # so operators can still control the upper bound via env var.
+                    # If self.n_steps > 0 it acts as a hard cap so operators
+                    # can still control the upper bound via env var.
                     dynamic_n = compute_n_steps(
                         n_agents=len(agents_raw),
                         n_issues=len(issues),
@@ -389,9 +487,8 @@ class SemanticNegotiationPipeline:
                 sess.agents_negotiating = [a["id"] for a in (agents_raw or [])]
                 self._sessions[session_id] = (runner, sess)
                 logger.info(
-                    "execute initiated session_id=%s issues=%d n_steps=%d",
+                    "execute step3 negotiation_started session_id=%s n_steps=%d",
                     session_id,
-                    len(issues),
                     effective_n,
                 )
                 return {
@@ -405,7 +502,8 @@ class SemanticNegotiationPipeline:
                     "messages": messages,
                 }
 
-            # ── Decide ────────────────────────────────────────────────────
+            # ── Step 3 (continue): Decide ──────────────────────────────────
+            # Session already exists — advance the SAO by one batch of replies.
             logger.info(
                 "execute decide session_id=%s replies=%d",
                 session_id,
@@ -462,6 +560,23 @@ class SemanticNegotiationPipeline:
         )
         del self._sessions[session_id]
         participant_id_by_name = {p.name: p.id for p in sess.participants}
+
+        # ── Step 4: Semantic alignment validation ─────────────────────────
+        # Run before building the commit so callers can act on the
+        # recommendation (accept / request_justification / restart / escalate).
+        validation = self.run_alignment_validation(sess.sstp_message_trace)
+        logger.info(
+            "execute step4 alignment_validation complete "
+            "session_id=%s severity=%s score=%.2f needs_intervention=%s "
+            "recommendation=%s failure_modes=%s",
+            session_id,
+            validation.severity,
+            validation.alignment_score,
+            validation.needs_intervention,
+            validation.recommendation,
+            validation.failure_modes or [],
+        )
+
         try:
             commit = self.build_commit_envelope(
                 result,
@@ -486,6 +601,14 @@ class SemanticNegotiationPipeline:
             "issues": sess.issues,
             "participant_id_by_name": participant_id_by_name,
             "final_result": commit,
+            "validation": {
+                "needs_intervention": validation.needs_intervention,
+                "severity": validation.severity,
+                "alignment_score": validation.alignment_score,
+                "failure_modes": validation.failure_modes,
+                "reasoning": validation.reasoning,
+                "recommendation": validation.recommendation,
+            },
         }
 
     def build_commit_envelope(

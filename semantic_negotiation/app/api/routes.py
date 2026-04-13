@@ -37,7 +37,11 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from ..dependencies import get_pipeline
-from ..agent.semantic_negotiation import SemanticNegotiationPipeline
+from ..agent.semantic_negotiation import (
+    SemanticNegotiationPipeline,
+    SemanticNegotiationInputError,
+    SemanticNegotiationSessionNotFoundError,
+)
 from .schemas import (
     NegotiationError,
     NegotiationHeader,
@@ -49,6 +53,86 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["negotiation"])
+
+
+# ============== Input validation ==============
+
+
+def _validate_initiate_payload(payload: Dict[str, Any], session_id: str) -> None:
+    """Validate the payload for POST /negotiate/initiate.
+
+    Raises:
+        SemanticNegotiationInputError: On any constraint violation.
+    """
+    if not session_id or not session_id.strip():
+        raise SemanticNegotiationInputError(
+            "session_id is required and must be a non-empty string."
+        )
+
+    content_text: str = payload.get("content_text", "")
+    if not content_text or not content_text.strip():
+        raise SemanticNegotiationInputError(
+            "payload.content_text is required and must be a non-empty string."
+        )
+
+    agents_raw = payload.get("agents")
+    if agents_raw is None:
+        raise SemanticNegotiationInputError("payload.agents is required.")
+    if not isinstance(agents_raw, list) or len(agents_raw) < 2:
+        raise SemanticNegotiationInputError(
+            f"payload.agents must be a list of at least 2 agents, got {len(agents_raw) if isinstance(agents_raw, list) else type(agents_raw).__name__!r}."
+        )
+    seen_ids: set = set()
+    for i, agent in enumerate(agents_raw):
+        if not isinstance(agent, dict):
+            raise SemanticNegotiationInputError(
+                f"payload.agents[{i}] must be a dict with 'id' and 'name' keys."
+            )
+        agent_id = agent.get("id", "")
+        agent_name = agent.get("name", "")
+        if not agent_id or not str(agent_id).strip():
+            raise SemanticNegotiationInputError(
+                f"payload.agents[{i}].id is required and must be a non-empty string."
+            )
+        if not agent_name or not str(agent_name).strip():
+            raise SemanticNegotiationInputError(
+                f"payload.agents[{i}].name is required and must be a non-empty string."
+            )
+        if agent_id in seen_ids:
+            raise SemanticNegotiationInputError(
+                f"payload.agents contains duplicate id {agent_id!r}."
+            )
+        seen_ids.add(agent_id)
+
+    n_steps = payload.get("n_steps")
+    if n_steps is not None:
+        if not isinstance(n_steps, int) or n_steps < 1:
+            raise SemanticNegotiationInputError(
+                f"payload.n_steps must be a positive integer, got {n_steps!r}."
+            )
+
+
+def _validate_decide_payload(payload: Dict[str, Any], session_id: str) -> None:
+    """Validate the payload for POST /negotiate/decide.
+
+    Raises:
+        SemanticNegotiationInputError: On any constraint violation.
+    """
+    if not session_id or not session_id.strip():
+        raise SemanticNegotiationInputError(
+            "session_id is required and must be a non-empty string "
+            "(set payload.session_id or semantic_context.session_id)."
+        )
+
+    agent_replies = payload.get("agent_replies")
+    if (
+        agent_replies is None
+        or not isinstance(agent_replies, list)
+        or len(agent_replies) == 0
+    ):
+        raise SemanticNegotiationInputError(
+            "payload.agent_replies is required and must be a non-empty list."
+        )
 
 
 # ============== Helpers ==============
@@ -135,10 +219,18 @@ async def negotiate_initiate(
     )
     payload = body.payload
     content_text: str = payload.get("content_text", "")
-    agents_raw: List[Dict[str, Any]] = payload["agents"]
+    agents_raw: List[Dict[str, Any]] = payload.get("agents", [])
     n_steps: Optional[int] = payload.get("n_steps")
 
     try:
+        _validate_initiate_payload(payload, session_id)
+        logger.info(
+            "initiate validation passed session_id=%s agents=%d content_len=%d n_steps=%s",
+            session_id,
+            len(agents_raw),
+            len(content_text),
+            n_steps,
+        )
         result = await asyncio.to_thread(
             pipeline.execute,
             session_id,
@@ -147,7 +239,12 @@ async def negotiate_initiate(
             agents_raw=agents_raw,
             initiate_message=dump_negotiate_message_json(body),
         )
-    except ValueError as exc:
+    except SemanticNegotiationInputError as exc:
+        logger.warning(
+            "initiate validation failed session_id=%s reason=%s",
+            session_id,
+            exc,
+        )
         trace = NegotiationTrace(rounds=[], timedout=False, broken=True)
         error_resp = InitiateResponse(
             header=header,
@@ -217,11 +314,32 @@ async def negotiate_decide(
     request_id = body.message_id
 
     try:
+        _validate_decide_payload(payload, session_id)
+        logger.info(
+            "decide validation passed session_id=%s replies=%d",
+            session_id,
+            len(agent_replies),
+        )
         exec_result = await asyncio.to_thread(
             pipeline.execute,
             session_id,
             agent_replies=agent_replies,
             commit_message_id=request_id,
+        )
+    except SemanticNegotiationInputError as exc:
+        logger.warning(
+            "decide validation failed session_id=%s reason=%s",
+            session_id,
+            exc,
+        )
+        return JSONResponse(
+            status_code=400,
+            content={"error": "BAD_REQUEST", "detail": str(exc)},
+        )
+    except SemanticNegotiationSessionNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"No active session for session_id={session_id!r}"},
         )
     except KeyError:
         return JSONResponse(
