@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="openai/gpt-4o")
     llm_api_key: str | None = Field(default=None)
     llm_base_url: str | None = Field(default=None)
+    llm_temperature: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+        description="LiteLLM completion temperature (env: LLM_TEMPERATURE). 0 = deterministic.",
+    )
 
     # Negotiation defaults
     negotiation_n_steps: int = Field(

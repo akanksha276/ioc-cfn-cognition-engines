@@ -29,7 +29,7 @@ def get_llm_provider(model: Optional[str] = None) -> Callable[[str], str]:
         kwargs: dict = {
             "model": _model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0,
+            "temperature": settings.llm_temperature,
             "max_tokens": 8000,
         }
         if settings.llm_api_key:
