@@ -12,6 +12,7 @@ load_dotenv()
 from fastapi import FastAPI
 from .api.routes import router as api_router
 from .config.settings import settings
+from common.diagnostics.router import make_diagnostics_router, HealthCheck
 
 
 logging.basicConfig(
@@ -35,6 +36,32 @@ def get_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(api_router, prefix="/api/knowledge-mgmt")
+    def _check_cfn() -> bool:
+        if not settings.CFN_URL:
+            return False
+        try:
+            import httpx
+            r = httpx.get(f"{settings.CFN_URL}/api/internal/diagnostics/health", timeout=3.0)
+            return r.status_code < 500
+        except Exception:
+            return False
+
+    app.include_router(
+        make_diagnostics_router(
+            service_name=settings.service_name,
+            version="0.1.0",
+            description="Evidence gathering agent for CFN cognitive pipeline",
+            health_checks=[
+                HealthCheck(
+                    name="cognition_fabric_node",
+                    check=_check_cfn,
+                    critical=True,
+                ),
+            ],
+        ),
+        prefix="/api/internal/diagnostics",
+        include_in_schema=False,
+    )
 
     @app.get("/health")
     async def health():

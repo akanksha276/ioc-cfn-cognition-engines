@@ -24,6 +24,9 @@ class Settings(BaseSettings):
         extra="ignore",  # allow unrecognised env vars (e.g. LLM keys)
     )
 
+    # CFN service URL for health check
+    cfn_url: str | None = Field(default=None)
+
     # Service configuration
     service_name: str = Field(default="semantic_negotiation")
     host: str = Field(default="0.0.0.0")

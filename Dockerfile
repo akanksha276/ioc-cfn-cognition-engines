@@ -97,6 +97,7 @@ COPY --from=model-builder /fastembed_cache /tmp/fastembed_cache
 COPY --from=model-builder --chown=1000:1000 /fastembed_cache/ibm-granite/granite-embedding-30m-english/ /app/granite-embedding-30m-english/
 
 # Copy each service into its own subdirectory (unified app runs from /app with PYTHONPATH=/app)
+COPY --chown=1000:1000 common/                 /app/common/
 COPY --chown=1000:1000 gateway/app/            /app/gateway/app/
 COPY --chown=1000:1000 ingestion/app/          /app/ingestion/app/
 COPY --chown=1000:1000 evidence/app/           /app/evidence/app/
@@ -112,4 +113,6 @@ USER app
 ENV PYTHONPATH=/app
 EXPOSE 9004
 WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:9004/api/internal/diagnostics/health || exit 1
 CMD ["uvicorn", "gateway.app.main:app", "--host", "0.0.0.0", "--port", "9004"]

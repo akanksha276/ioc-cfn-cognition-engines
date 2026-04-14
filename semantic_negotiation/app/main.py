@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from .api.routes import router as api_router
 from .api.schemas import HealthResponse
 from .config.settings import settings
+from common.diagnostics.router import make_diagnostics_router, HealthCheck
 
 # Configure logging
 logging.basicConfig(
@@ -51,6 +52,33 @@ app = FastAPI(
 
 # Register routes
 app.include_router(api_router)
+def _check_cfn() -> bool:
+    if not settings.cfn_url:
+        return False
+    try:
+        import httpx
+        r = httpx.get(f"{settings.cfn_url}/api/internal/diagnostics/health", timeout=3.0)
+        return r.status_code < 500
+    except Exception:
+        return False
+
+
+app.include_router(
+    make_diagnostics_router(
+        service_name=settings.service_name,
+        version="1.0.0",
+        description="Multi-issue semantic negotiation agent via NegMAS SAO mechanism",
+        health_checks=[
+            HealthCheck(
+                name="cognition_fabric_node",
+                check=_check_cfn,
+                critical=True,
+            ),
+        ],
+    ),
+    prefix="/api/internal/diagnostics",
+    include_in_schema=False,
+)
 
 
 @app.get("/", tags=["root"])

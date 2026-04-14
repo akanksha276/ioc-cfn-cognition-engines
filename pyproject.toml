@@ -16,6 +16,7 @@ classifiers = [
 ]
 package-mode = true
 packages = [
+    { include = "common" },
     { include = "ingestion" },
     { include = "evidence" },
     { include = "caching" },
@@ -95,6 +96,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = [
+    "common/tests",
     "gateway/tests",
     "ingestion/tests",
     "evidence/tests",

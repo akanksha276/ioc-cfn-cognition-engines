@@ -57,7 +57,14 @@ from semantic_negotiation.app.main import app as _semantic_negotiation_app
 # Routers for Confluence paths (no /ingestion or /evidence prefix)
 from ingestion.app.api.routes import extraction_router as ingestion_extraction_router
 from evidence.app.api.routes import router as evidence_api_router
+
+import httpx
+from fastapi.responses import JSONResponse
+
+from common.diagnostics.router import make_diagnostics_router
+
 from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
+
 
 
 @asynccontextmanager
@@ -94,6 +101,59 @@ app.mount("/semantic-negotiation", _semantic_negotiation_app)
 # Confluence paths: /api/knowledge-mgmt/... (no /ingestion or /evidence prefix)
 app.include_router(ingestion_extraction_router)
 app.include_router(evidence_api_router, prefix="/api/knowledge-mgmt")
+
+
+@app.get("/api/internal/diagnostics/health", include_in_schema=False)
+async def aggregate_health():
+    """Aggregate health across all sub-services."""
+    overall = "UP"
+    services = {}
+
+    # Gateway's own check 
+    cache_ok = getattr(app.state, "cache_layer", None) is not None
+    services["gateway"] = {
+        "status": "UP" if cache_ok else "DOWN",
+        "checks": {"embedding_model": cache_ok},
+    }
+    if not cache_ok:
+        overall = "DOWN"
+
+    # Sub-app checks via in-process ASGI transport (no network hop)
+    for name, sub_app in [
+        ("ingestion", _ingestion_app),
+        ("evidence", _evidence_app),
+        ("semantic_negotiation", _semantic_negotiation_app),
+    ]:
+        try:
+            transport = httpx.ASGITransport(app=sub_app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get("/api/internal/diagnostics/health")
+            data = resp.json()
+            svc_status = data.get("status", "UNKNOWN")
+            services[name] = {"status": svc_status, "checks": data.get("checks", {})}
+            if resp.status_code >= 500:
+                overall = "DOWN"
+            elif svc_status == "DEGRADED" and overall == "UP":
+                overall = "DEGRADED"
+        except Exception as e:
+            services[name] = {"status": "UNKNOWN", "error": str(e)}
+            overall = "DOWN"
+
+    http_status = 500 if overall == "DOWN" else 200
+    return JSONResponse(content={"status": overall, "services": services}, status_code=http_status)
+
+
+app.include_router(
+    make_diagnostics_router(
+        service_name="IoC CFN Cognitive Agents (Unified)",
+        version="0.2.0",
+        description="Single process: ingestion and evidence sub-apps with shared in-memory cache",
+        include_health=False,
+    ),
+    prefix="/api/internal/diagnostics",
+    include_in_schema=False,
+)
+
 app.include_router(semantic_negotiation_api_router, prefix="/api/semantic-negotiation")
 
 

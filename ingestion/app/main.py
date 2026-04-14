@@ -23,6 +23,8 @@ import uvicorn
 from .config.settings import settings
 from .api.routes import router as api_router, extraction_router
 from .dependencies import get_extraction_service
+from common.diagnostics.router import make_diagnostics_router, HealthCheck
+from .agent.knowledge_processor import FASTEMBED_AVAILABLE
 
 
 # Configure logging
@@ -52,6 +54,22 @@ app = FastAPI(
 # Include API routes
 app.include_router(api_router)
 app.include_router(extraction_router)
+app.include_router(
+    make_diagnostics_router(
+        service_name=settings.service_name,
+        version="1.0.0",
+        description="Extracts knowledge from OpenTelemetry data",
+        health_checks=[
+            HealthCheck(
+                name="embedding_model",
+                check=lambda: FASTEMBED_AVAILABLE,
+                critical=True,
+            ),
+        ],
+    ),
+    prefix="/api/internal/diagnostics",
+    include_in_schema=False,
+)
 
 
 @app.get("/", tags=["root"])
