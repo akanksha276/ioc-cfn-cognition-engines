@@ -101,6 +101,44 @@ class TestHealth:
         data = client.get("/api/internal/diagnostics/health").json()
         assert "checks" not in data
 
+    def test_external_check_skipped_by_default(self):
+        app = _make_app(health_checks=[
+            HealthCheck("cfn", lambda: False, critical=True, external=True),
+        ])
+        with TestClient(app) as c:
+            r = c.get("/api/internal/diagnostics/health")
+            assert r.status_code == 200
+            assert r.json()["status"] == "UP"
+            assert "cfn" not in r.json().get("checks", {})
+
+    def test_external_check_included_with_dependencies_param(self):
+        app = _make_app(health_checks=[
+            HealthCheck("cfn", lambda: True, critical=True, external=True),
+        ])
+        with TestClient(app) as c:
+            r = c.get("/api/internal/diagnostics/health?dependencies=true")
+            assert r.status_code == 200
+            assert r.json()["checks"]["cfn"] is True
+
+    def test_external_check_failure_hidden_without_param(self):
+        app = _make_app(health_checks=[
+            HealthCheck("cfn", lambda: False, critical=True, external=True),
+        ])
+        with TestClient(app) as c:
+            r = c.get("/api/internal/diagnostics/health")
+            assert r.status_code == 200
+            assert r.json()["status"] == "UP"
+
+    def test_external_check_failure_visible_with_param(self):
+        app = _make_app(health_checks=[
+            HealthCheck("cfn", lambda: False, critical=True, external=True),
+        ])
+        with TestClient(app) as c:
+            r = c.get("/api/internal/diagnostics/health?dependencies=true")
+            assert r.status_code == 500
+            assert r.json()["status"] == "DOWN"
+            assert r.json()["checks"]["cfn"] is False
+
 
 
 

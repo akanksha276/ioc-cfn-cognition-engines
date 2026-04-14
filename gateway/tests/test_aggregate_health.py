@@ -13,14 +13,28 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 
-def _make_sub_app(status: str, checks: dict, http_status: int = 200) -> FastAPI:
-    """Tiny mock sub-app that returns a controlled health response."""
+def _make_sub_app(
+    status: str,
+    checks: dict,
+    http_status: int = 200,
+    dependencies_checks: dict | None = None,
+) -> FastAPI:
+    """Tiny mock sub-app that returns a controlled health response.
+
+    When ``dependencies_checks`` is provided, it is returned instead of
+    ``checks`` when the caller passes ``?dependencies=true``.
+    """
     mock = FastAPI()
 
     @mock.get("/api/internal/diagnostics/health")
-    async def health():
+    async def health(dependencies: bool = False):
+        effective_checks = (
+            dependencies_checks
+            if dependencies and dependencies_checks is not None
+            else checks
+        )
         return JSONResponse(
-            content={"status": status, "checks": checks},
+            content={"status": status, "checks": effective_checks},
             status_code=http_status,
         )
 
@@ -174,3 +188,27 @@ class TestAggregateHealth:
     def test_excluded_from_openapi(self, client):
         schema = client.get("/openapi.json").json()
         assert "/api/internal/diagnostics/health" not in schema.get("paths", {})
+
+    def test_light_mode_no_external_checks(self, client, gateway_app, monkeypatch):
+        """Without ?dependencies, sub-apps are called without the param — no external checks."""
+        gateway_app.app.state.cache_layer = object()
+        monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
+        monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+
+        body = client.get("/api/internal/diagnostics/health").json()
+        assert body["status"] == "UP"
+        assert body["services"]["evidence"]["checks"] == {}
+        assert body["services"]["semantic_negotiation"]["checks"] == {}
+
+    def test_dependencies_param_forwarded_to_sub_apps(self, client, gateway_app, monkeypatch):
+        """With ?dependencies=true, the param is forwarded and external checks appear."""
+        gateway_app.app.state.cache_layer = object()
+        monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
+        monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+
+        body = client.get("/api/internal/diagnostics/health?dependencies=true").json()
+        assert body["status"] == "UP"
+        assert body["services"]["evidence"]["checks"]["cognition_fabric_node"] is True
+        assert body["services"]["semantic_negotiation"]["checks"]["cognition_fabric_node"] is True

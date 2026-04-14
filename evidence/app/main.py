@@ -56,6 +56,7 @@ def get_app() -> FastAPI:
                     name="cognition_fabric_node",
                     check=_check_cfn,
                     critical=True,
+                    external=True,
                 ),
             ],
         ),

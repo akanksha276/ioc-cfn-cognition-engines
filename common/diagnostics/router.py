@@ -63,10 +63,13 @@ class HealthCheck(NamedTuple):
                   is healthy, ``False`` (or raising) when it is not.
         critical: When ``True`` a failed check drives the overall state to DOWN
                   (HTTP 500).  When ``False`` it drives it to DEGRADED (HTTP 200).
+        external: When ``True`` the check makes a network call to a downstream
+                  service and is skipped unless ``?dependencies=true`` is passed.
     """
     name: str
     check: Callable[[], bool]
     critical: bool = True
+    external: bool = False
 
 
 # Log levels accepted by this API.  TRACE and WARN are aliases used by
@@ -103,12 +106,14 @@ def make_diagnostics_router(
 
     if include_health:
         @router.get("/health")
-        async def health():
+        async def health(dependencies: bool = False):
             checks = health_checks or []
             state = HealthState.UP
             check_results: dict[str, bool] = {}
 
             for hc in checks:
+                if hc.external and not dependencies:
+                    continue
                 try:
                     ok = hc.check()
                 except Exception:

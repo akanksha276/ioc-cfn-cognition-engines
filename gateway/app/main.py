@@ -104,12 +104,12 @@ app.include_router(evidence_api_router, prefix="/api/knowledge-mgmt")
 
 
 @app.get("/api/internal/diagnostics/health", include_in_schema=False)
-async def aggregate_health():
+async def aggregate_health(dependencies: bool = False):
     """Aggregate health across all sub-services."""
     overall = "UP"
     services = {}
 
-    # Gateway's own check 
+    # Gateway's own check
     cache_ok = getattr(app.state, "cache_layer", None) is not None
     services["gateway"] = {
         "status": "UP" if cache_ok else "DOWN",
@@ -119,6 +119,9 @@ async def aggregate_health():
         overall = "DOWN"
 
     # Sub-app checks via in-process ASGI transport (no network hop)
+    health_path = "/api/internal/diagnostics/health"
+    if dependencies:
+        health_path += "?dependencies=true"
     for name, sub_app in [
         ("ingestion", _ingestion_app),
         ("evidence", _evidence_app),
@@ -127,7 +130,7 @@ async def aggregate_health():
         try:
             transport = httpx.ASGITransport(app=sub_app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-                resp = await client.get("/api/internal/diagnostics/health")
+                resp = await client.get(health_path)
             data = resp.json()
             svc_status = data.get("status", "UNKNOWN")
             services[name] = {"status": svc_status, "checks": data.get("checks", {})}
