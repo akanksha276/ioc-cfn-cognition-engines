@@ -25,7 +25,7 @@ Architecture:
     │  Agent A server :8091  ◄──── SSTPNegotiateMessage ────┐  │
     │  Agent B server :8092  ◄──── SSTPNegotiateMessage ───┐│  │
     │                                                       ││  │
-    │  ─── POST /negotiate/initiate ───────────────────►   ││  │
+    │  ─── POST /api/negotiate/initiate ───────────────────►   ││  │
     │       { agents: [{callback_url: :8091}, {:8092}] }   ││  │
     │                                                       ││  │
     │  Negotiation server :8089 (SAO mechanism)  ──────────┘│  │
@@ -1010,7 +1010,7 @@ def _build_decide_payload(
     session_id: str,
     agent_replies: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Wrap agent replies in an SSTPNegotiateMessage for POST /negotiate/decide."""
+    """Wrap agent replies in an SSTPNegotiateMessage for POST /api/negotiate/decide."""
     from protocol.sstp import SSTPNegotiateMessage
     from protocol.sstp._base import Origin, PolicyLabels, Provenance
     from protocol.sstp.negotiate import NegotiateSemanticContext
@@ -1249,9 +1249,9 @@ async def run(
 
         _save_json(mission_trace_dir / "00_initiate_request.json", initiate_payload)
 
-        print(f"POST {neg_server}/api/v1/negotiate/initiate …")
+        print(f"POST {neg_server}/api/negotiate/initiate …")
         resp = httpx.post(
-            f"{neg_server}/api/v1/negotiate/initiate",
+            f"{neg_server}/api/negotiate/initiate",
             json=initiate_payload,
             timeout=120.0,  # only Components 1+2 run here
         )
@@ -1293,7 +1293,7 @@ async def run(
                 # (participant_id=null) is expanded server-side to all N agents and
                 # returns N replies; a targeted message returns 1.  Flatten all
                 # per-message reply batches into a single list before sending to
-                # /negotiate/decide.
+                # /api/negotiate/decide.
                 reply_batches = await asyncio.gather(
                     *[asyncio.to_thread(_forward_to_agent, msg) for msg in messages]
                 )
@@ -1304,7 +1304,7 @@ async def run(
                     initiate_payload, session_id, agent_replies
                 )
                 decide_resp = httpx.post(
-                    f"{neg_server}/api/v1/negotiate/decide",
+                    f"{neg_server}/api/negotiate/decide",
                     json=decide_payload,
                     timeout=60.0,
                 )

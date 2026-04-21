@@ -5,7 +5,7 @@
 """
 Main entry point for the Telemetry Extraction Service.
 
-A cognitive agent that ingests OpenTelemetry (OTel) trace data and extracts 
+A cognitive agent that ingests OpenTelemetry (OTel) trace data and extracts
 entities, relationships, and knowledge graphs.
 """
 
@@ -30,7 +30,7 @@ from .agent.knowledge_processor import FASTEMBED_AVAILABLE
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -48,12 +48,12 @@ app = FastAPI(
     title="Knowledge Extraction Service",
     description="Extracts knowledge from OpenTelemetry data",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Include API routes
-app.include_router(api_router)
-app.include_router(extraction_router)
+app.include_router(api_router, prefix="/api")
+app.include_router(extraction_router, prefix="/api/knowledge-mgmt")
 app.include_router(
     make_diagnostics_router(
         service_name=settings.service_name,
@@ -78,7 +78,7 @@ async def root():
     return {
         "message": "Knowledge Extraction Service",
         "status": "running",
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
 
@@ -92,14 +92,8 @@ async def health_check():
 
 def run_server():
     """Run the uvicorn server."""
-    uvicorn.run(
-        "app.main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=False
-    )
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=False)
 
 
 if __name__ == "__main__":
     run_server()
-

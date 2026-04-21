@@ -166,10 +166,10 @@ class TestHealthEndpoint:
 
 class TestMetricsEndpoint:
     def test_metrics_returns_200(self, client):
-        assert client.get("/api/v1/metrics").status_code == 200
+        assert client.get("/api/metrics").status_code == 200
 
     def test_metrics_returns_expected_fields(self, client):
-        data = client.get("/api/v1/metrics").json()
+        data = client.get("/api/metrics").json()
         assert "records_processed" in data
         assert "records_sent" in data
         assert "records_failed" in data
@@ -316,7 +316,7 @@ class TestKnowledgeExtractionEndpoint:
 class TestFileExtractionEndpoint:
     def test_file_extraction_missing_file_returns_404(self, client):
         response = client.get(
-            "/api/v1/extract/entities_and_relations/from_file",
+            "/api/extract/entities_and_relations/from_file",
             params={"file_path": "/nonexistent/file.json"},
         )
         assert response.status_code == 404
@@ -325,14 +325,14 @@ class TestFileExtractionEndpoint:
         invalid_file = tmp_path / "test.txt"
         invalid_file.write_text("[]")
         response = client.get(
-            "/api/v1/extract/entities_and_relations/from_file",
+            "/api/extract/entities_and_relations/from_file",
             params={"file_path": str(invalid_file)},
         )
         assert response.status_code == 400
 
     def test_concept_file_extraction_missing_file_returns_404(self, client):
         response = client.get(
-            "/api/v1/extract/concepts_and_relationships/from_file",
+            "/api/extract/concepts_and_relationships/from_file",
             params={"file_path": "/nonexistent/file.json"},
         )
         assert response.status_code == 404

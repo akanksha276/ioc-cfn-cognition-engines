@@ -159,7 +159,7 @@ The HTTP API contract stays the same; callers do not send cache parameters.
 
 ## Switching data sources
 
-`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `CFN_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph calls use `/api/workspaces/.../multi-agentic-systems/.../graph/...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/v1/graph/...`. When **`cache_layer`** is on the app and **`CFN_URL`** is set, **similar concepts** come from in-process FAISS via `ConceptRepository`, and **graph calls** use **`HttpDataRepository`**.
+`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `CFN_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph calls use `/api/workspaces/.../multi-agentic-systems/.../graph/...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/graph/...`. When **`cache_layer`** is on the app and **`CFN_URL`** is set, **similar concepts** come from in-process FAISS via `ConceptRepository`, and **graph calls** use **`HttpDataRepository`**.
 
 ## Tests
 

@@ -21,7 +21,7 @@ the agent's ``/decide`` endpoint, then waits for decisions to appear in the
 ``batch_callback_runner.store_decisions``).
 
 The agent server in this module calls ``store_decisions`` directly (in-process)
-instead of POSTing to ``/api/v1/negotiate/agents-decisions``, so the eval loop
+instead of POSTing to ``/api/negotiate/agents-decisions``, so the eval loop
 never needs a running negotiation server — it's entirely self-contained.
 
 Round semantics (inherited from BatchCallbackRunner)

@@ -245,7 +245,7 @@ import httpx
 
 client = httpx.Client(base_url="http://localhost:8089")
 
-resp = client.post("/api/v1/negotiate/initiate", json={
+resp = client.post("/api/negotiate/initiate", json={
     "origin": {"tenant_id": "workspace-1", "actor_id": "mas-1"},
     "semantic_context": {"session_id": "session-123"},
     "message_id": "msg-001",
@@ -266,7 +266,7 @@ data = resp.json()
 
 ```python
 while True:
-    resp = client.post("/api/v1/negotiate/decide", json={
+    resp = client.post("/api/negotiate/decide", json={
         "origin": {"tenant_id": "workspace-1", "actor_id": "mas-1"},
         "semantic_context": {"session_id": "session-123"},
         "message_id": "msg-002",

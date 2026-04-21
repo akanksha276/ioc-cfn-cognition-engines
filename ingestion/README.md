@@ -132,15 +132,15 @@ curl -X POST http://localhost:8086/api/knowledge-mgmt/extraction \
 ### File-based Extraction (Dev/Testing)
 
 ```bash
-curl "http://localhost:8086/api/v1/extract/entities_and_relations/from_file?file_path=/path/to/otel.json&save_output=true"
-curl "http://localhost:8086/api/v1/extract/concepts_and_relationships/from_file?file_path=/path/to/otel.json"
+curl "http://localhost:8086/api/extract/entities_and_relations/from_file?file_path=/path/to/otel.json&save_output=true"
+curl "http://localhost:8086/api/extract/concepts_and_relationships/from_file?file_path=/path/to/otel.json"
 ```
 
 ### Health & Metrics
 
 ```bash
 curl http://localhost:8086/health
-curl http://localhost:8086/api/v1/metrics
+curl http://localhost:8086/api/metrics
 ```
 
 ## Request Format

@@ -8,7 +8,7 @@
 test_two_agents.py — Simulate two rational agents stepping through a negotiation.
 
 Flow:
-  1. POST /negotiate/initiate  → server runs components 1→2→3, returns full trace
+  1. POST /api/negotiate/initiate  → server runs components 1→2→3, returns full trace
   2. Agents A and B take turns evaluating each offer in the trace:
        - If the offer's utility is above their acceptance threshold → "accept"
        - Otherwise → "continue" (counter / keep going)
@@ -156,7 +156,7 @@ def main(base_url: str, n_steps: int, threshold_a: float, threshold_b: float) ->
     }
 
     resp = requests.post(
-        f"{base_url}/api/v1/negotiate/initiate",
+        f"{base_url}/api/negotiate/initiate",
         json=_envelope(session_id, initiate_payload),
         timeout=30,
     )
@@ -282,7 +282,7 @@ def main(base_url: str, n_steps: int, threshold_a: float, threshold_b: float) ->
                 "trace": trace,
             }
             or_resp = requests.post(
-                f"{base_url}/api/v1/negotiate/offer-response",
+                f"{base_url}/api/negotiate/offer-response",
                 json=_envelope(session_id, offer_payload, actor_id=actor),
                 timeout=30,
             )

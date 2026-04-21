@@ -59,7 +59,7 @@ router = APIRouter(tags=["negotiation"])
 
 
 def _validate_initiate_payload(payload: Dict[str, Any], session_id: str) -> None:
-    """Validate the payload for POST /negotiate/initiate.
+    """Validate the payload for POST /api/negotiate/initiate.
 
     Raises:
         SemanticNegotiationInputError: On any constraint violation.
@@ -113,7 +113,7 @@ def _validate_initiate_payload(payload: Dict[str, Any], session_id: str) -> None
 
 
 def _validate_decide_payload(payload: Dict[str, Any], session_id: str) -> None:
-    """Validate the payload for POST /negotiate/decide.
+    """Validate the payload for POST /api/negotiate/decide.
 
     Raises:
         SemanticNegotiationInputError: On any constraint violation.
@@ -190,7 +190,7 @@ def _wrap_sstp_response(
 
 
 @router.post(
-    "/negotiate/initiate",
+    "/api/negotiate/initiate",
     summary="Initiate a semantic negotiation from a mission description",
     description=(
         "Accepts a mission description and a list of agents, then runs:\n\n"
@@ -198,7 +198,7 @@ def _wrap_sstp_response(
         "2. **Component 2** — `OptionsGeneration` produces candidate options per issue.\n"
         "3. Returns the **first round's** ``List[SSTPNegotiateMessage]`` batch inside the SSTP envelope.\n\n"
         "The caller must dispatch those messages to the agents, collect their replies,\n"
-        "and POST them to ``POST /api/v1/negotiate/decide`` to advance the negotiation.\n\n"
+        "and POST them to ``POST /api/negotiate/decide`` to advance the negotiation.\n\n"
         "Request body is a full SSTP **`SSTPNegotiateMessage`** envelope.\n"
         "- `semantic_context.session_id` — caller-supplied session ID (required).\n"
         "- `payload.content_text` — natural-language mission or negotiation goal.\n"
@@ -263,7 +263,7 @@ async def negotiate_initiate(
             ),
         )
     except Exception:
-        logger.exception("Unexpected error in /negotiate/initiate [%s]", request_id)
+        logger.exception("Unexpected error in /api/negotiate/initiate [%s]", request_id)
         trace = NegotiationTrace(rounds=[], timedout=False, broken=True)
         error_resp = InitiateResponse(
             header=header,
@@ -292,7 +292,7 @@ async def negotiate_initiate(
 
 
 @router.post(
-    "/negotiate/decide",
+    "/api/negotiate/decide",
     summary="Advance the negotiation by one batch of agent decisions",
     description=(
         "Accepts the agents' replies to the last dispatched message batch and returns\n"

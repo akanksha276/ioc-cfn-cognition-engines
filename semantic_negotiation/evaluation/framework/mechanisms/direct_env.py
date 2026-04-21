@@ -11,8 +11,8 @@ itself via :class:`~app.agent.batch_callback_runner.BatchCallbackRunner`.
 Comparison with ``test_callback_agents.py``
 -------------------------------------------
 ``test_callback_agents.py`` requires a running negotiation server (port 8089).
-It POSTs ``/api/v1/negotiate/initiate``, then drives turn-by-turn loops via
-``/api/v1/negotiate/decide``.  Issues and options are **discovered** by the
+It POSTs ``/api/negotiate/initiate``, then drives turn-by-turn loops via
+``/api/negotiate/decide``.  Issues and options are **discovered** by the
 negotiation server's LLM pipeline.
 
 This sample needs **no external server** — agents and the runner live in the

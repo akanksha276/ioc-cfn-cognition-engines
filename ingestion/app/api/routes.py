@@ -28,8 +28,8 @@ from .schemas import ExtractionRequest, ExtractionResponseModel, ExtractionError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["extraction"])
-extraction_router = APIRouter(prefix="/api/knowledge-mgmt", tags=["knowledge-mgmt"])
+router = APIRouter(tags=["extraction"])
+extraction_router = APIRouter(tags=["knowledge-mgmt"])
 
 
 # ============== Extraction Endpoint ==============
@@ -38,7 +38,7 @@ extraction_router = APIRouter(prefix="/api/knowledge-mgmt", tags=["knowledge-mgm
 @extraction_router.post(
     "/extraction",
     response_model=ExtractionResponseModel,
-    response_model_exclude_none=True
+    response_model_exclude_none=True,
 )
 async def knowledge_extraction(
     body: ExtractionRequest,
@@ -86,7 +86,9 @@ async def knowledge_extraction(
             response_id=response_id,
             error=ExtractionError(
                 message="BAD_REQUEST",
-                detail={"Validation error": "payload.data must be a non-empty array of records."}
+                detail={
+                    "Validation error": "payload.data must be a non-empty array of records."
+                },
             ),
         )
         return JSONResponse(status_code=400, content=error_resp.model_dump())
@@ -123,7 +125,7 @@ async def knowledge_extraction(
                 message="INTERNAL_ERROR",
                 detail={"traceback": traceback.format_exc()},
             ),
-            concepts=[]
+            concepts=[],
         )
         return JSONResponse(status_code=500, content=error_resp.model_dump())
 
@@ -160,7 +162,9 @@ def _store_rag_chunks_in_faiss(rag_chunks: list, vector_store=None) -> None:
     try:
         vector_store.store_rag_chunks(rag_chunks)
     except Exception:
-        logger.exception("FAISS storage failed for RAG chunks; extraction result is still valid")
+        logger.exception(
+            "FAISS storage failed for RAG chunks; extraction result is still valid"
+        )
 
 
 # ============== Operational Endpoints ==============
@@ -168,7 +172,7 @@ def _store_rag_chunks_in_faiss(rag_chunks: list, vector_store=None) -> None:
 
 @router.get("/metrics")
 async def get_metrics(
-    service: TelemetryExtractionService = Depends(get_extraction_service)
+    service: TelemetryExtractionService = Depends(get_extraction_service),
 ):
     """Get operational metrics."""
     metrics = service.get_operational_metrics()
@@ -176,9 +180,13 @@ async def get_metrics(
         "records_processed": metrics.records_processed,
         "records_sent": metrics.records_sent,
         "records_failed": metrics.records_failed,
-        "last_run_timestamp": metrics.last_run_timestamp.isoformat() if metrics.last_run_timestamp else None,
+        "last_run_timestamp": (
+            metrics.last_run_timestamp.isoformat()
+            if metrics.last_run_timestamp
+            else None
+        ),
         "last_run_duration_seconds": metrics.last_run_duration_seconds,
-        "recent_errors": metrics.errors[-10:]
+        "recent_errors": metrics.errors[-10:],
     }
 
 
@@ -199,18 +207,18 @@ async def extract_entities_and_relations_from_file(
     try:
         path = Path(file_path)
         otel_data = repository.load_from_file(path)
-        
+
         result = service.extract_entities_and_relations(otel_data)
-        
+
         processor = get_knowledge_processor()
         result = processor.process(result)
-        
+
         if save_output:
             output_filename = f"extracted_entities_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
             repository.save_output(result, output_filename)
-        
+
         return result
-        
+
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -240,9 +248,7 @@ async def extract_concepts_and_relationships_from_file(
         result = processor.process(result)
 
         if save_output:
-            output_filename = (
-                f"concept_relationships_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
-            )
+            output_filename = f"concept_relationships_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
             repository.save_output(result, output_filename)
 
         return result
@@ -254,4 +260,3 @@ async def extract_concepts_and_relationships_from_file(
     except Exception as e:
         logger.error("Error extracting concepts from file: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
-

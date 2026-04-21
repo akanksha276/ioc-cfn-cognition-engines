@@ -39,7 +39,7 @@ def get_repository_for_reasoning(request: Request, req: ReasonerCognitionRequest
 def get_repository(request: Request):
     """
     Used by standalone /graph/* proxy routes (no ReasonerCognitionRequest body).
-    HttpDataRepository uses legacy /api/v1/graph/... (no workspace/mas in path).
+    HttpDataRepository uses legacy /api/graph/... (no workspace/mas in path).
     """
     return _repository(request, None, None)
 

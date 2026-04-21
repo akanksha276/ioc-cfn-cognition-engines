@@ -163,7 +163,7 @@ def _example_initiate() -> dict:
     }
     msg = _envelope("agent-a", payload)
     msg["_comment"] = (
-        "POST /api/v1/negotiate/initiate — start negotiation from content_text + agents"
+        "POST /api/negotiate/initiate — start negotiation from content_text + agents"
     )
     # Validate round-trip
     SSTPNegotiateMessage.model_validate(msg)
@@ -178,7 +178,7 @@ def _example_offer_accept() -> dict:
     }
     msg = _envelope("agent-b", payload)
     msg["_comment"] = (
-        "POST /api/v1/negotiate/offer-response — Agent B accepts round 3 offer"
+        "POST /api/negotiate/offer-response — Agent B accepts round 3 offer"
     )
     SSTPNegotiateMessage.model_validate(msg)
     return msg
@@ -192,7 +192,7 @@ def _example_offer_reject() -> dict:
     }
     msg = _envelope("agent-b", payload)
     msg["_comment"] = (
-        "POST /api/v1/negotiate/offer-response — Agent B rejects, ends negotiation"
+        "POST /api/negotiate/offer-response — Agent B rejects, ends negotiation"
     )
     SSTPNegotiateMessage.model_validate(msg)
     return msg

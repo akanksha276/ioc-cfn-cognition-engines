@@ -51,13 +51,18 @@ app = FastAPI(
 )
 
 # Register routes
-app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
+
+
 def _check_cfn() -> bool:
     if not settings.cfn_url:
         return False
     try:
         import httpx
-        r = httpx.get(f"{settings.cfn_url}/api/internal/diagnostics/health", timeout=3.0)
+
+        r = httpx.get(
+            f"{settings.cfn_url}/api/internal/diagnostics/health", timeout=3.0
+        )
         return r.status_code < 500
     except Exception:
         return False

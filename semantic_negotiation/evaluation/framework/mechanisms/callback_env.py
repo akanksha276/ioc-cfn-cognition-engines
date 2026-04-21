@@ -7,8 +7,8 @@
 This sample drives negotiations through the **external negotiation server** at
 port 8089, exactly like ``test_via_semantic_neg_agents.py``.  The agent logic runs
 locally in a FastAPI server; the negotiation server calls back on every SAO
-round and drives the turn-by-turn loop via ``POST /api/v1/negotiate/initiate``
-→ ``POST /api/v1/negotiate/decide`` until the session resolves.
+round and drives the turn-by-turn loop via ``POST /api/negotiate/initiate``
+→ ``POST /api/negotiate/decide`` until the session resolves.
 
 Comparison with direct_env.py
 ------------------------------
@@ -441,9 +441,9 @@ class CallbackEnvRunner:
     This runner mirrors ``test_via_semantic_neg_agents.py`` exactly:
 
     1. Starts a local FastAPI agent server (``/decide`` endpoint).
-    2. For each mission, POSTs ``/api/v1/negotiate/initiate`` to the negotiation
+    2. For each mission, POSTs ``/api/negotiate/initiate`` to the negotiation
        server, registering all configured agents by their ``agent_id``.
-    3. Drives the turn-by-turn SAO loop via ``/api/v1/negotiate/decide`` until
+    3. Drives the turn-by-turn SAO loop via ``/api/negotiate/decide`` until
        the negotiation resolves.
     4. Collects results and returns a :class:`CallbackEvalResult`.
 
@@ -515,9 +515,9 @@ class CallbackEnvRunner:
             "session_id", "unknown"
         )
 
-        print(f"  POST {self.neg_server}/api/v1/negotiate/initiate …")
+        print(f"  POST {self.neg_server}/api/negotiate/initiate …")
         resp = httpx.post(
-            f"{self.neg_server}/api/v1/negotiate/initiate",
+            f"{self.neg_server}/api/negotiate/initiate",
             json=initiate_payload,
             timeout=self.config.environment.neg_timeout,
         )
@@ -557,7 +557,7 @@ class CallbackEnvRunner:
 
             decide_payload = _build_decide_payload(session_id, agent_replies)
             decide_resp = httpx.post(
-                f"{self.neg_server}/api/v1/negotiate/decide",
+                f"{self.neg_server}/api/negotiate/decide",
                 json=decide_payload,
                 timeout=30.0,
             )

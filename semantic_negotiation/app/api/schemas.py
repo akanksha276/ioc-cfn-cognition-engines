@@ -47,7 +47,7 @@ class ParticipantRequest(BaseModel):
 
 
 class NegotiateRequest(BaseModel):
-    """Top-level request body for POST /api/v1/negotiate."""
+    """Top-level request body for POST /negotiate."""
 
     header: NegotiationHeader
     request_id: str = Field(
@@ -92,7 +92,7 @@ class NegotiationError(BaseModel):
 
 class NegotiateResponse(BaseModel):
     """
-    Response for POST /api/v1/negotiate.
+    Response for POST /negotiate.
 
     Either ``error`` is set **or** the outcome fields are set — never both.
     """
@@ -114,7 +114,7 @@ class NegotiateResponse(BaseModel):
 
 
 # ============== Initiate ==============
-# Note: the request body for /negotiate/initiate and /negotiate/offer-response
+# Note: the request body for /api/negotiate/initiate and /api/negotiate/offer-response
 # is SSTPNegotiateMessage (protocol.sstp.SSTPNegotiateMessage).
 # session_id is carried in semantic_context.session_id and is REQUIRED —
 # the caller must always supply it; the server never generates one.
@@ -154,9 +154,9 @@ class RoundOffer(BaseModel):
 
 
 class NegotiationTrace(BaseModel):
-    """Immutable pre-computed SAO trace returned by /negotiate/initiate.
+    """Immutable pre-computed SAO trace returned by /api/negotiate/initiate.
 
-    Pass this back verbatim in every /negotiate/offer-response request.
+    Pass this back verbatim in every /api/negotiate/offer-response request.
     The server holds **no state** — all session data lives in this object.
     """
 
@@ -200,12 +200,12 @@ class AcceptedResponse(BaseModel):
 
 
 class InitiateResponse(BaseModel):
-    """Response for POST /api/v1/negotiate/initiate (synchronous mode)."""
+    """Response for POST /api/negotiate/initiate (synchronous mode)."""
 
     header: NegotiationHeader
     session_id: str = Field(
         ...,
-        description="Opaque correlation identifier — echo back in every /negotiate/offer-response call",
+        description="Opaque correlation identifier — echo back in every /api/negotiate/offer-response call",
     )
     response_id: str = Field(..., description="Echoed from request_id")
     status: Literal["ongoing", "agreed", "broken", "timeout"] = Field(
@@ -223,7 +223,7 @@ class InitiateResponse(BaseModel):
         ...,
         description=(
             "Complete pre-computed SAO trace. "
-            "Store this client-side and pass it back with every /negotiate/offer-response request."
+            "Store this client-side and pass it back with every /api/negotiate/offer-response request."
         ),
     )
     error: Optional[NegotiationError] = None
@@ -241,7 +241,7 @@ class HealthResponse(BaseModel):
 
 
 class DecideRoundResponse(BaseModel):
-    """Response for POST /api/v1/negotiate/decide — returned each turn.
+    """Response for POST /api/negotiate/decide — returned each turn.
 
     When ``status='ongoing'`` the caller should dispatch ``next_messages`` to
     all agents, collect their replies, and POST them back to /decide again.

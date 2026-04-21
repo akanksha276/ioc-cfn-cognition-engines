@@ -11,7 +11,7 @@ Evidence wiring: dependencies.builds this when that URL is set; graph prefix dep
   • Both workspace_id and mas_id non-empty (POST /reasoning/evidence):
       GET/POST {base}/api/workspaces/{wid}/multi-agentic-systems/{mas_id}/graph/...
   • Otherwise (e.g. standalone /graph/* routes):
-      GET/POST {base}/api/v1/graph/...
+      GET/POST {base}/api/graph/...
 
 Call sites (summary):
   • neighbors, get_concepts_by_ids — ConceptRepository / single-entity hop expansion.
@@ -22,7 +22,7 @@ from urllib.parse import quote
 
 import httpx
 
-_LEGACY_GRAPH_PREFIX = "/api/v1/graph"
+_LEGACY_GRAPH_PREFIX = "/api/graph"
 
 
 class HttpDataRepository:
