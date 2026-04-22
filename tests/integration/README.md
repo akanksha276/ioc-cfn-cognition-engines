@@ -60,7 +60,7 @@ This ensures CI pipelines don't attempt to run live tests that require credentia
 - ✅ `test_knowledge_extraction_programmatic` - Tests concept extraction with mock data
 - ✅ `test_knowledge_extraction_returns_metadata` - Verifies metadata structure
 - ✅ `test_evidence_gathering_programmatic` - Tests evidence gathering flow
-- ✅ `test_cache_layer_basic_operations` - Tests caching layer API
+- ✅ `test_similarity_search_operations` - Tests similarity search API
 
 ### Live Tests (require credentials)
 - ✅ `test_knowledge_extraction_with_llm` - Real LLM extraction (7 concepts, 7 relations)

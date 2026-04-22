@@ -341,7 +341,7 @@ class ResponseGenerator(_LLMBaseClient):
             for i, sn in enumerate(rag_snippets):
                 line = (sn.get("display_line") or "").strip()
                 if not line:
-                    t = (sn.get("text") or "").strip()
+                    t = (sn.get("embedded_text") or "").strip()
                     if not t:
                         continue
                     line = f"[{i + 1}] {t}"

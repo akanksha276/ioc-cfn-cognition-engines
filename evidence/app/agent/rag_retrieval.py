@@ -2,35 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Async top-k retrieval against rag_cache_layer (same search_similar contract as graph cache_layer)."""
+"""Async top-k retrieval against the RAG /rag/similarity-search API."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Dict, List, Optional
-
-from caching.app.agent import CachingLayer
 
 logger = logging.getLogger(__name__)
 
 
-def _meta_scalar(raw: Any) -> str:
-    """RAG rows are expected to carry timestamp and domain (often ``{\"value\": ...}``)."""
-    if raw is None:
-        return ""
-    if isinstance(raw, dict):
-        if raw.get("value") is not None:
-            return str(raw["value"]).strip()
-        return ""
-    return str(raw).strip()
-
-
 def _attach_display_line(row: Dict[str, Any], index: int) -> None:
-    st = _meta_scalar(row.get("timestamp"))
-    dm = _meta_scalar(row.get("domain"))
-    txt = str(row.get("text") or "").strip()
-    parts: List[str] = [p for p in (st, dm) if p]
+    ts = str(row.get("timestamp") or "").strip()
+    domain = str(row.get("domain") or "").strip()
+    txt = str(row.get("embedded_text") or "").strip()
+    parts: List[str] = [p for p in (ts, domain) if p]
     parts.append(txt)
     row["display_line"] = f"[{index}] " + ", ".join(parts)
 
@@ -38,14 +24,14 @@ def _attach_display_line(row: Dict[str, Any], index: int) -> None:
 def _normalize_hit(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not row or not isinstance(row, dict):
         return None
-    text = row.get("text")
+    text = row.get("embedded_text")
     if text is None:
         return None
     text = str(text).strip()
     if not text:
         return None
     out = {k: v for k, v in row.items()}
-    out["text"] = text
+    out["embedded_text"] = text  # store the stripped canonical value
     try:
         out["score"] = float(row.get("score", 0.0))
     except (TypeError, ValueError):
@@ -54,40 +40,39 @@ def _normalize_hit(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 async def retrieve_rag_top_k(
-    rag_layer: CachingLayer,
+    repo: Any,
     intent: str,
     top_k: int,
+    request_id: str,
+    embedding_vector: Optional[List[float]] = None,
     timeout_seconds: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Run vector similarity on rag_layer.search_similar(text=..., k=...) in a thread.
-    Each hit includes display_line: ``[n] timestamp, domain, chunk_text``.
+    Run similarity via POST /rag/similarity-search.
+    Each hit includes display_line: ``[n] timestamp, domain, embedded_text``.
     """
-    if rag_layer is None or not (intent or "").strip():
+    _ = timeout_seconds
+    if repo is None or not hasattr(repo, "search_similar_rag") or not (intent or "").strip():
         return []
-
-    def _search() -> List[Dict[str, Any]]:
-        try:
-            raw = rag_layer.search_similar(text=str(intent).strip(), k=top_k)
-        except Exception as e:
-            logger.warning("[RAG] search_similar failed: %s", e)
-            return []
-        out: List[Dict[str, Any]] = []
-        for i, r in enumerate(raw or [], start=1):
-            n = _normalize_hit(r if isinstance(r, dict) else {})
-            if n:
-                _attach_display_line(n, i)
-                out.append(n)
-        logger.debug("[RAG] retrieval result: %s", out)
-        return out
 
     try:
-        if timeout_seconds is not None and timeout_seconds > 0:
-            return await asyncio.wait_for(asyncio.to_thread(_search), timeout=timeout_seconds)
-        return await asyncio.to_thread(_search)
-    except asyncio.TimeoutError:
-        logger.warning("[RAG] retrieval timed out after %ss", timeout_seconds)
-        return []
+        raw = await repo.search_similar_rag(
+            embedded_text=str(intent).strip(),
+            embedding_vector=embedding_vector or [],
+            request_id=request_id,
+            top_k=top_k,
+            search_metrics="l2",
+            filters=[],
+        )
     except Exception as e:
-        logger.warning("[RAG] retrieval error: %s", e)
+        logger.warning("[RAG] /rag/similarity-search failed: %s", e)
         return []
+
+    out: List[Dict[str, Any]] = []
+    for i, r in enumerate(raw or [], start=1):
+        n = _normalize_hit(r if isinstance(r, dict) else {})
+        if n:
+            _attach_display_line(n, i)
+            out.append(n)
+    logger.info("[RAG] retrieval result: %s", out)
+    return out

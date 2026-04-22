@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+import os
 
 # Resolve .env from repo root (one level above ingestion/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -44,10 +45,10 @@ class Settings(BaseSettings):
     # Local path to granite-embedding-30m-english (overrides Hugging Face when set)
     embedding_model_path: Optional[str] = Field(default=None)
 
-    # FAISS vector store (in-process via caching-layer library)
-    enable_faiss_storage: bool = Field(default=True)
-    faiss_vector_dimension: int = Field(default=384)
-    faiss_metric: str = Field(default="l2")
+    # Remote similarity-search API (concept dedupe via /concepts/similarity-search)
+    cfn_url: str | None = os.getenv("MOCKED_DB_BASE_URL") or os.getenv("CFN_URL")
+    similarity_top_k: int = Field(default=5)
+    similarity_metric: str = Field(default="l2")
 
 
 # Singleton settings instance

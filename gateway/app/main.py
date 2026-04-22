@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Unified app: single process, one uvicorn. Mounts ingestion and evidence as sub-apps.
-Creates one shared in-memory CachingLayer at startup and passes it to both via app state.
-No HTTP proxy; no separate cache server. Run: uvicorn gateway.app.main:app --host 0.0.0.0 --port 8000
-With PYTHONPATH set to the directory containing gateway, ingestion, evidence, caching (e.g. /app in Docker).
+Unified app: single process, one uvicorn. Mounts ingestion, evidence, and
+semantic-negotiation as sub-apps.
+Run: uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004
+With PYTHONPATH set to the directory containing gateway, ingestion, evidence (e.g. /app in Docker).
 """
 from __future__ import annotations
 
@@ -19,35 +19,11 @@ from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
 
-# Ensure parent of gateway is on path so we can import ingestion, evidence, caching
+# Ensure parent of gateway is on path so we can import ingestion, evidence, etc.
 # In Docker: /app/gateway/app/main.py -> parent.parent.parent = /app
 _gateway_root = Path(__file__).resolve().parent.parent.parent
 if str(_gateway_root) not in sys.path:
     sys.path.insert(0, str(_gateway_root))
-
-
-def _create_shared_caching_layer():
-    """Build one CachingLayer with shared embed_fn and dimension for ingestion and evidence."""
-    import os
-    from ingestion.app.agent.knowledge_processor import EmbeddingManager
-    from caching.app.agent.caching_layer import CachingLayer
-
-    model_path = os.getenv("EMBEDDING_MODEL_PATH", "").strip() or None
-    embedding_manager = EmbeddingManager(model_path=model_path)
-    vector_dimension = 384
-    metric = "l2"
-
-    def embed_fn(text: str):
-        out = embedding_manager.generate_embedding(text)
-        if out is None:
-            raise ValueError("Embedding returned None")
-        return out
-
-    return CachingLayer(
-        vector_dimension=vector_dimension,
-        metric=metric,
-        embed_fn=embed_fn,
-    )
 
 
 # Import sub-apps once (used in lifespan and for mount)
@@ -69,15 +45,9 @@ from semantic_negotiation.app.api.routes import router as semantic_negotiation_a
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create one CachingLayer and attach it to ingestion and evidence sub-app state."""
-    logger.info("Unified app startup: creating shared CachingLayer")
+    """Unified app lifespan: register cognition engines on startup."""
+    logger.info("Unified app startup")
 
-    app.state.cache_layer = _create_shared_caching_layer()
-    app.state.rag_cache_layer = _create_shared_caching_layer()
-
-    logger.info("Unified app: cache_layer and rag_cache_layer attached to unified app")
-
-    # Auto-register cognition engines with management plane
     from .registration import register_cognition_engines
     await register_cognition_engines()
 
@@ -88,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="IoC CFN Cognitive Agents (Unified)",
-    description="Single process: ingestion and evidence sub-apps with shared in-memory cache",
+    description="Single process: ingestion, evidence, and semantic-negotiation sub-apps",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -109,14 +79,7 @@ async def aggregate_health(dependencies: bool = False):
     overall = "UP"
     services = {}
 
-    # Gateway's own check
-    cache_ok = getattr(app.state, "cache_layer", None) is not None
-    services["gateway"] = {
-        "status": "UP" if cache_ok else "DOWN",
-        "checks": {"embedding_model": cache_ok},
-    }
-    if not cache_ok:
-        overall = "DOWN"
+    services["gateway"] = {"status": "UP", "checks": {}}
 
     # Sub-app checks via in-process ASGI transport (no network hop)
     health_path = "/api/internal/diagnostics/health"
@@ -150,7 +113,7 @@ app.include_router(
     make_diagnostics_router(
         service_name="IoC CFN Cognitive Agents (Unified)",
         version="0.2.0",
-        description="Single process: ingestion and evidence sub-apps with shared in-memory cache",
+        description="Single process: ingestion, evidence, and semantic-negotiation sub-apps",
         include_health=False,
     ),
     prefix="/api/internal/diagnostics",
@@ -174,5 +137,5 @@ async def root():
             "confluence": "Confluence paths (no prefix): /api/knowledge-mgmt/extraction, /api/knowledge-mgmt/reasoning/evidence",
             "prefixed": "/ingestion/ and /evidence/ (e.g. /ingestion/api/knowledge-mgmt/extraction, /evidence/api/knowledge-mgmt/reasoning/evidence)",
         },
-        "note": "Single process; shared in-memory CachingLayer; no proxy.",
+        "note": "Single process; no proxy.",
     }

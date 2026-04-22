@@ -44,49 +44,46 @@ class SingleEntityConfig:
 
 class ConceptRepository:
     """
-    Adapter: in-process cache_layer (FAISS) for initial similar-concept search; graph I/O via self.repo only.
-    Does not call repo.search_similar_with_neighbors.
-    - If cache_layer is set: similarity from cache_layer.search_similar; each hit must carry concept_id,
-      then one-hop graph via neighbors(concept_id) only.
-    - Else: return empty (unified gateway injects cache_layer on app.state, or pass cache_layer in tests).
+    Adapter around the graph repository.
+
+    Similarity search is resolved through the concepts similarity-search API
+    exposed by the same HTTP repository used for graph traversal.
     """
 
-    def __init__(self, repo, cache_layer=None):
+    def __init__(self, repo, request_id: str):
         self.repo = repo
-        self.cache_layer = cache_layer
+        self.request_id = request_id
 
     async def similar_with_neighbors_async(
-        self, query_vec: List[float], k: int, entity_text: Optional[str] = None
+        self, query_vec: List[List[float]], k: int, entity_text: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Top-k similar concepts with one-hop neighbours from cache similarity + repo.neighbors(concept_id) only."""
-        if self.cache_layer is None:
+        """Top-k similar concepts with one-hop neighbours from API similarity + repo.neighbors(concept_id)."""
+        if not hasattr(self.repo, "search_similar_concepts"):
             logger.info(
-                "[SingleEntity][Similar] No cache_layer for similarity; returning empty anchors "
-                "(unified app should set app.state.cache_layer)."
+                "[SingleEntity][Similar] Similarity API client unavailable; returning empty anchors."
             )
             return []
 
-        if entity_text and str(entity_text).strip():
-            cache_results = await asyncio.to_thread(
-                self.cache_layer.search_similar,
-                text=str(entity_text).strip(),
-                k=k,
-            )
-        else:
-            vec = np.array(query_vec, dtype=np.float32)
-            if vec.ndim == 1:
-                vec = vec.reshape(1, -1)
-            cache_results = await asyncio.to_thread(
-                self.cache_layer.search_similar,
-                vector=vec,
-                k=k,
-            )
+        embedded_text = str(entity_text or "").strip()
+        if not embedded_text:
+            embedded_text = ""
+        cache_results = await self.repo.search_similar_concepts(
+            embedded_text=embedded_text,
+            embedding_vector=query_vec[0] if len(query_vec) == 1 else query_vec,
+            request_id=self.request_id,
+            top_k=k,
+            search_metrics="l2",
+        )
 
         if not cache_results:
-            logger.info("[SingleEntity][Cache] Cache returned 0 results (check cache is loaded and CACHE_VECTOR_DIMENSION if using vector).")
+            logger.info("[SingleEntity][SimilarityAPI] similarity-search returned 0 results.")
             return []
-        logger.info("[SingleEntity][Cache] Cache returned %d results (entity_text=%r).", len(cache_results), entity_text)
-        # Require graph concept_id on each hit; optional "name | description" in text for labels only.
+        logger.info(
+            "[SingleEntity][SimilarityAPI] similarity-search returned %d results (entity_text=%r).",
+            len(cache_results),
+            entity_text,
+        )
+        # Require graph concept_id on each hit.
         concept_ids_ordered: List[str] = []
         score_by_id: Dict[str, float] = {}
         description_by_id: Dict[str, str] = {}
@@ -94,26 +91,18 @@ class ConceptRepository:
         for r in cache_results:
             concept_id = str((r or {}).get("concept_id", "")).strip()
             if not concept_id:
-                logger.info("[SingleEntity][Cache] Skip cache row without concept_id.")
+                logger.info("[SingleEntity][SimilarityAPI] Skip row without concept_id.")
                 continue
             if concept_id in score_by_id:
                 continue
-            raw = (r or {}).get("text")
-            name, desc = "", ""
-            if raw is not None:
-                raw = str(raw).strip()
-                if raw and " | " in raw:
-                    n, d = raw.split(" | ", 1)
-                    name, desc = n.strip(), d.strip()
-                elif raw:
-                    name, desc = raw, ""
+            name = str((r or {}).get("concept_name", "")).strip()
             display_name = name or concept_id
             concept_ids_ordered.append(concept_id)
             score_by_id[concept_id] = float((r or {}).get("score", 0.0))
-            description_by_id[concept_id] = desc
+            description_by_id[concept_id] = ""
             name_by_id[concept_id] = display_name
         if not concept_ids_ordered:
-            logger.info("[SingleEntity][Cache] No cache rows with a non-empty concept_id.")
+            logger.info("[SingleEntity][SimilarityAPI] No rows with a non-empty concept_id.")
             return []
         out: List[Dict[str, Any]] = []
         for concept_id in concept_ids_ordered[:k]:
@@ -121,7 +110,7 @@ class ConceptRepository:
             records = (neighbors_result or {}).get("records") or []
             if not records:
                 logger.info(
-                    "[SingleEntity][Cache] Graph returned no records for concept_id=%r (check data layer).",
+                    "[SingleEntity][SimilarityAPI] Graph returned no records for concept_id=%r.",
                     concept_id,
                 )
                 continue

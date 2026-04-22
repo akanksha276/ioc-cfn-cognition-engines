@@ -23,13 +23,14 @@ class PayloadFormat(str, Enum):
     observe_sdk_otel = "observe-sdk-otel"
     openclaw = "openclaw"
     locomo = "locomo"
+    semneg = "semneg"
 
 
 class PayloadMetadata(BaseModel):
     """Metadata describing the payload format and additional labels."""
     format: PayloadFormat = Field(
         ...,
-        description="Data format: 'observe-sdk-otel', 'openclaw', or 'locomo'",
+        description="Data format: 'observe-sdk-otel', 'openclaw', 'locomo', or 'semneg'",
     )
 
     class Config:

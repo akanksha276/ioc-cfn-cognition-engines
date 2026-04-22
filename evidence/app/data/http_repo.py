@@ -34,18 +34,24 @@ class HttpDataRepository:
         timeout: float = 30.0,
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
     ) -> None:
         self._base = base_url.rstrip("/")
         self._timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
         wid = (workspace_id or "").strip()
         mid = (mas_id or "").strip()
+        self._agent_id = (agent_id or "").strip()
         if wid and mid:
             self._graph_prefix = (
                 f"/api/internal/workspaces/{quote(wid, safe='')}/multi-agentic-systems/{quote(mid, safe='')}/graph"
             )
+            self._similarity_prefix = (
+                f"/api/internal/workspaces/{quote(wid, safe='')}/multi-agentic-systems/{quote(mid, safe='')}"
+            )
         else:
             self._graph_prefix = _LEGACY_GRAPH_PREFIX
+            self._similarity_prefix = None
 
     async def _client_async(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -91,3 +97,68 @@ class HttpDataRepository:
         r.raise_for_status()
         data = r.json()
         return data.get("concepts", [])
+
+    async def search_similar_concepts(
+        self,
+        *,
+        embedded_text: str,
+        embedding_vector: List[float],
+        request_id: str,
+        top_k: int = 5,
+        search_metrics: str = "l2",
+    ) -> List[Dict[str, Any]]:
+        """POST concepts similarity-search and return response.results."""
+        if not self._similarity_prefix:
+            return []
+        client = await self._client_async()
+        payload = {
+            "header": {"agent_id": self._agent_id or "evidence-agent"},
+            "request_id": request_id,
+            "payload": {
+                "embedded_text": embedded_text,
+                "embedding_vector": embedding_vector,
+                "top_k": top_k,
+                "search_metrics": search_metrics,
+            },
+        }
+        r = await client.post(
+            f"{self._similarity_prefix}/concepts/similarity-search",
+            json=payload,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data.get("results", []) or []
+
+    async def search_similar_rag(
+        self,
+        *,
+        embedded_text: str,
+        embedding_vector: List[float],
+        request_id: str,
+        top_k: int = 5,
+        search_metrics: str = "l2",
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """POST /rag/similarity-search and return response.results."""
+        if not self._similarity_prefix:
+            return []
+        client = await self._client_async()
+        body = {
+            "header": {"agent_id": self._agent_id or "evidence-agent"},
+            "request_id": request_id,
+            "payload": {
+                "embedded_text": embedded_text,
+                "embedding_vector": embedding_vector,
+                "filters": filters or {},
+                "top_k": top_k,
+                "search_metrics": search_metrics,
+            },
+        }
+        r = await client.post(
+            f"{self._similarity_prefix}/rag/similarity-search",
+            json=body,
+        )
+        r.raise_for_status()
+        data = r.json()
+        
+        return data.get("results", []) or []

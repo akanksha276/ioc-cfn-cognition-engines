@@ -97,11 +97,25 @@ def _resolve_rag_params(request: ReasonerCognitionRequest) -> Tuple[int, float]:
     return top_k, timeout_sec
 
 
+def _intent_query_vec(intent: str) -> List[float]:
+    text = (intent or "").strip()
+    if not text:
+        return []
+    try:
+        chunks = embedding_manager.preprocess_text(text)
+        vectors = embedding_manager.generate_embeddings(chunks)
+        arr = np.array(vectors, dtype=np.float32)
+        if arr.ndim == 2:
+            return np.mean(arr, axis=0).tolist()
+        return arr.flatten().tolist()
+    except Exception:
+        logger.warning("[Evidence] Failed to embed intent for RAG similarity search.")
+        return []
+
+
 async def process_evidence(
     request: ReasonerCognitionRequest,
     repo_adapter=None,
-    cache_layer=None,
-    rag_cache_layer=None,
 ) -> ReasonerCognitionResponse:
     response_id = request.request_id
 
@@ -168,26 +182,28 @@ async def process_evidence(
     response_generator = ResponseGenerator(temperature=0.2)
 
     path_formatter = PathFormatter()
-    # Similar concepts: in-process cache_layer only (unified gateway sets app.state.cache_layer).
-    repo = ConceptRepository(repo_adapter, cache_layer=cache_layer)
+    repo = ConceptRepository(repo_adapter, request_id=response_id)
     config = SingleEntityConfig(top_k_similar=1, select_k_per_hop=3, max_depth=4)
 
     records_out: List[KnowledgeRecord] = []
     subquery_results: List[Dict[str, Any]] = []
     prior_paths: List[str] = []
     is_decomposed = mode == "decomposed"
-    use_unified_rag_final = rag_cache_layer is not None
+    use_unified_rag_final = hasattr(repo_adapter, "search_similar_rag")
     rag_top_k, rag_timeout_sec = (
         _resolve_rag_params(request) if use_unified_rag_final else (settings.EVIDENCE_RAG_TOP_K, settings.EVIDENCE_RAG_TIMEOUT_SEC)
     )
 
     rag_task: Optional[asyncio.Task] = None
     if use_unified_rag_final:
+        rag_query_vec = _intent_query_vec(intent)
         rag_task = asyncio.create_task(
             retrieve_rag_top_k(
-                rag_cache_layer,
+                repo_adapter,
                 intent,
                 rag_top_k,
+                response_id,
+                rag_query_vec,
                 rag_timeout_sec,
             )
         )
@@ -197,7 +213,7 @@ async def process_evidence(
             rag_timeout_sec,
         )
 
-    # With rag_cache_layer: defer per-lane final LLM to one unified call after graph + RAG.
+    # With RAG similarity API available: defer per-lane final LLM to one unified call after graph + RAG.
     skip_final_response = is_decomposed or use_unified_rag_final
 
     for item in items:

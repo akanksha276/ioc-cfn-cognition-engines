@@ -23,7 +23,7 @@ class RagRetrievalParams(BaseModel):
         default=None,
         ge=1,
         le=100,
-        description="Max similar chunks to retrieve from rag_cache_layer.",
+        description="Max similar chunks to retrieve from /rag/search.",
     )
     timeout_seconds: Optional[float] = Field(
         default=None,
@@ -39,7 +39,7 @@ class QueryMetadata(BaseModel):
     )
     rag: Optional[RagRetrievalParams] = Field(
         default=None,
-        description="When rag_cache_layer is set, overrides EVIDENCE_RAG_TOP_K / EVIDENCE_RAG_TIMEOUT_SEC.",
+        description="Overrides EVIDENCE_RAG_TOP_K / EVIDENCE_RAG_TIMEOUT_SEC for RAG similarity lookup.",
     )
 
 class RequestPayload(BaseModel):

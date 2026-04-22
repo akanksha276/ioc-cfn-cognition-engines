@@ -3,13 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-API routes for the Telemetry Extraction Service.
+API routes for the Knowledge Extraction Service.
 """
 
+import asyncio
 import logging
+import os
 import traceback
+import uuid
 from pathlib import Path
+from typing import Any, Dict, List
+from urllib.parse import quote
 
+import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
@@ -18,18 +24,18 @@ from ..dependencies import (
     get_ingest_data_service,
     get_knowledge_processor,
     get_data_repository,
-    get_vector_store,
 )
 from ..agent.ingest_data import IngestDataService
 from ..agent.service import TelemetryExtractionService
 from ..agent.prompts import SUPPORTED_FORMATS
+from ..config.settings import settings
 from ..data.mock_repo import MockDataRepository
 from .schemas import ExtractionRequest, ExtractionResponseModel, ExtractionError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["extraction"])
-extraction_router = APIRouter(tags=["knowledge-mgmt"])
+router = APIRouter(prefix="/api", tags=["extraction"])
+extraction_router = APIRouter(prefix="/api/knowledge-mgmt", tags=["knowledge-mgmt"])
 
 
 # ============== Extraction Endpoint ==============
@@ -43,7 +49,6 @@ extraction_router = APIRouter(tags=["knowledge-mgmt"])
 async def knowledge_extraction(
     body: ExtractionRequest,
     ingest_service: IngestDataService = Depends(get_ingest_data_service),
-    vector_store=Depends(get_vector_store),
 ):
     """
     Unified knowledge extraction endpoint.
@@ -57,7 +62,7 @@ async def knowledge_extraction(
     1. Validate header and format
     2. Extract concepts and relationships via ConceptRelationshipExtractionService
     3. Generate embeddings and optionally deduplicate
-    4. Store concepts in FAISS vector DB
+    4. Resolve similar existing concepts via similarity-search API
     5. Return response with header echo and response_id
     """
     response_id = body.request_id
@@ -103,8 +108,18 @@ async def knowledge_extraction(
         processor = get_knowledge_processor()
         result = processor.process(result)
 
-        _store_concepts_in_faiss(result.get("concepts", []), vector_store)
-        _store_rag_chunks_in_faiss(result.get("rag_chunks", []), vector_store)
+        try:
+            similarity_hits = await _fetch_similar_concepts(
+                concepts=result.get("concepts", []),
+                body=body,
+            )
+        except Exception:
+            logger.exception("Concept similarity lookup failed; continuing without remote dedupe context")
+            similarity_hits = []
+        if similarity_hits:
+            result.setdefault("meta", {})
+            result["meta"]["concept_similarity_hits"] = len(similarity_hits)
+            result["meta"]["concept_similarity"] = similarity_hits
 
         return ExtractionResponseModel(
             header=body.header,
@@ -130,41 +145,100 @@ async def knowledge_extraction(
         return JSONResponse(status_code=500, content=error_resp.model_dump())
 
 
-# ============== FAISS Helper ==============
+# ============== Similarity API Helper ==============
 
 
-def _store_concepts_in_faiss(concepts: list, vector_store=None) -> None:
+def _similarity_base_url() -> str:
+    return (
+        (settings.cfn_url or "").strip()
+        or (os.getenv("MOCKED_DB_BASE_URL") or "").strip()
+    )
+
+
+def _concept_embedding(concept: Dict[str, Any]) -> List[float]:
+    emb = ((concept.get("attributes") or {}).get("embedding") or [])
+    if not emb:
+        return []
+    row = emb[0] if isinstance(emb, list) else []
+    if not isinstance(row, list):
+        return []
+    out: List[float] = []
+    for v in row:
+        try:
+            out.append(float(v))
+        except (TypeError, ValueError):
+            return []
+    return out
+
+
+async def _fetch_similar_concepts(
+    concepts: list,
+    body: ExtractionRequest,
+) -> List[Dict[str, Any]]:
     """
-    Persist concepts in the in-process FAISS index (fire-and-log).
-
-    vector_store is injected from Depends(get_concept_vector_store); when None, skip.
-    Failures are logged but never bubble up to the caller so the
-    extraction response is always returned.
+    Resolve top-k concept matches from /concepts/similarity-search.
+    All concepts are queried concurrently via asyncio.gather.
+    Errors per concept are logged and never fail extraction.
     """
-    if vector_store is None:
-        return
-    try:
-        vector_store.store_concepts(concepts)
-    except Exception:
-        logger.exception("FAISS storage failed; extraction result is still valid")
+    base_url = _similarity_base_url()
+    if not base_url:
+        return []
 
+    workspace_id = quote(body.header.workspace_id, safe="")
+    mas_id = quote(body.header.mas_id, safe="")
+    endpoint = (
+        f"{base_url.rstrip('/')}/api/internal/workspaces/{workspace_id}"
+        f"/multi-agentic-systems/{mas_id}/concepts/similarity-search"
+    )
+    top_k = max(1, int(settings.similarity_top_k))
+    metric = (settings.similarity_metric or "l2").strip() or "l2"
+    agent_id = (body.header.agent_id or "ingestion-agent").strip()
 
-def _store_rag_chunks_in_faiss(rag_chunks: list, vector_store=None) -> None:
-    """
-    Persist concepts in the in-process FAISS index (fire-and-log).
+    async def _search_one(
+        client: httpx.AsyncClient,
+        concept: Dict[str, Any],
+    ) -> Dict[str, Any] | None:
+        vector = _concept_embedding(concept if isinstance(concept, dict) else {})
+        if not vector:
+            return None
+        name = str((concept or {}).get("name") or "").strip()
+        req_id = f"{body.request_id}-concept-search-{uuid.uuid4().hex[:8]}"
+        payload = {
+            "header": {"agent_id": agent_id},
+            "request_id": req_id,
+            "payload": {
+                "embedded_text": name,
+                "embedding_vector": vector,
+                "top_k": top_k,
+                "search_metrics": metric,
+            },
+        }
+        try:
+            resp = await client.post(endpoint, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:
+            logger.exception(
+                "Concept similarity-search failed for concept=%s",
+                (concept or {}).get("id"),
+            )
+            return None
+        results = data.get("results") or []
+        if not isinstance(results, list):
+            return None
+        return {
+            "concept_id": (concept or {}).get("id"),
+            "concept_name": name,
+            "matches": results,
+        }
 
-    vector_store is injected from Depends(get_concept_vector_store); when None, skip.
-    Failures are logged but never bubble up to the caller so the
-    extraction response is always returned.
-    """
-    if vector_store is None:
-        return
-    try:
-        vector_store.store_rag_chunks(rag_chunks)
-    except Exception:
-        logger.exception(
-            "FAISS storage failed for RAG chunks; extraction result is still valid"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        results = await asyncio.gather(
+            *[_search_one(client, c) for c in (concepts or [])],
+            return_exceptions=False,
         )
+
+    return [r for r in results if r is not None]
 
 
 # ============== Operational Endpoints ==============

@@ -22,7 +22,7 @@ ingestion/
 │   │   ├── rag.py              # RAG chunking + embedding pipeline
 │   │   ├── prompts.py          # Format-specific LLM prompts
 │   │   ├── service.py          # Graph extraction services
-│   │   └── concept_vector_store.py # In-process FAISS store adapter
+│   │   └── concept_vector_store.py # Concept vector store adapter
 │   │
 │   ├── data/                   # Data access abstraction
 │   │   ├── base.py             # DataRepository Protocol
@@ -59,10 +59,10 @@ ENABLE_RAG_INGEST=true
 SIMILARITY_THRESHOLD=0.95
 EMBEDDING_MODEL_PATH=
 
-# FAISS Vector Store (in-process via caching library)
-ENABLE_FAISS_STORAGE=true
-FAISS_VECTOR_DIMENSION=384
-FAISS_METRIC=l2
+# Similarity Search API (concept deduplication)
+CFN_URL=http://localhost:9002
+SIMILARITY_TOP_K=5
+SIMILARITY_METRIC=l2
 
 # Server Configuration (optional)
 HOST=0.0.0.0
@@ -114,7 +114,7 @@ Processing is:
 1. Build compact payload from input format
 2. Extract **Graph** (concepts + relationships)
 3. Optionally build **RAG chunks**
-4. Post-process embeddings/dedup and store concepts in FAISS (if enabled)
+4. Post-process embeddings/dedup and look up similar concepts via `/concepts/similarity-search`
 
 ### Supported Data Formats
 
@@ -276,7 +276,7 @@ When processing fails, the response contains an `error` block instead of concept
 - **ConceptRelationshipExtractionService** (`agent/service.py`): LLM-based graph extraction (concepts + relationships).
 - **RagPipeline** (`agent/rag.py`): Optional chunking + embedding stage to produce `rag_chunks`.
 - **KnowledgeProcessor** (`agent/knowledge_processor.py`): Embedding enrichment and dedup for graph output.
-- **ConceptVectorStore** (`agent/concept_vector_store.py`): Stores concepts in FAISS when enabled.
+- **ConceptVectorStore** (`agent/concept_vector_store.py`): Concept vector store adapter.
 
 ### Pipeline
 
@@ -287,11 +287,9 @@ POST request
       → Graph extraction (concepts + relationships)
       → Optional RAG chunk generation
   → KnowledgeProcessor (embeddings + dedup)
-  → Optional FAISS concept storage
+  → Similarity lookup via /concepts/similarity-search
   → Return response
 ```
-
-> **Note:** `FAISS_VECTOR_DIMENSION` must match the embedding model output.
 
 ## Testing
 
@@ -326,7 +324,7 @@ Tests cover:
 - **Ingestion orchestration**: format normalization, graph extraction, optional RAG stage
 - **Graph post-processing**: embedding enrichment and deduplication behavior
 - **RAG pipeline**: config validation, chunking, metadata, embedding shape
-- **API behavior**: request validation, response envelope, FAISS storage fallback
+- **API behavior**: request validation, response envelope, similarity lookup fallback
 
 ## Development
 

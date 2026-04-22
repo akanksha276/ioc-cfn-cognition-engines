@@ -8,7 +8,7 @@ A collection of cognitive agents for processing OpenTelemetry data and evidence 
 - **[Evidence Gathering Service](evidence/)** – Retrieves relevant evidence from the knowledge graph (e.g. “What does Miss-Marple do?”).
 - **[Semantic Negotiation Agent](semantic_negotiation/)** – Handles multi-party semantic negotiation using NegMAS and SSTP (Semantic State Transfer Protocol).
 
-The evidence service can use an optional **mocked DB** (Neo4j-backed graph API). For that setup, run the mocked-db service and set `CFN_URL` or `MOCKED_DB_BASE_URL`; see [evidence/README.md](evidence/README.md). When running via the **unified gateway** (Docker or local), the in-memory cache is used and no external data layer is required.
+The evidence service can use an optional **mocked DB** (Neo4j-backed graph API). For that setup, run the mocked-db service and set `CFN_URL` or `MOCKED_DB_BASE_URL`; see [evidence/README.md](evidence/README.md).
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ Then use the API at `http://localhost:9004`:
 | Ingestion | `/api/knowledge-mgmt/extraction` | `POST http://localhost:9004/api/knowledge-mgmt/extraction` |
 | Evidence  | `/api/knowledge-mgmt/reasoning/evidence` | `POST http://localhost:9004/api/knowledge-mgmt/reasoning/evidence` |
 
-**Confluence paths** (above); prefixed paths also work: `/ingestion/...`, `/evidence/...`. Cache is in-process only (not exposed); ingestion and evidence share it inside the container.
+**Confluence paths** (above); prefixed paths also work: `/ingestion/...`, `/evidence/...`.
 
 ### Run the gateway locally (no Docker)
 
@@ -40,7 +40,7 @@ cp .env.example .env
 # Edit .env and set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, etc.
 ```
 
-One-time setup so the gateway can import ingestion, evidence, and caching:
+One-time setup so the gateway can import ingestion and evidence:
 
 ```bash
 ./scripts/setup_local_links.sh
@@ -56,7 +56,7 @@ Use `http://localhost:9004` as the base URL (see API paths in the Quick Start se
 
 ### Run agents individually (development only)
 
-**⚠️ For normal use, run the gateway above** (port 9004) – it's the single unified entry point that includes ingestion, evidence, and caching with shared memory.
+**⚠️ For normal use, run the gateway above** (port 9004) – it's the single unified entry point that includes ingestion and evidence.
 
 For development/testing, you can run agents as standalone services:
 
@@ -89,7 +89,7 @@ poetry run python semantic_negotiation/test_two_agents.py --threshold-a 0.4 --th
 
 </details>
 
-**Note:** The gateway (port 9004) is the recommended production setup. It runs ingestion + evidence in a single process with shared in-memory cache. The semantic negotiation agent is a separate service that runs independently.
+**Note:** The gateway (port 9004) is the recommended production setup. It runs ingestion + evidence in a single process. The semantic negotiation agent is a separate service that runs independently.
 
 ---
 
@@ -227,7 +227,7 @@ Next publish will be `0.2.0.dev1`, then `0.2.0.dev2`, etc.
 pip install cognition-engine --extra-index-url https://<artifactory-url>/artifactory/api/pypi/outshift-pypi/simple
 ```
 
-**Package includes:** `ingestion`, `evidence`, `caching`, `gateway` modules
+**Package includes:** `ingestion`, `evidence`, `gateway` modules
 **Usage examples:** [docs/usage.md](docs/usage.md)
 
 ---
@@ -286,7 +286,6 @@ poetry run pytest --cov=app --cov-report=html
 # Run specific service tests
 cd ingestion && poetry run pytest
 cd evidence && poetry run pytest
-cd caching && poetry run pytest
 ```
 
 ### Code Quality
@@ -306,7 +305,7 @@ poetry run ruff format .
 
 ## Architecture
 
-The **unified gateway** runs ingestion and evidence in one process with a shared in-memory cache (port 9004):
+The **unified gateway** runs ingestion and evidence in one process (port 9004):
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -322,7 +321,6 @@ The **unified gateway** runs ingestion and evidence in one process with a shared
          │  │ - Generate embeddings│  │ - Path finding   │ │
          │  │ - Build relations    │  │ - Evidence rank  │ │
          │  └──────────┬───────────┘  └────────┬─────────┘ │
-         │             │    In-memory cache     │           │
          │             └───────────────┬────────┘           │
          └─────────────────────────────┼───────────────────┘
                                        │
@@ -446,9 +444,6 @@ ioc-cfn-cognitive-agents/
 │   ├── __init__.py
 │   └── app/
 ├── evidence/               # Evidence gathering service
-│   ├── __init__.py
-│   └── app/
-├── caching/                # Shared caching layer
 │   ├── __init__.py
 │   └── app/
 └── semantic_negotiation/  # Separate negotiation service

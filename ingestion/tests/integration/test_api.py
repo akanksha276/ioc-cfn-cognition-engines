@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ingestion.app.api import routes as api_routes
-from ingestion.app.dependencies import get_ingest_data_service, get_vector_store
+from ingestion.app.dependencies import get_ingest_data_service
 from ingestion.app.main import app
 from ingestion.tests.conftest import build_extraction_request
 
@@ -47,27 +47,14 @@ class _StubIngestService:
         }
 
 
-class _StubVectorStore:
-    def __init__(self):
-        self.stored = None
-
-    def store_concepts(self, concepts):
-        self.stored = concepts
-
-
 @pytest.fixture
 def stub_ingest_service():
     return _StubIngestService()
 
 
 @pytest.fixture
-def stub_vector_store():
-    return _StubVectorStore()
-
-
-@pytest.fixture
-def client(monkeypatch, stub_ingest_service, stub_vector_store):
-    """Create a test client with ingestion/vector dependencies stubbed."""
+def client(monkeypatch, stub_ingest_service):
+    """Create a test client with ingestion dependencies stubbed."""
     class _IdentityProcessor:
         def process(self, result):
             return result
@@ -75,8 +62,10 @@ def client(monkeypatch, stub_ingest_service, stub_vector_store):
     monkeypatch.setattr(
         api_routes, "get_knowledge_processor", lambda: _IdentityProcessor()
     )
+    async def _noop_similarity(*, concepts, body):
+        return []
+    monkeypatch.setattr(api_routes, "_fetch_similar_concepts", _noop_similarity)
     app.dependency_overrides[get_ingest_data_service] = lambda: stub_ingest_service
-    app.dependency_overrides[get_vector_store] = lambda: stub_vector_store
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -282,26 +271,30 @@ class TestKnowledgeExtractionEndpoint:
         resp = client.post("/api/knowledge-mgmt/extraction", json=body)
         assert resp.status_code == 422
 
-    def test_persists_concepts_to_faiss(self, client, sample_request_body, stub_vector_store):
+    def test_calls_similarity_lookup_non_fatal(self, monkeypatch, client, sample_request_body):
+        calls = []
+        async def _similarity(*, concepts, body):
+            calls.append({"concepts": concepts, "request_id": body.request_id})
+            return [{"concept_id": "c1", "concept_name": "agent_a", "matches": []}]
+        monkeypatch.setattr(api_routes, "_fetch_similar_concepts", _similarity)
         resp = client.post("/api/knowledge-mgmt/extraction", json=sample_request_body)
         assert resp.status_code == 200
-        assert isinstance(stub_vector_store.stored, list)
-        assert stub_vector_store.stored[0]["name"] == "agent_a"
+        assert len(calls) == 1
+        assert calls[0]["concepts"][0]["name"] == "agent_a"
 
-    def test_faiss_storage_error_is_non_fatal(self, monkeypatch, stub_ingest_service, sample_request_body):
-        class _FailingVectorStore:
-            def store_concepts(self, concepts):
-                raise RuntimeError("vector store unavailable")
-
+    def test_similarity_lookup_error_is_non_fatal(self, monkeypatch, stub_ingest_service, sample_request_body):
         class _IdentityProcessor:
             def process(self, result):
                 return result
 
+        async def _failing_similarity(*, concepts, body):
+            raise RuntimeError("similarity endpoint unavailable")
+
         monkeypatch.setattr(
             api_routes, "get_knowledge_processor", lambda: _IdentityProcessor()
         )
+        monkeypatch.setattr(api_routes, "_fetch_similar_concepts", _failing_similarity)
         app.dependency_overrides[get_ingest_data_service] = lambda: stub_ingest_service
-        app.dependency_overrides[get_vector_store] = lambda: _FailingVectorStore()
         with TestClient(app) as local_client:
             resp = local_client.post("/api/knowledge-mgmt/extraction", json=sample_request_body)
             assert resp.status_code == 200

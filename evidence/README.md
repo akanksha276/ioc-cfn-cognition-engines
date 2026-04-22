@@ -1,6 +1,6 @@
 # Evidence Gathering Agent
 
-A FastAPI service that exposes an API for evidence gathering over a knowledge graph. It uses LLM-based entity extraction, single- and multi-entity evidence engines, and optional graph + cache backends. The design is layered and DB-agnostic: you can run with an in-process mock repo, then switch to the mocked DB (Neo4j) and/or an internal caching layer without changing the API.
+A FastAPI service that exposes an API for evidence gathering over a knowledge graph. It uses LLM-based entity extraction, single- and multi-entity evidence engines, and optional graph backends. The design is layered and DB-agnostic: you can run with an in-process mock repo, then switch to the mocked DB (Neo4j) without changing the API.
 
 ## Features
 
@@ -8,7 +8,7 @@ A FastAPI service that exposes an API for evidence gathering over a knowledge gr
 - **Layered design**: API (HTTP) → agent logic (evidence, single/multi-entity) → data repository (mock or HTTP).
 - **Optional backends**:
   - **Mocked DB** (Neo4j): graph paths, neighbors by id, concepts-by-id.
-  - **Caching layer (in-process)**: when the host app sets `app.state.cache_layer` (e.g. unified gateway), used for similar-concept search; not part of the public request body.
+  - **Similarity APIs**: `/concepts/similarity-search` and `/rag/similarity-search` for vector-based retrieval via the same HTTP data layer.
 - Poetry-managed project, unit and integration tests, Dockerfile.
 
 ## Project layout
@@ -22,7 +22,7 @@ evidence/
 │   │   └── schemas.py       # ReasonerCognitionRequest/Response, Header, RequestPayload, etc.
 │   ├── agent/
 │   │   ├── evidence.py      # process_evidence orchestration (entity extraction, decomposition, single/multi-entity)
-│   │   ├── single_entity.py # SingleEntityEvidenceEngine, ConceptRepository (cache + graph by name)
+│   │   ├── single_entity.py # SingleEntityEvidenceEngine, ConceptRepository (similarity API + graph)
 │   │   ├── multi_entities.py
 │   │   ├── llm_clients.py   # EntityExtractor, QueryDecomposer, EvidenceJudge, EvidenceRanker
 │   │   ├── embeddings.py    # EmbeddingManager
@@ -32,7 +32,7 @@ evidence/
 │   │   ├── mock_repo.py     # MockDataRepository (default)
 │   │   └── http_repo.py     # HttpDataRepository (mocked-db)
 │   ├── config/settings.py   # Env-based settings
-│   └── dependencies.py      # get_repository_for_reasoning, get_repository, get_cache_layer
+│   └── dependencies.py      # get_repository_for_reasoning, get_repository
 ├── tests/
 │   ├── unit/
 │   └── integration/test_api.py
@@ -144,22 +144,20 @@ export MOCKED_DB_BASE_URL=http://localhost:8088
 poetry run uvicorn app.main:app --reload --port 8087
 ```
 
-The agent uses `HttpDataRepository` and calls the mocked DB over HTTP for paths, `neighbors/{concept_id}`, and concepts-by-id. Similar concepts come from the configured cache (FAISS), not from a semantic-similar HTTP call on the repo.
+The agent uses `HttpDataRepository` and calls the mocked DB over HTTP for paths, `neighbors/{concept_id}`, and concepts-by-id. Similar concepts and RAG chunks are retrieved via the similarity search APIs (`/concepts/similarity-search` and `/rag/similarity-search`).
 
-## Similar-concept search (cache_layer)
+## Similarity search
 
-Similar concepts are resolved only through an **in-process** `cache_layer` object (e.g. FAISS) injected as `app.state.cache_layer`. The **unified gateway** creates one shared `CachingLayer` at startup and attaches it to the evidence sub-app; standalone evidence has no `cache_layer` unless you set it in app lifespan or pass a instance when calling `process_evidence` from tests.
+Similar concepts and RAG chunks are resolved through the **similarity search APIs** exposed by the same HTTP data layer used for graph traversal:
 
-Behavior:
+- **`/concepts/similarity-search`**: Returns top-k similar concepts with `concept_id`, `concept_name`, and `score`. The agent then calls `neighbors/{concept_id}` for graph expansion.
+- **`/rag/similarity-search`**: Returns top-k RAG chunks with `embedded_text`, `timestamp`, `domain`, `doc_index`, `chunk_index`, and `score`.
 
-- **No `cache_layer`**: Similar-concept retrieval returns empty anchors until a layer is attached.
-- **With `cache_layer` + data layer**: Similar concepts come from `cache_layer.search_similar`; each hit must include **`concept_id`**. The agent calls **`neighbors/{concept_id}`** on the data layer. Optional `text` (`name | description`) is for display only.
-
-The HTTP API contract stays the same; callers do not send cache parameters.
+When `CFN_URL` (or `MOCKED_DB_BASE_URL`) is not set, the mock data repository is used and similarity search is unavailable.
 
 ## Switching data sources
 
-`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `CFN_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph calls use `/api/workspaces/.../multi-agentic-systems/.../graph/...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/graph/...`. When **`cache_layer`** is on the app and **`CFN_URL`** is set, **similar concepts** come from in-process FAISS via `ConceptRepository`, and **graph calls** use **`HttpDataRepository`**.
+`app/data/base.py` defines the repository contract. The default is `MockDataRepository`. To use the mocked DB, set `CFN_URL`. **`get_repository_for_reasoning`** (used by `POST /reasoning/evidence`) returns `HttpDataRepository` scoped with `header.workspace_id` and `header.mas_id`, so outbound graph and similarity calls use `/api/internal/workspaces/.../multi-agentic-systems/.../...`. Standalone **`/graph/*`** routes use **`get_repository`**, which returns `HttpDataRepository` with legacy `/api/v1/graph/...`.
 
 ## Tests
 

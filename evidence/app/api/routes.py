@@ -16,8 +16,6 @@ from .schemas import (
 from ..dependencies import (
     get_repository,
     get_repository_for_reasoning,
-    get_cache_layer,
-    get_rag_cache_layer,
 )
 from ..agent.evidence import process_evidence
 
@@ -32,14 +30,10 @@ router = APIRouter()
 async def reasoning_evidence(
     req: ReasonerCognitionRequest,
     repo=Depends(get_repository_for_reasoning),
-    cache_layer=Depends(get_cache_layer),
-    rag_cache_layer=Depends(get_rag_cache_layer),
 ):
     return await process_evidence(
         req,
         repo_adapter=repo,
-        cache_layer=cache_layer,
-        rag_cache_layer=rag_cache_layer,
     )
 
 
