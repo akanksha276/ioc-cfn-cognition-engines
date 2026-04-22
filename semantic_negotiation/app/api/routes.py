@@ -190,7 +190,7 @@ def _wrap_sstp_response(
 
 
 @router.post(
-    "/api/negotiate/initiate",
+    "/negotiate/initiate",
     summary="Initiate a semantic negotiation from a mission description",
     description=(
         "Accepts a mission description and a list of agents, then runs:\n\n"
@@ -292,7 +292,7 @@ async def negotiate_initiate(
 
 
 @router.post(
-    "/api/negotiate/decide",
+    "/negotiate/decide",
     summary="Advance the negotiation by one batch of agent decisions",
     description=(
         "Accepts the agents' replies to the last dispatched message batch and returns\n"
