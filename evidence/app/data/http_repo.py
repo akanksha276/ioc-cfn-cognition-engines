@@ -125,6 +125,8 @@ class HttpDataRepository:
             f"{self._similarity_prefix}/concepts/similarity-search",
             json=payload,
         )
+        if r.status_code == 404:
+            return []
         r.raise_for_status()
         data = r.json()
         return data.get("results", []) or []

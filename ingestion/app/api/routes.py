@@ -215,6 +215,9 @@ async def _fetch_similar_concepts(
         }
         try:
             resp = await client.post(endpoint, json=payload)
+            if resp.status_code == 404:
+                # Graph doesn't exist yet (e.g. first ingestion); skip silently.
+                return None
             resp.raise_for_status()
             data = resp.json()
         except Exception:
