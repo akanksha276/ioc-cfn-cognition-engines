@@ -42,6 +42,7 @@ from ..agent.semantic_negotiation import (
     SemanticNegotiationInputError,
     SemanticNegotiationSessionNotFoundError,
 )
+from ..config.settings import settings
 from .schemas import (
     NegotiationError,
     NegotiationHeader,
@@ -231,6 +232,7 @@ async def negotiate_initiate(
             len(content_text),
             n_steps,
         )
+        agent_names = [a["name"] for a in agents_raw if isinstance(a, dict) and a.get("name")]
         result = await asyncio.to_thread(
             pipeline.execute,
             session_id,
@@ -238,6 +240,10 @@ async def negotiate_initiate(
             content_text=content_text,
             agents_raw=agents_raw,
             initiate_message=dump_negotiate_message_json(body),
+            workspace_id=body.origin.tenant_id,
+            mas_id=body.origin.actor_id,
+            fabric_node_base_url=settings.cfn_url,
+            agent_names=agent_names,
         )
     except SemanticNegotiationInputError as exc:
         logger.warning(
