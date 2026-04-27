@@ -58,6 +58,25 @@ class NegotiateSemanticContext(BaseModel):
     nmi: SAONMI | None = None
     """SAO NegotiatorMechanismInterface config snapshot (optional; omit if large)."""
 
+    offer_validation_failure: dict[str, Any] | None = None
+    """Populated when the previous counter_offer from this session was rejected due
+    to unrecognised issue keys or option values (i.e. validation failure, not a
+    strategic reject).
+
+    Shape::
+
+        {
+            "rejected_agent_id": str,   # agent whose offer failed
+            "round": int,               # round number of the bad offer
+            "problems": list[str],      # specific snap failures
+            "hint": str,                # human-readable correction guidance
+        }
+
+    ``None`` when the previous offer was valid or no counter_offer was made.
+    Agents should check this field and correct their issue keys / option values
+    before submitting the next counter_offer.
+    """
+
 
 class SSTPNegotiateMessage(_STBaseMessage):
     """

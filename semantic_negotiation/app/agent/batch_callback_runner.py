@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Batch callback runner — drives SAO-style rounds via batched agent messages.
-
-Architecture
 ------------
 This runner collects **all** per-participant decision requests for a round into
 a **single** batch:
@@ -73,6 +71,7 @@ from .negotiation_model import (  # noqa: E402  (same package)
     NegotiationParticipant,
     NegotiationResult,
 )
+from .offer_validation import validate_and_snap_offer  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +133,9 @@ class NegotiationSession:
     pending_new_offer: dict[str, str] = dataclasses.field(default_factory=dict)
     pending_proposer_id: str = ""
     pending_round_decs: list[dict[str, Any]] = dataclasses.field(default_factory=list)
+    # Set when a counter_offer was downgraded to reject due to offer validation failure.
+    # Carried into the next broadcast so the offending agent can self-correct.
+    prev_offer_validation_failure: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +150,7 @@ def build_callback_message(
     sao_state: SAOState | None = None,
     issues: list[str] | None = None,
     options_per_issue: dict[str, list[str]] | None = None,
+    offer_validation_failure: dict[str, Any] | None = None,
 ) -> SSTPNegotiateMessage:
     """Build a validated ``SSTPNegotiateMessage`` for one participant decision request.
 
@@ -158,6 +161,8 @@ def build_callback_message(
     ``issues`` and ``options_per_issue`` are placed in ``semantic_context`` (not
     in ``payload``) so that the full negotiation space travels in the structured
     envelope rather than the free-form payload dict.
+    ``offer_validation_failure`` is placed in ``semantic_context`` so it is a
+    typed, schema-visible field — not buried in the free-form payload dict.
     """
     payload_str = json.dumps(payload, sort_keys=True)
     payload_hash = hashlib.sha256(payload_str.encode()).hexdigest()
@@ -177,6 +182,7 @@ def build_callback_message(
             sao_state=sao_state,
             issues=issues or [],
             options_per_issue=options_per_issue or {},
+            offer_validation_failure=offer_validation_failure,
         ),
         payload_hash=payload_hash,
         policy_labels=PolicyLabels(
@@ -381,6 +387,9 @@ class BatchCallbackRunner:
         next_proposer_idx = first_proposer_idx
         # Key 0 = next proposer after the server's initial offer (first SAO proposer).
         round_next_proposer[0] = participants[next_proposer_idx].id
+        # Tracks the last offer validation failure so it can be fed back in the
+        # next broadcast, giving the LLM agent context to self-correct.
+        offer_validation_failure: dict[str, Any] | None = None
 
         for step in range(self.n_steps):
             round_num = step + 1
@@ -396,28 +405,29 @@ class BatchCallbackRunner:
                 current_offer=standing_offer,
                 current_proposer=standing_offer_proposer_id,
             )
+            payload: dict[str, Any] = {
+                "action": "respond",
+                "participant_id": "server",
+                "next_proposer_id": next_proposer_id,
+                "round": round_num,
+                "n_steps": self.n_steps,
+                "allowed_actions": ["accept", "reject", "counter_offer"],
+                "current_offer": standing_offer,
+                "proposer_id": standing_offer_proposer_id,
+            }
             broadcast_msg = build_callback_message(
-                {
-                    "action": "respond",
-                    "participant_id": "server",
-                    "next_proposer_id": next_proposer_id,
-                    "round": round_num,
-                    "n_steps": self.n_steps,
-                    "allowed_actions": ["accept", "reject", "counter_offer"],
-                    "current_offer": standing_offer,
-                    "proposer_id": standing_offer_proposer_id,
-                },
+                payload,
                 "broadcast",
                 session_id,
                 sao_state=respond_state,
                 issues=issues,
                 options_per_issue=options_per_issue,
+                offer_validation_failure=offer_validation_failure,
             )
+            offer_validation_failure = None  # consumed — reset for next round
             messages: list[SSTPNegotiateMessage] = [broadcast_msg]
 
-            sstp_message_trace.extend(
-                dump_negotiate_message_json(m) for m in messages
-            )
+            sstp_message_trace.extend(dump_negotiate_message_json(m) for m in messages)
             self._store_sao_checksums(messages, session_id, round_num)
             replies_raw = self._post_batch(
                 callback_url,
@@ -464,15 +474,29 @@ class BatchCallbackRunner:
 
             if counter_offered:
                 offer_raw = next_proposer_reply.get("offer")
-                if isinstance(offer_raw, dict) and all(
-                    issue in offer_raw for issue in issues
-                ):
-                    new_offer: dict[str, str] = {
-                        issue: str(offer_raw[issue]) for issue in issues
-                    }
+                if isinstance(offer_raw, dict):
+                    new_offer, problems = validate_and_snap_offer(
+                        offer_raw,
+                        issues,
+                        options_per_issue,
+                        session_id=session_id,
+                        agent_id=next_proposer_id,
+                    )
+                else:
+                    new_offer, problems = {}, ["offer is not a dict"]
+
+                if len(new_offer) == len(issues):
                     next_proposer = next(
                         p for p in participants if p.id == next_proposer_id
                     )
+                    if problems:
+                        logger.info(
+                            "[%s] round %d — next_proposer '%s' offer snapped: %s",
+                            session_id,
+                            round_num,
+                            next_proposer_id,
+                            "; ".join(problems),
+                        )
                     logger.info(
                         "[%s] round %d — next_proposer '%s' counter_offers %s",
                         session_id,
@@ -492,12 +516,24 @@ class BatchCallbackRunner:
                 else:
                     logger.warning(
                         "[%s] round %d — next_proposer '%s' returned invalid offer: %s;"
-                        " treating as reject",
+                        " treating as reject (problems: %s)",
                         session_id,
                         round_num,
                         next_proposer_id,
                         next_proposer_reply,
+                        problems,
                     )
+                    offer_validation_failure = {
+                        "rejected_agent_id": next_proposer_id,
+                        "round": round_num,
+                        "problems": problems,
+                        "hint": (
+                            "Your counter_offer was rejected because it contained "
+                            "unrecognised issue keys or option values. "
+                            "Use only the issue identifiers and option values listed "
+                            "in semantic_context.issues and semantic_context.options_per_issue."
+                        ),
+                    }
                     next_proposer_reply["action"] = "reject"
                     next_proposer_reply.pop("offer", None)
                     counter_offered = False
@@ -699,6 +735,7 @@ class BatchCallbackRunner:
             - ``("agreed"|"broken"|"timeout", None, result)`` — negotiation done.
         """
         issues = sess.issues
+        options_per_issue = sess.options_per_issue
         participants = sess.participants
         session_id = sess.session_id
         logger.info(
@@ -746,15 +783,29 @@ class BatchCallbackRunner:
 
             if counter_offered:
                 offer_raw = next_proposer_reply.get("offer")
-                if isinstance(offer_raw, dict) and all(
-                    issue in offer_raw for issue in issues
-                ):
-                    new_offer: dict[str, str] = {
-                        issue: str(offer_raw[issue]) for issue in issues
-                    }
+                if isinstance(offer_raw, dict):
+                    new_offer, problems = validate_and_snap_offer(
+                        offer_raw,
+                        issues,
+                        options_per_issue,
+                        session_id=session_id,
+                        agent_id=next_proposer_id,
+                    )
+                else:
+                    new_offer, problems = {}, ["offer is not a dict"]
+
+                if len(new_offer) == len(issues):
                     next_proposer = next(
                         p for p in participants if p.id == next_proposer_id
                     )
+                    if problems:
+                        logger.info(
+                            "[%s] round %d — next_proposer '%s' offer snapped: %s",
+                            session_id,
+                            round_num,
+                            next_proposer_id,
+                            "; ".join(problems),
+                        )
                     sess.negmas_history.append(
                         (
                             round_num - 1,  # 0-indexed step, consistent with run() path
@@ -767,12 +818,24 @@ class BatchCallbackRunner:
                 else:
                     logger.warning(
                         "[%s] round %d — next_proposer '%s' returned invalid offer: %s;"
-                        " treating as reject",
+                        " treating as reject (problems: %s)",
                         session_id,
                         round_num,
                         next_proposer_id,
                         next_proposer_reply,
+                        problems,
                     )
+                    sess.prev_offer_validation_failure = {
+                        "rejected_agent_id": next_proposer_id,
+                        "round": round_num,
+                        "problems": problems,
+                        "hint": (
+                            "Your counter_offer was rejected because it contained "
+                            "unrecognised issue keys or option values. "
+                            "Use only the issue identifiers and option values listed "
+                            "in semantic_context.issues and semantic_context.options_per_issue."
+                        ),
+                    }
                     next_proposer_reply["action"] = "reject"
                     next_proposer_reply.pop("offer", None)
                     counter_offered = False
@@ -928,9 +991,11 @@ class BatchCallbackRunner:
             sao_state=respond_state,
             issues=issues,
             options_per_issue=options_per_issue,
+            offer_validation_failure=sess.prev_offer_validation_failure,
         )
         serialised = [dump_negotiate_message_json(respond_broadcast)]
         sess.sstp_message_trace.extend(serialised)
+        sess.prev_offer_validation_failure = None  # consumed — reset for next round
         sess.phase = "respond"
         logger.info(
             "[%s] dispatch respond round %d agents=%d next_proposer=%s",
