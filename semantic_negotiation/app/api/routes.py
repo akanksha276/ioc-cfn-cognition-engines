@@ -59,6 +59,22 @@ router = APIRouter(tags=["negotiation"])
 # ============== Input validation ==============
 
 
+def _validate_request_scope(workspace_id: str, mas_id: str) -> None:
+    """Validate workspace/MAS scope carried in the SSTP origin envelope.
+
+    Raises:
+        SemanticNegotiationInputError: If either identifier is missing or blank.
+    """
+    if not workspace_id or not str(workspace_id).strip():
+        raise SemanticNegotiationInputError(
+            "origin.tenant_id (workspace_id) is required and must be a non-empty string."
+        )
+    if not mas_id or not str(mas_id).strip():
+        raise SemanticNegotiationInputError(
+            "origin.actor_id (mas_id) is required and must be a non-empty string."
+        )
+
+
 def _validate_initiate_payload(payload: Dict[str, Any], session_id: str) -> None:
     """Validate the payload for POST /api/negotiate/initiate.
 
@@ -214,9 +230,11 @@ async def negotiate_initiate(
     """Run Components 1+2, seed round 1, return first-round messages."""
     session_id = body.semantic_context.session_id
     request_id = body.message_id
+    workspace_id = body.origin.tenant_id
+    mas_id = body.origin.actor_id
     header = NegotiationHeader(
-        workspace_id=body.origin.tenant_id,
-        mas_id=body.origin.actor_id,
+        workspace_id=workspace_id,
+        mas_id=mas_id,
     )
     payload = body.payload
     content_text: str = payload.get("content_text", "")
@@ -224,6 +242,7 @@ async def negotiate_initiate(
     n_steps: Optional[int] = payload.get("n_steps")
 
     try:
+        _validate_request_scope(workspace_id, mas_id)
         _validate_initiate_payload(payload, session_id)
         logger.info(
             "initiate validation passed session_id=%s agents=%d content_len=%d n_steps=%s",
@@ -240,8 +259,8 @@ async def negotiate_initiate(
             content_text=content_text,
             agents_raw=agents_raw,
             initiate_message=dump_negotiate_message_json(body),
-            workspace_id=body.origin.tenant_id,
-            mas_id=body.origin.actor_id,
+            workspace_id=workspace_id,
+            mas_id=mas_id,
             fabric_node_base_url=settings.cfn_url,
             agent_names=agent_names,
         )
@@ -315,11 +334,14 @@ async def negotiate_decide(
 ) -> JSONResponse:
     """Apply agent replies and advance the SAO by one step."""
     payload = body.payload
+    workspace_id = body.origin.tenant_id
+    mas_id = body.origin.actor_id
     session_id: str = payload.get("session_id") or body.semantic_context.session_id
     agent_replies: List[Dict[str, Any]] = payload.get("agent_replies", [])
     request_id = body.message_id
 
     try:
+        _validate_request_scope(workspace_id, mas_id)
         _validate_decide_payload(payload, session_id)
         logger.info(
             "decide validation passed session_id=%s replies=%d",
@@ -331,6 +353,8 @@ async def negotiate_decide(
             session_id,
             agent_replies=agent_replies,
             commit_message_id=request_id,
+            workspace_id=workspace_id,
+            mas_id=mas_id,
         )
     except SemanticNegotiationInputError as exc:
         logger.warning(

@@ -37,13 +37,24 @@ _STRATEGY_MODULES = [
 # ---------------------------------------------------------------------------
 # Per-session concurrency guard
 # ---------------------------------------------------------------------------
-# Maps session_id → threading.current_thread().name for the running thread.
-# Prevents two concurrent requests with the same session_id from both
-# entering negotiation logic, which would cause _DECISIONS key collisions
-# in BatchCallbackRunner and produce ambiguous results in SAOMechanism paths.
+# Maps (workspace_id, mas_id, session_id) → threading.current_thread().name for
+# the running thread. Prevents two concurrent requests with the same scoped
+# session from both entering negotiation logic, which would cause ambiguous
+# results in SAOMechanism paths.
 
-_ACTIVE_SESSIONS: dict[str, str] = {}
+ActiveSessionKey = Tuple[Optional[str], Optional[str], str]
+
+_ACTIVE_SESSIONS: dict[ActiveSessionKey, str] = {}
 _ACTIVE_SESSIONS_LOCK = threading.Lock()
+
+
+def _active_session_key(
+    session_id: str,
+    workspace_id: Optional[str] = None,
+    mas_id: Optional[str] = None,
+) -> ActiveSessionKey:
+    """Return the scoped key used for active-session concurrency checks."""
+    return (workspace_id, mas_id, session_id)
 
 
 def _resolve_strategy(name: str) -> type:
@@ -342,6 +353,9 @@ class NegotiationModel:
         options_per_issue: Dict[str, List[str]],
         participants: List[NegotiationParticipant],
         session_id: str = "unknown",
+        *,
+        workspace_id: Optional[str] = None,
+        mas_id: Optional[str] = None,
     ) -> NegotiationResult:
         """Run a full SAO negotiation session and return the result.
 
@@ -352,6 +366,10 @@ class NegotiationModel:
             session_id: Negotiation session identifier threaded through to any
                 :class:`~app.agent.callback_negotiator.SSTPCallbackNegotiator`
                 instances so outgoing SSTP messages carry the correct session.
+            workspace_id: Optional workspace identifier used to scope the
+                in-process concurrency guard.
+            mas_id: Optional MAS identifier used to scope the in-process
+                concurrency guard.
 
         Returns:
             A :class:`NegotiationResult` describing what was (or was not) agreed.
@@ -369,19 +387,25 @@ class NegotiationModel:
             len(participants),
             self.n_steps,
         )
+        active_session_key = _active_session_key(
+            session_id,
+            workspace_id=workspace_id,
+            mas_id=mas_id,
+        )
 
         # ── session concurrency guard ──────────────────────────────────────
-        # Reject a second concurrent request carrying the same session_id.
-        # Two simultaneous runs would produce ambiguous results and, in the
-        # BatchCallbackRunner path, would collide on _DECISIONS keys.
+        # Reject a second concurrent request carrying the same scoped session.
+        # Two simultaneous runs would produce ambiguous results.
         with _ACTIVE_SESSIONS_LOCK:
-            if session_id in _ACTIVE_SESSIONS:
-                owner = _ACTIVE_SESSIONS[session_id]
+            if active_session_key in _ACTIVE_SESSIONS:
+                owner = _ACTIVE_SESSIONS[active_session_key]
                 raise ValueError(
-                    f"Session '{session_id}' is already running in thread '{owner}'. "
-                    "Concurrent negotiations must use unique session IDs."
+                    "Session "
+                    f"(workspace_id={workspace_id!r}, mas_id={mas_id!r}, session_id={session_id!r}) "
+                    f"is already running in thread '{owner}'. "
+                    "Concurrent negotiations must use unique scoped session identifiers."
                 )
-            _ACTIVE_SESSIONS[session_id] = threading.current_thread().name
+            _ACTIVE_SESSIONS[active_session_key] = threading.current_thread().name
         logger.debug(
             "[%s] session acquired (thread=%s)",
             session_id,
@@ -394,7 +418,7 @@ class NegotiationModel:
             )
         finally:
             with _ACTIVE_SESSIONS_LOCK:
-                _ACTIVE_SESSIONS.pop(session_id, None)
+                _ACTIVE_SESSIONS.pop(active_session_key, None)
             logger.debug("[%s] session released", session_id)
             # Purge any _DECISIONS entries that were stored for this session
             # but never consumed (e.g. the runner broke before reading them).

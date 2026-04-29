@@ -42,6 +42,9 @@ from .semantic_alignment_validation_pipeline import (
 logger = logging.getLogger(__name__)
 
 
+SessionStoreKey = tuple[str | None, str | None, str]
+
+
 class SemanticNegotiationError(RuntimeError):
     """Base exception for semantic_negotiation library errors."""
 
@@ -112,9 +115,18 @@ class SemanticNegotiationPipeline:
         self._intent_discovery = IntentDiscovery()
         self._options_generation = OptionsGeneration()
         self._alignment_validator = SemanticAlignmentValidationPipeline()
-        # session_id → (runner, sess)
-        self._sessions: Dict[str, tuple] = {}
+        # (workspace_id, mas_id, session_id) → (runner, sess)
+        self._sessions: Dict[SessionStoreKey, tuple] = {}
         logger.info("SemanticNegotiationPipeline initialized n_steps=%d", n_steps)
+
+    @staticmethod
+    def _session_key(
+        session_id: str,
+        workspace_id: str | None = None,
+        mas_id: str | None = None,
+    ) -> SessionStoreKey:
+        """Build the scoped in-memory key for a negotiation session."""
+        return (workspace_id, mas_id, session_id)
 
     def run_alignment_validation(
         self,
@@ -402,8 +414,25 @@ class SemanticNegotiationPipeline:
             SemanticNegotiationInputError: When required inputs are missing/invalid.
             SemanticNegotiationExecutionError: For unexpected failures.
         """
+        session_key = self._session_key(
+            session_id,
+            workspace_id=workspace_id,
+            mas_id=mas_id,
+        )
         try:
-            if session_id not in self._sessions:
+            if session_key not in self._sessions:
+                # If agent_replies were supplied the caller clearly intended a
+                # /decide — the session simply doesn't exist yet (or was already
+                # cleaned up).  Raise the dedicated 404 error so routes.py can
+                # return the correct status code instead of 400.
+                if agent_replies is not None:
+                    logger.error(
+                        "session not found session_id=%s workspace_id=%s mas_id=%s",
+                        session_id,
+                        workspace_id,
+                        mas_id,
+                    )
+                    raise SemanticNegotiationSessionNotFoundError(session_id)
                 logger.info("execute initiate session_id=%s", session_id)
                 if agents_raw is None:
                     raise SemanticNegotiationInputError(
@@ -485,7 +514,7 @@ class SemanticNegotiationPipeline:
                     sess.sstp_message_trace.insert(0, initiate_message)
                 sess.content_text = content_text
                 sess.agents_negotiating = [a["id"] for a in (agents_raw or [])]
-                self._sessions[session_id] = (runner, sess)
+                self._sessions[session_key] = (runner, sess)
                 logger.info(
                     "execute step3 negotiation_started session_id=%s n_steps=%d",
                     session_id,
@@ -510,7 +539,7 @@ class SemanticNegotiationPipeline:
                 len(agent_replies or []),
             )
             try:
-                runner, sess = self._sessions[session_id]
+                runner, sess = self._sessions[session_key]
             except KeyError as exc:
                 raise SemanticNegotiationSessionNotFoundError(session_id) from exc
 
@@ -558,7 +587,7 @@ class SemanticNegotiationPipeline:
             session_id,
             status,
         )
-        del self._sessions[session_id]
+        del self._sessions[session_key]
         participant_id_by_name = {p.name: p.id for p in sess.participants}
 
         # ── Step 4: Semantic alignment validation ─────────────────────────
@@ -840,6 +869,24 @@ class SemanticNegotiationPipeline:
                 "[%s] failed to write error commit: %s", session_id, write_exc
             )
 
-    def release_session(self, session_id: str) -> None:
+    def release_session(
+        self,
+        session_id: str,
+        workspace_id: str | None = None,
+        mas_id: str | None = None,
+    ) -> None:
         """Remove a session from the internal store (e.g. on error clean-up)."""
-        self._sessions.pop(session_id, None)
+        if workspace_id is not None or mas_id is not None:
+            self._sessions.pop(
+                self._session_key(
+                    session_id,
+                    workspace_id=workspace_id,
+                    mas_id=mas_id,
+                ),
+                None,
+            )
+            return
+
+        stale_keys = [key for key in self._sessions if key[2] == session_id]
+        for key in stale_keys:
+            self._sessions.pop(key, None)
