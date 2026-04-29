@@ -311,13 +311,33 @@ envelope with the final agreement (or `None` for broken/timeout).
 ```python
 from fastapi import FastAPI, Depends, Request
 from contextlib import asynccontextmanager
+import numpy as np
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.concept_vector_store import ConceptVectorStore
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor, EmbeddingManager
 from evidence.app.agent.evidence import process_evidence
 from caching.app.agent.caching_layer import CachingLayer
 from ingestion.app.config.settings import Settings
 import os
+
+
+def store_extracted_concepts(cache_layer: CachingLayer, concepts: list) -> None:
+    """Write processed concepts (with per-concept embeddings) into the shared cache."""
+    for concept in concepts:
+        embedding_data = concept.get("attributes", {}).get("embedding")
+        if not embedding_data or not embedding_data[0]:
+            continue
+        name = (concept.get("name") or "").strip()
+        if not name:
+            continue
+        description = (concept.get("description") or "").strip()
+        text = f"{name} | {description}" if description else name
+        vector = np.asarray(embedding_data[0], dtype=np.float32)
+        cache_layer.store_knowledge(
+            text=text,
+            vector=vector,
+            metadata={"concept_id": concept.get("id", "")},
+        )
+
 
 # Create shared cache at app startup
 @asynccontextmanager
@@ -367,15 +387,14 @@ async def extract_knowledge(
         azure_api_version=settings.azure_openai_api_version,
         azure_deployment=settings.azure_openai_deployment,
     )
-    vector_store = ConceptVectorStore(cache_layer=cache_layer)  # Uses shared cache
     processor = KnowledgeProcessor(enable_embeddings=True, enable_dedup=False)
 
-    # Extract → Process → Store
+    # Extract → Process → Store in shared cache
     result = concept_service.extract_concepts_and_relationships(
         data.get("payload_data"), request_id=data.get("request_id")
     )
     result = processor.process(result)
-    vector_store.store_concepts(result.get("concepts", []))
+    store_extracted_concepts(cache_layer, result.get("concepts", []))
 
     return {
         "concepts": len(result["concepts"]),
@@ -422,10 +441,9 @@ async def gather_evidence(
 ```python
 @app.post("/api/extraction")
 async def extract_knowledge(data: dict):
-    # ❌ Creates NEW cache every request - data is lost!
+    # ❌ New CachingLayer per request — not shared with other routes; discarded after the response
     cache_layer = CachingLayer(vector_dimension=384, ...)
-    vector_store = ConceptVectorStore(cache_layer=cache_layer)
-    # This cache is discarded after the request
+    # ... extraction + store_extracted_concepts(cache_layer, concepts) still won't help /api/evidence
 ```
 
 ---
@@ -437,8 +455,8 @@ async def extract_knowledge(data: dict):
 ```python
 import asyncio
 import os
+import numpy as np
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.concept_vector_store import ConceptVectorStore
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor, EmbeddingManager
 from evidence.app.agent.evidence import process_evidence
 from evidence.app.api.schemas import ReasonerCognitionRequest, Header, RequestPayload
@@ -447,6 +465,24 @@ from caching.app.agent.caching_layer import CachingLayer
 from ingestion.app.config.settings import Settings
 
 settings = Settings()
+
+
+def store_extracted_concepts(cache_layer: CachingLayer, concepts: list) -> None:
+    for concept in concepts:
+        embedding_data = concept.get("attributes", {}).get("embedding")
+        if not embedding_data or not embedding_data[0]:
+            continue
+        name = (concept.get("name") or "").strip()
+        if not name:
+            continue
+        description = (concept.get("description") or "").strip()
+        text = f"{name} | {description}" if description else name
+        vector = np.asarray(embedding_data[0], dtype=np.float32)
+        cache_layer.store_knowledge(
+            text=text,
+            vector=vector,
+            metadata={"concept_id": concept.get("id", "")},
+        )
 
 # 1. Initialize embedding manager (SHARED)
 embedding_manager = EmbeddingManager()
@@ -471,7 +507,6 @@ concept_service = ConceptRelationshipExtractionService(
     azure_api_version=settings.azure_openai_api_version,
     azure_deployment=settings.azure_openai_deployment,
 )
-vector_store = ConceptVectorStore(cache_layer=cache_layer)  # Uses shared cache
 processor = KnowledgeProcessor(enable_embeddings=True, enable_dedup=False)
 
 payload_data = [
@@ -497,7 +532,7 @@ result = concept_service.extract_concepts_and_relationships(
     payload_data, request_id="req-001", format_descriptor="observe-sdk-otel"
 )
 result = processor.process(result)
-vector_store.store_concepts(result.get("concepts", []))
+store_extracted_concepts(cache_layer, result.get("concepts", []))
 
 print(f"✓ Extracted {len(result['concepts'])} concepts")
 print(f"✓ Cache contains: {cache_layer.describe()['ntotal']} items")
@@ -524,13 +559,31 @@ asyncio.run(gather_evidence())
 **Use case:** Extract and store concepts without evidence gathering.
 
 ```python
+import numpy as np
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.concept_vector_store import ConceptVectorStore
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor, EmbeddingManager
 from caching.app.agent.caching_layer import CachingLayer
 from ingestion.app.config.settings import Settings
 
 settings = Settings()
+
+
+def store_extracted_concepts(cache_layer: CachingLayer, concepts: list) -> None:
+    for concept in concepts:
+        embedding_data = concept.get("attributes", {}).get("embedding")
+        if not embedding_data or not embedding_data[0]:
+            continue
+        name = (concept.get("name") or "").strip()
+        if not name:
+            continue
+        description = (concept.get("description") or "").strip()
+        text = f"{name} | {description}" if description else name
+        vector = np.asarray(embedding_data[0], dtype=np.float32)
+        cache_layer.store_knowledge(
+            text=text,
+            vector=vector,
+            metadata={"concept_id": concept.get("id", "")},
+        )
 
 # Initialize components
 embedding_manager = EmbeddingManager()
@@ -546,17 +599,16 @@ concept_service = ConceptRelationshipExtractionService(
     azure_deployment=settings.azure_openai_deployment,
 )
 
-vector_store = ConceptVectorStore(cache_layer=cache_layer)
 processor = KnowledgeProcessor(enable_embeddings=True, enable_dedup=False)
 
 # Extract and store
 payload_data = [{"Timestamp": "...", "TraceId": "...", ...}]
 result = concept_service.extract_concepts_and_relationships(payload_data)
 result = processor.process(result)
-vector_store.store_concepts(result.get("concepts", []))
+store_extracted_concepts(cache_layer, result.get("concepts", []))
 
 # Search
-similar = vector_store.search_similar(text="authentication", k=3)
+similar = cache_layer.search_similar(text="authentication", k=3)
 for item in similar:
     print(f"{item.get('name', item.get('text'))} (score: {item['score']:.3f})")
 ```
@@ -614,7 +666,7 @@ When using knowledge extraction + evidence gathering, always share the same cach
 ```python
 # ✅ DO THIS: Create once, share everywhere
 cache_layer = CachingLayer(vector_dimension=384, embed_fn=embed_fn)
-vector_store = ConceptVectorStore(cache_layer=cache_layer)
+# Populate cache_layer with extracted concepts (see `store_extracted_concepts` in examples above)
 await process_evidence(request, cache_layer=cache_layer)
 
 # ❌ DON'T: Create multiple caches

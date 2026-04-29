@@ -10,7 +10,6 @@ import asyncio
 import pytest
 
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.concept_vector_store import ConceptVectorStore
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor
 from ingestion.app.config.settings import Settings  # used in skipif condition
 from evidence.app.agent.evidence import process_evidence
@@ -98,7 +97,6 @@ class TestUsageExamplesLive:
         concept_service = ConceptRelationshipExtractionService(
             mock_mode=False,  # Use real LLM
         )
-        vector_store = ConceptVectorStore()
         processor = KnowledgeProcessor(enable_embeddings=False, enable_dedup=False)
 
         # Extract → Process → Store
@@ -126,11 +124,9 @@ class TestUsageExamplesLive:
         # Process the result
         result = processor.process(result)
 
-        # Store concepts in vector store
         concepts = result.get("concepts", [])
         if concepts:
-            vector_store.store_concepts(concepts)
-            print(f"✅ Stored {len(concepts)} concepts in vector store")
+            print(f"✅ Processed {len(concepts)} concepts after knowledge pipeline")
 
     @pytest.mark.asyncio
     async def test_evidence_gathering_with_llm(self):

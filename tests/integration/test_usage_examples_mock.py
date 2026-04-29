@@ -10,7 +10,6 @@ import asyncio
 import pytest
 
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.concept_vector_store import ConceptVectorStore
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor
 from evidence.app.agent.evidence import process_evidence
 from evidence.app.api.schemas import ReasonerCognitionRequest, Header, RequestPayload
@@ -48,7 +47,6 @@ class TestUsageGuideExample1KnowledgeExtraction:
         concept_service = ConceptRelationshipExtractionService(
             mock_mode=True,
         )
-        vector_store = ConceptVectorStore()
         processor = KnowledgeProcessor(enable_embeddings=False, enable_dedup=False)
 
         # Extract → Process → Store
@@ -67,13 +65,9 @@ class TestUsageGuideExample1KnowledgeExtraction:
         # Process the result
         result = processor.process(result)
 
-        # Store concepts in vector store
-        concepts = result.get("concepts", [])
-        if concepts:
-            vector_store.store_concepts(concepts)
-
-            # Verify concepts were stored (basic check)
-            assert len(concepts) > 0, "Should have extracted at least one concept in mock mode"
+        assert len(result.get("concepts", [])) > 0, (
+            "Should have extracted at least one concept in mock mode"
+        )
 
     def test_knowledge_extraction_returns_metadata(self):
         """Test that extraction returns metadata about processing."""

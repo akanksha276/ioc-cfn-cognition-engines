@@ -21,8 +21,7 @@ ingestion/
 │   │   ├── knowledge_processor.py  # Embedding generation & dedup
 │   │   ├── rag.py              # RAG chunking + embedding pipeline
 │   │   ├── prompts.py          # Format-specific LLM prompts
-│   │   ├── service.py          # Graph extraction services
-│   │   └── concept_vector_store.py # Concept vector store adapter
+│   │   └── service.py          # Graph extraction services
 │   │
 │   ├── data/                   # Data access abstraction
 │   │   ├── base.py             # DataRepository Protocol
@@ -276,7 +275,6 @@ When processing fails, the response contains an `error` block instead of concept
 - **ConceptRelationshipExtractionService** (`agent/service.py`): LLM-based graph extraction (concepts + relationships).
 - **RagPipeline** (`agent/rag.py`): Optional chunking + embedding stage to produce `rag_chunks`.
 - **KnowledgeProcessor** (`agent/knowledge_processor.py`): Embedding enrichment and dedup for graph output.
-- **ConceptVectorStore** (`agent/concept_vector_store.py`): Concept vector store adapter.
 
 ### Pipeline
 
