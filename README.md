@@ -79,17 +79,26 @@ poetry run uvicorn app.main:app --host 0.0.0.0 --port 8087
 ```bash
 cd semantic_negotiation
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8089
-
-# Test with two-agent simulation
-poetry run python semantic_negotiation/test_two_agents.py
-
-# Or with custom acceptance thresholds
-poetry run python semantic_negotiation/test_two_agents.py --threshold-a 0.4 --threshold-b 0.3
 ```
 
 </details>
 
 **Note:** The gateway (port 9004) is the recommended production setup. It runs ingestion + evidence in a single process. The semantic negotiation agent is a separate service that runs independently.
+
+### Testing Semantic Negotiation
+
+Two test harnesses are available under `semantic_negotiation/evaluation/framework/`:
+
+- **`test_via_semantic_neg_agents_configured.py`** — Spawns a multi-agent system (MAS) in-process and tests semantic negotiation directly. Use `--filter` to run a specific mission.
+  ```bash
+  poetry run python semantic_negotiation/evaluation/framework/test_via_semantic_neg_agents_configured.py
+  poetry run python semantic_negotiation/evaluation/framework/test_via_semantic_neg_agents_configured.py --filter "Quick deal"
+  ```
+
+- **`test_via_cfn_service.py`** — Calls the full CFN service end-to-end for integration testing.
+  ```bash
+  poetry run python semantic_negotiation/evaluation/framework/test_via_cfn_service.py
+  ```
 
 ---
 

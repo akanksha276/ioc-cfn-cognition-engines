@@ -39,7 +39,9 @@ class SharedMemoryNotFoundError(SharedMemoryQueryError):
     """Raised when the fabric shared-memories query returns HTTP 404 (no cache for MAS)."""
 
 
-def issue_labels_from_negotiable_entities(negotiable_entities: Optional[list[Any]]) -> list[str]:
+def issue_labels_from_negotiable_entities(
+    negotiable_entities: Optional[list[Any]],
+) -> list[str]:
     """Normalize negotiable entities to issue strings (``term`` attribute when present)."""
     if not negotiable_entities:
         return []
@@ -100,8 +102,20 @@ def post_shared_memories_query(
         resp = exc.response
         code = resp.status_code if resp is not None else None
         if code == 404:
+            # Extract workspace/mas from the request path for a clearer message
+            _parts = path.split("/")
+            _wid = (
+                _parts[_parts.index("workspaces") + 1]
+                if "workspaces" in _parts
+                else "?"
+            )
+            _mid = (
+                _parts[_parts.index("multi-agentic-systems") + 1]
+                if "multi-agentic-systems" in _parts
+                else "?"
+            )
             raise SharedMemoryNotFoundError(
-                "No shared memory for this workspace/mas (HTTP 404)",
+                f"No shared memory for workspace_id={_wid} mas_id={_mid} (HTTP 404)",
                 status_code=404,
             ) from exc
         body_preview = ""

@@ -93,7 +93,9 @@ class HttpDataRepository:
         if not ids:
             return []
         client = await self._client_async()
-        r = await client.post(f"{self._graph_prefix}/concepts/by_ids", json={"ids": ids})
+        r = await client.post(
+            f"{self._graph_prefix}/concepts/by_ids", json={"ids": ids}
+        )
         r.raise_for_status()
         data = r.json()
         return data.get("concepts", [])

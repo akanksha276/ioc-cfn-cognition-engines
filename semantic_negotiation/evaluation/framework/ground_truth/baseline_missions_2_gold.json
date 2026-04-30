@@ -1,0 +1,85 @@
+[
+  {
+    "id": "quick_deal",
+    "sentence": "Two parties need to agree on price and delivery speed for an urgent supply order.",
+    "context": "Fast-moving commercial negotiation between a buyer and supplier over unit price and delivery timeline for an urgent order.",
+    "domain": "procurement",
+    "gold_issues": [
+      "price",
+      "delivery speed"
+    ],
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 2,
+      "source_yaml": "missions.yaml",
+      "source_mission": "Quick Deal",
+      "notes": "Smoke-test mission. Issues are stable across runs; options vary in surface form but cluster around the four canonical price bands and four delivery windows defined here."
+    },
+    "gold_options": {
+      "price": [
+        "$50 per unit",
+        "$75 per unit",
+        "$100 per unit",
+        "$120 per unit"
+      ],
+      "delivery speed": [
+        "Same-day delivery",
+        "Next-day delivery",
+        "Delivery within 3 days",
+        "Delivery within a week"
+      ]
+    }
+  },
+  {
+    "id": "cloud_platform",
+    "sentence": "Teams need to agree on compute tier, storage quota, support level, deployment region, and contract length for multi-year cloud infrastructure.",
+    "context": "Enterprise cloud procurement negotiation covering five independent dimensions: compute capacity, storage allocation, support entitlement, geographic deployment, and contract commitment.",
+    "domain": "cloud_infrastructure",
+    "gold_issues": [
+      "compute tier",
+      "storage quota",
+      "support level",
+      "deployment region",
+      "contract length"
+    ],
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 5,
+      "source_yaml": "missions.yaml",
+      "source_mission": "Cloud Platform",
+      "notes": "Issues are perfectly stable across all 11 observed runs. Gold options represent the four canonical positions per issue derived from the most frequently generated option clusters."
+    },
+    "gold_options": {
+      "compute tier": [
+        "Basic Tier",
+        "Standard Tier",
+        "High Performance Tier",
+        "Enterprise Tier"
+      ],
+      "storage quota": [
+        "1 TB",
+        "5 TB",
+        "10 TB",
+        "Unlimited"
+      ],
+      "support level": [
+        "Self-Service Support",
+        "Standard Support",
+        "Premium Support",
+        "24/7 Dedicated Support"
+      ],
+      "deployment region": [
+        "North America",
+        "Europe",
+        "Asia-Pacific",
+        "Global"
+      ],
+      "contract length": [
+        "1 year",
+        "3 years",
+        "5 years",
+        "10 years"
+      ]
+    }
+  }
+]

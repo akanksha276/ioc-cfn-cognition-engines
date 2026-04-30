@@ -41,6 +41,20 @@ default_agents:
 # ─────────────────────────────────────────────────────────────────────────────
 mission_agents:
 
+  # Quick Deal - Urgent supply order (price + delivery speed)
+  quick_deal:
+    - id: buyer-agent
+      name: BuyerAgent
+      persona_file: personas/profiles/quick_deal/buyer_agent.yaml
+
+    - id: seller-agent
+      name: SellerAgent
+      persona_file: personas/profiles/quick_deal/seller_agent.yaml
+
+    - id: logistics-agent
+      name: LogisticsAgent
+      persona_file: personas/profiles/quick_deal/logistics_agent.yaml
+
   # Example 01 - Email Automation
   example_01_email_automation:
     - id: delete-agent

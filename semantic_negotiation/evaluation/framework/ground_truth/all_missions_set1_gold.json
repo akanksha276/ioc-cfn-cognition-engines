@@ -1,0 +1,635 @@
+[
+  {
+    "id": "hard_01",
+    "sentence": "The engineering team and the ethics board must agree on a policy for deploying AI models that is responsible enough to protect users and the company's reputation, competitive enough that the organisation does not fall behind, transparent in how decisions are made, and does not expose proprietary methods or create unacceptable liability.",
+    "context": "AI model deployment governance negotiation between engineering velocity and ethical safeguards.",
+    "domain": "ai_governance",
+    "gold_issues": [
+      "responsible enough",
+      "competitive enough",
+      "transparent in how decisions are made",
+      "unacceptable liability"
+    ],
+    "metadata": {
+      "difficulty": "very_hard",
+      "num_issues": 4
+    },
+    "gold_options": {
+      "responsible enough": [
+        "Every model requires a completed ethics audit, human-in-the-loop sign-off, and a 30-day staged rollout before any production traffic",
+        "Automated bias and safety tests pass in CI; a lightweight self-assessment checklist is filed by the deploying team",
+        "Models follow the same software release process as any other product feature, no additional gate required"
+      ],
+      "competitive enough": [
+        "Deployment lead time must match or beat the industry median; any gate adding more than one sprint of delay is unacceptable",
+        "The organisation ships at least one material AI capability per quarter, regardless of review cycle length",
+        "We are competitive as long as we do not miss a publicly announced product milestone due to AI review overhead"
+      ],
+      "transparent in how decisions are made": [
+        "The full model architecture, training data lineage, and decision logic must be published in a public-facing transparency report",
+        "An internal explainability summary is written for each deployment, accessible to any employee on request",
+        "Decisions are transparent if the product team can describe the feature's behaviour in plain English to regulators on demand"
+      ],
+      "unacceptable liability": [
+        "Any deployment without a signed legal indemnity waiver or explicit regulatory pre-clearance creates unacceptable liability",
+        "Liability is unacceptable if an incident could result in a fine exceeding 1% of annual revenue or reputational coverage in national media",
+        "Liability is primarily managed through standard product insurance; a separate AI-specific liability threshold is unnecessary overhead"
+      ]
+    }
+  },
+  {
+    "id": "hard_02",
+    "sentence": "The data engineering team and the business units need to agree on a data platform architecture that gives teams genuine ownership of their data, ensures the organisation has reliable and consistent data quality across the board, keeps costs under control without compromising capability, and remains auditable for regulatory purposes.",
+    "context": "Data platform strategy negotiation between federated domain ownership and centralised governance.",
+    "domain": "data_architecture",
+    "gold_issues": [
+      "genuine ownership",
+      "reliable and consistent data quality",
+      "costs under control without compromising capability",
+      "auditable for regulatory purposes"
+    ],
+    "metadata": {
+      "difficulty": "very_hard",
+      "num_issues": 4
+    },
+    "gold_options": {
+      "genuine ownership": [
+        "Each domain team runs its own infrastructure, schema, and access policy with no central veto on any decision",
+        "Teams own the data contract and SLA for their domain; central platform provides shared tooling but not control",
+        "Ownership means accountability for data quality SLAs; the central team remains the single infrastructure owner"
+      ],
+      "reliable and consistent data quality": [
+        "A centralised data quality engine enforces a single schema registry and runs validation on every pipeline write",
+        "Each domain publishes a data contract; the platform automatically alerts consumers when a contract is breached",
+        "Reliability is per-domain; consistency is a consumer responsibility achieved through agreed conventions, not enforcement"
+      ],
+      "costs under control without compromising capability": [
+        "A shared centralised data warehouse eliminates per-team infra duplication; total compute cost must not increase year-on-year",
+        "Each team owns its cloud spend with a hard cap; capability investment is per-domain and funded from the team's budget",
+        "Cost control means avoiding runaway spend; some duplication is acceptable if it preserves domain autonomy and delivery speed"
+      ],
+      "auditable for regulatory purposes": [
+        "A centralised immutable audit log captures every read, write, and schema change across all domains and is retained for seven years",
+        "Each domain maintains its own audit trail in a standardised format; the regulator can query a federated index",
+        "Auditability means the organisation can reconstruct any data lineage on demand; the storage model is an implementation detail"
+      ]
+    }
+  },
+  {
+    "id": "hard_03",
+    "sentence": "The infrastructure team and the procurement committee must decide on a platform strategy that is genuinely cost-effective over the long term, gives the organisation full control over its own systems, comes with the level of support the business actually needs when things go wrong, and does not lock the company into a relationship it cannot exit.",
+    "context": "Platform strategy negotiation between open-source self-hosting and enterprise vendor contracts.",
+    "domain": "platform_strategy",
+    "gold_issues": [
+      "genuinely cost-effective over the long term",
+      "full control over its own systems",
+      "level of support the business actually needs",
+      "lock the company into a relationship it cannot exit"
+    ],
+    "metadata": {
+      "difficulty": "very_hard",
+      "num_issues": 4
+    },
+    "gold_options": {
+      "genuinely cost-effective over the long term": [
+        "Total cost of ownership over five years including staff, incident response, and migration must be lower than any commercial alternative",
+        "The licence cost alone determines cost-effectiveness; operational overhead is a staffing decision, not a platform decision",
+        "Cost-effectiveness is measured by capability delivered per pound spent, not by headline licence or infrastructure price"
+      ],
+      "full control over its own systems": [
+        "The organisation must be able to inspect, modify, and redeploy every component without vendor permission or involvement",
+        "Control means the ability to export all data and configuration at any time; vendor management of underlying infrastructure is acceptable",
+        "Full control is a security requirement satisfied by contractual SLAs, penetration test access, and data residency guarantees"
+      ],
+      "level of support the business actually needs": [
+        "A named support engineer available by phone within one hour, 24/7, for any production incident regardless of severity",
+        "Business-hours support covering the top two severity levels; severity-three incidents are handled via a self-service portal",
+        "The in-house team is the primary support tier; vendor support is a backstop for vendor-caused defects only"
+      ],
+      "lock the company into a relationship it cannot exit": [
+        "Lock-in means any proprietary data format, API, or process that would require a full rewrite to move to an alternative",
+        "Lock-in is the risk that switching costs exceed one year of the current contract value",
+        "Lock-in is primarily a skills problem: if the market has a deep talent pool for the technology, exit is always feasible"
+      ]
+    }
+  },
+  {
+    "id": "hard_04",
+    "sentence": "The people team and the executive leadership need to align on a working arrangement that allows the company to attract the best talent regardless of location, keeps teams genuinely collaborative and productive, protects the culture that makes the organisation successful, and treats all employees fairly regardless of where they choose to work.",
+    "context": "Remote work and talent policy negotiation between distributed flexibility and in-person cohesion.",
+    "domain": "talent_policy",
+    "gold_issues": [
+      "attract the best talent regardless of location",
+      "genuinely collaborative and productive",
+      "protects the culture",
+      "treats all employees fairly"
+    ],
+    "metadata": {
+      "difficulty": "very_hard",
+      "num_issues": 4
+    },
+    "gold_options": {
+      "attract the best talent regardless of location": [
+        "Every role is permanently fully remote; office attendance can never be a hiring or promotion criterion",
+        "Roles are remote-first with optional hub access; candidates outside commuting distance of any hub are eligible for all positions",
+        "Location flexibility is offered case-by-case as a negotiating lever; the default expectation remains three days per week in office"
+      ],
+      "genuinely collaborative and productive": [
+        "Collaboration is asynchronous-first; productivity is measured by output and shipped work, never by physical co-presence",
+        "Teams must overlap for at least four hours of synchronous working time daily across all time zones; async supplements but does not replace this",
+        "Quarterly in-person team gatherings are sufficient for the deep collaboration that remote tools cannot replicate"
+      ],
+      "protects the culture": [
+        "Culture is values and behaviours, not location; a strong remote culture is demonstrably achievable and preferable to forced proximity",
+        "Culture requires spontaneous informal interaction that only shared physical space reliably generates; remote tools are a poor substitute",
+        "Culture is protected by leadership behaviour and clear rituals; whether these happen in-person or remotely is secondary"
+      ],
+      "treats all employees fairly": [
+        "Fairness means identical compensation, benefits, and promotion opportunity regardless of location or office attendance frequency",
+        "Fairness means applying the same attendance expectations to everyone; location-based salary adjustments are acceptable if openly published",
+        "Fairness means employees who invest in proximity to colleagues should not be disadvantaged relative to those who do not"
+      ]
+    }
+  },
+  {
+    "id": "hard_05",
+    "sentence": "The security team and the product engineering team need to reach an agreement on access controls and deployment practices that adequately protect sensitive systems and customer data, allow developers to move quickly without unnecessary friction, give auditors the visibility they require, and can realistically be adopted and maintained by the teams that have to live with them every day.",
+    "context": "Security vs developer experience negotiation over access controls and deployment gates.",
+    "domain": "devsecops_policy",
+    "gold_issues": [
+      "adequately protect",
+      "unnecessary friction",
+      "visibility auditors require",
+      "realistically be adopted and maintained"
+    ],
+    "metadata": {
+      "difficulty": "very_hard",
+      "num_issues": 4
+    },
+    "gold_options": {
+      "adequately protect": [
+        "Every production access requires MFA, just-in-time privilege escalation, and a peer-reviewed change ticket; any deviation is a policy violation",
+        "Protection is adequate when the organisation passes its annual external penetration test and there are no critical findings in the latest SOC 2 report",
+        "Adequate protection means developers cannot accidentally leak credentials or access data outside their team's scope; broader access controls are operational overhead"
+      ],
+      "unnecessary friction": [
+        "Any manual approval step that adds more than 30 minutes to a deployment pipeline for a low-risk change is unnecessary friction",
+        "Friction is unnecessary when it does not materially reduce the probability of a security incident; the security team defines what is material",
+        "All friction imposed by the security team is justified by threat model evidence; the engineering team's subjective experience of slowness is not a valid objection"
+      ],
+      "visibility auditors require": [
+        "Auditors require real-time access to all access logs, deployment records, and configuration changes via a permanent read-only dashboard",
+        "Auditors require the ability to reconstruct any access event or deployment in the prior 12 months from stored logs on request",
+        "Auditor visibility is satisfied by the annual audit pack prepared by the security team; continuous real-time access creates its own security risk"
+      ],
+      "realistically be adopted and maintained": [
+        "A practice is realistic if it can be fully automated and requires no manual action from individual developers in the normal deployment flow",
+        "Adoption is realistic if the security team provides a dedicated implementation sprint of support and maintains runbooks for all practices",
+        "A practice is realistic only if every team independently judges it compatible with their current sprint velocity; team veto is a valid adoption signal"
+      ]
+    }
+  },
+  {
+    "id": "example_01",
+    "sentence": "Clean my inbox but don't lose anything important.",
+    "context": "Email automation policy alignment across deletion, archiving, and compliance controls.",
+    "domain": "email_automation",
+    "gold_issues": [
+      "important emails",
+      "promotion handling",
+      "retention window",
+      "compliance exceptions"
+    ],
+    "gold_options": {
+      "important emails": [
+        "Anything tied to finance, legal, contracts, security, or active customer threads",
+        "Any email the user has opened, starred, replied to, or received in the last 30 days",
+        "Only messages explicitly labeled as important or sent from approved high-priority senders"
+      ],
+      "promotion handling": [
+        "Delete all promotional emails immediately unless they match an active shopping or billing thread",
+        "Archive promotional emails for 30 days before deletion unless manually restored",
+        "Keep promotional emails only if they include receipts, invoices, warranties, or account actions"
+      ],
+      "retention window": [
+        "Delete non-important clutter after 14 days",
+        "Archive non-important mail for 30 days before deletion",
+        "Retain all non-flagged mail for 90 days before any destructive action"
+      ],
+      "compliance exceptions": [
+        "Never delete emails containing legal, financial, tax, HR, or contract-related content",
+        "Require a compliance check before deleting anything from regulated senders or domains",
+        "Allow deletion only after compliance-safe emails are tagged and excluded automatically"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 01 - Email Automation"
+    }
+  },
+  {
+    "id": "example_02",
+    "sentence": "Read, summarize, and respond to this thread.",
+    "context": "Inbox workflow coordination between summarization and drafting agents.",
+    "domain": "inbox_workflow",
+    "gold_issues": [
+      "step ownership",
+      "execution order",
+      "handoff trigger",
+      "response authority"
+    ],
+    "gold_options": {
+      "step ownership": [
+        "Bob owns summarization and Julie owns drafting",
+        "Julie drafts only after Bob produces a summary and recommendation",
+        "Both contribute but Bob is responsible for summary quality and Julie for final wording"
+      ],
+      "execution order": [
+        "Read thread, summarize, approve summary, then draft response",
+        "Read and summarize in parallel with a draft skeleton that is finalized after summary",
+        "Bob summarizes first, Julie drafts second, Bob reviews third"
+      ],
+      "handoff trigger": [
+        "Summary complete when action items, decision points, and recipient intent are explicitly listed",
+        "Handoff occurs only after the summary is approved by both agents",
+        "Julie can begin drafting once Bob marks the summary as decision-ready"
+      ],
+      "response authority": [
+        "Julie has final authority over tone and wording once the summary is accepted",
+        "Bob approves factual accuracy and Julie approves final phrasing",
+        "Final response requires a simple two-step sign-off from both agents"
+      ]
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 02 - Inbox Thread Workflow"
+    }
+  },
+  {
+    "id": "example_03",
+    "sentence": "Plan a great week for me.",
+    "context": "Personal planning conflict across fitness, work, and family scheduling priorities.",
+    "domain": "personal_planning",
+    "gold_issues": [
+      "definition of a great week",
+      "morning allocation",
+      "priority order",
+      "conflict resolution rule"
+    ],
+    "gold_options": {
+      "definition of a great week": [
+        "A balanced week with visible progress in health, work, and family time",
+        "A work-first week that protects essential family commitments and minimum exercise",
+        "A family-centered week with sustainable work output and realistic wellness goals"
+      ],
+      "morning allocation": [
+        "Assign fixed mornings by day: some for workouts, some for deep work, some for family",
+        "Split mornings into protected blocks for two priorities each day",
+        "Reserve mornings primarily for one priority and move the others to other times"
+      ],
+      "priority order": [
+        "Family first, work second, fitness third",
+        "Work first, family second, fitness third",
+        "No single fixed order; prioritize based on pre-agreed weekly targets"
+      ],
+      "conflict resolution rule": [
+        "The highest-priority weekly target wins the slot conflict",
+        "Use a rotating schedule so no agent permanently controls mornings",
+        "Require a compromise swap whenever one agent displaces another from a preferred slot"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 03 - Personal Planning"
+    }
+  },
+  {
+    "id": "example_04",
+    "sentence": "Plan a relaxing Italy trip.",
+    "context": "Travel planning negotiation over flights, accommodation, and itinerary pace.",
+    "domain": "travel_planning",
+    "gold_issues": [
+      "definition of relaxing",
+      "flight tradeoff",
+      "hotel standard",
+      "daily itinerary pace"
+    ],
+    "gold_options": {
+      "definition of relaxing": [
+        "Minimize transit friction and preserve free time each day",
+        "Accept some transit inconvenience in exchange for better accommodation comfort",
+        "Keep a moderate sightseeing schedule with one major activity per day"
+      ],
+      "flight tradeoff": [
+        "Choose the cheapest flight with longer layovers if total travel time stays reasonable",
+        "Choose a mid-priced flight with one manageable connection",
+        "Choose the fastest or most direct flight even at higher cost"
+      ],
+      "hotel standard": [
+        "Budget hotel in a practical location to free budget for activities",
+        "Central mid-range hotel balancing comfort and location",
+        "Premium centrally located hotel optimized for comfort and convenience"
+      ],
+      "daily itinerary pace": [
+        "Light pace with one anchor activity and long breaks",
+        "Moderate pace with two planned activities and flexible free time",
+        "Dense sightseeing schedule maximizing major landmarks each day"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 04 - Travel Planning"
+    }
+  },
+  {
+    "id": "example_05",
+    "sentence": "Recommend the best treatment for this cancer patient.",
+    "context": "Healthcare treatment recommendation across oncology, genomics, and trial enrollment perspectives.",
+    "domain": "healthcare",
+    "gold_issues": [
+      "primary treatment goal",
+      "evidence basis",
+      "trial participation",
+      "treatment aggressiveness"
+    ],
+    "gold_options": {
+      "primary treatment goal": [
+        "Maximize overall survival even with higher toxicity",
+        "Balance survival benefit with quality of life and tolerability",
+        "Prioritize eligibility for promising targeted or experimental options"
+      ],
+      "evidence basis": [
+        "Standard-of-care population evidence should dominate the decision",
+        "Patient-specific genomic evidence should strongly steer treatment choice",
+        "Use population evidence as baseline and override it only with strong mutation or biomarker evidence"
+      ],
+      "trial participation": [
+        "Pursue clinical trial enrollment first if eligibility is clear",
+        "Use standard treatment first and consider a trial only on progression",
+        "Offer trial participation only if expected benefit is at least comparable to standard-of-care"
+      ],
+      "treatment aggressiveness": [
+        "Aggressive multi-modal treatment with maximum disease control intent",
+        "Moderate-intensity treatment that preserves function and tolerability",
+        "Stepwise escalation starting with the least burdensome viable therapy"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 05 - Healthcare Treatment"
+    }
+  },
+  {
+    "id": "example_06",
+    "sentence": "Submit my expenses quickly but correctly.",
+    "context": "Expense submission workflow across speed, compliance validation, and audit completeness.",
+    "domain": "finance_expense",
+    "gold_issues": [
+      "submission timing",
+      "validation depth",
+      "missing documentation handling",
+      "exception approval path"
+    ],
+    "gold_options": {
+      "submission timing": [
+        "Submit immediately and resolve only high-risk flags before filing",
+        "Submit once mandatory validation checks are complete and non-critical items are tagged pending",
+        "Delay submission until all receipts and checks are fully complete"
+      ],
+      "validation depth": [
+        "Full validation for all items regardless of amount",
+        "Tiered validation based on amount, category, and policy risk",
+        "Minimal pre-submit validation with more review after submission"
+      ],
+      "missing documentation handling": [
+        "Block any item missing required documentation",
+        "Allow low-risk items to submit with a pending-documentation flag",
+        "Permit temporary exceptions when a manager attests the expense is legitimate"
+      ],
+      "exception approval path": [
+        "Manager approval before submission for policy exceptions",
+        "Finance approval only for items above a defined threshold",
+        "Post-submit audit review for low-value exceptions with full pre-approval only for high-risk cases"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 06 - Expense Submission"
+    }
+  },
+  {
+    "id": "example_07",
+    "sentence": "Optimize my portfolio for growth with low risk.",
+    "context": "Investment portfolio negotiation over return, volatility, and execution discipline.",
+    "domain": "finance_investment",
+    "gold_issues": [
+      "portfolio objective",
+      "sector exposure",
+      "rebalancing trigger",
+      "risk ceiling"
+    ],
+    "gold_options": {
+      "portfolio objective": [
+        "Maximize long-term growth while tolerating above-average volatility",
+        "Balance growth and risk through diversified target allocations",
+        "Prioritize capital preservation with selective growth exposure"
+      ],
+      "sector exposure": [
+        "Increase technology exposure materially above benchmark",
+        "Keep sector exposure near benchmark weights with mild tilts",
+        "Cap technology concentration tightly to reduce drawdown risk"
+      ],
+      "rebalancing trigger": [
+        "Rebalance immediately when current allocation deviates from target",
+        "Rebalance only when drift exceeds a defined threshold or market regime changes",
+        "Use scheduled periodic rebalancing with limited discretionary overrides"
+      ],
+      "risk ceiling": [
+        "Accept higher volatility for stronger expected returns",
+        "Set a moderate volatility and drawdown ceiling",
+        "Use strict risk controls even if they materially reduce upside"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 07 - Investment Portfolio"
+    }
+  },
+  {
+    "id": "example_08",
+    "sentence": "Resolve this stockout efficiently.",
+    "context": "Supply chain recovery negotiation across procurement cost, logistics speed, and finance controls.",
+    "domain": "supply_chain",
+    "gold_issues": [
+      "definition of efficiency",
+      "supplier choice",
+      "shipping method",
+      "spend ceiling"
+    ],
+    "gold_options": {
+      "definition of efficiency": [
+        "Restore stock as fast as possible regardless of premium logistics cost",
+        "Balance cost and speed using a target service-restoration window",
+        "Minimize total spend unless the stockout cost clearly exceeds the premium"
+      ],
+      "supplier choice": [
+        "Choose the cheapest qualified supplier",
+        "Choose the supplier with the shortest reliable lead time",
+        "Split volume between a cheap supplier and a fast supplier"
+      ],
+      "shipping method": [
+        "Use fastest available expedited shipping",
+        "Use standard shipping unless downtime cost exceeds a defined threshold",
+        "Use a mixed mode with expedited partial replenishment and standard remainder"
+      ],
+      "spend ceiling": [
+        "Allow emergency overspend with later approval",
+        "Stay within a pre-defined emergency budget unless executive approval is obtained",
+        "Treat stockout recovery as exempt from normal spend caps for critical items"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 08 - Supply Chain Stockout"
+    }
+  },
+  {
+    "id": "example_09",
+    "sentence": "Deploy this release safely and fast.",
+    "context": "CI/CD release governance across deployment urgency, quality gates, and operational risk.",
+    "domain": "devops_cicd",
+    "gold_issues": [
+      "release gate criteria",
+      "testing threshold",
+      "risk tolerance",
+      "rollback trigger"
+    ],
+    "gold_options": {
+      "release gate criteria": [
+        "Release immediately unless there is a known critical blocker",
+        "Release only after mandatory quality and risk checks pass",
+        "Allow release with explicit sign-off when deadline pressure is high and residual risk is documented"
+      ],
+      "testing threshold": [
+        "All tests must pass before release",
+        "Critical-path and changed-code tests must pass while non-critical failures can be waived",
+        "Known flaky or non-blocking tests may fail if regression risk is judged low"
+      ],
+      "risk tolerance": [
+        "Delay any release when system risk indicators are elevated",
+        "Permit release if risk is mitigated by canary rollout and monitoring",
+        "Accept moderate operational risk to meet a fixed business deadline"
+      ],
+      "rollback trigger": [
+        "Rollback immediately on defined error-rate or latency threshold breach",
+        "Monitor briefly after release and rollback only if the signal persists",
+        "Rollback only after both technical threshold breach and human confirmation"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 4,
+      "source_yaml": "example_usecases_direct_9_missions.yaml",
+      "source_mission": "Example 09 - CI/CD Release"
+    }
+  },
+  {
+    "id": "quick_deal",
+    "sentence": "Two parties need to agree on price and delivery speed for an urgent supply order.",
+    "context": "Fast-moving commercial negotiation between a buyer and supplier over unit price and delivery timeline for an urgent order.",
+    "domain": "procurement",
+    "gold_issues": [
+      "price",
+      "delivery speed"
+    ],
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 2,
+      "source_yaml": "missions.yaml",
+      "source_mission": "Quick Deal",
+      "notes": "Smoke-test mission. Issues are stable across runs; options vary in surface form but cluster around the four canonical price bands and four delivery windows defined here."
+    },
+    "gold_options": {
+      "price": [
+        "$50 per unit",
+        "$75 per unit",
+        "$100 per unit",
+        "$120 per unit"
+      ],
+      "delivery speed": [
+        "Same-day delivery",
+        "Next-day delivery",
+        "Delivery within 3 days",
+        "Delivery within a week"
+      ]
+    }
+  },
+  {
+    "id": "cloud_platform",
+    "sentence": "Teams need to agree on compute tier, storage quota, support level, deployment region, and contract length for multi-year cloud infrastructure.",
+    "context": "Enterprise cloud procurement negotiation covering five independent dimensions: compute capacity, storage allocation, support entitlement, geographic deployment, and contract commitment.",
+    "domain": "cloud_infrastructure",
+    "gold_issues": [
+      "compute tier",
+      "storage quota",
+      "support level",
+      "deployment region",
+      "contract length"
+    ],
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 5,
+      "source_yaml": "missions.yaml",
+      "source_mission": "Cloud Platform",
+      "notes": "Issues are perfectly stable across all 11 observed runs. Gold options represent the four canonical positions per issue derived from the most frequently generated option clusters."
+    },
+    "gold_options": {
+      "compute tier": [
+        "Basic Tier",
+        "Standard Tier",
+        "High Performance Tier",
+        "Enterprise Tier"
+      ],
+      "storage quota": [
+        "1 TB",
+        "5 TB",
+        "10 TB",
+        "Unlimited"
+      ],
+      "support level": [
+        "Self-Service Support",
+        "Standard Support",
+        "Premium Support",
+        "24/7 Dedicated Support"
+      ],
+      "deployment region": [
+        "North America",
+        "Europe",
+        "Asia-Pacific",
+        "Global"
+      ],
+      "contract length": [
+        "1 year",
+        "3 years",
+        "5 years",
+        "10 years"
+      ]
+    }
+  }
+]

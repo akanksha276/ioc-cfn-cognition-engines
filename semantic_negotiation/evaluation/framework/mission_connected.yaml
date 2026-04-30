@@ -1,0 +1,116 @@
+# mission_connected.yaml — Connected negotiation mission sequence for memory-system evaluation
+#
+# Copyright 2026 Cisco Systems, Inc. and its affiliates
+# SPDX-License-Identifier: Apache-2.0
+#
+# PURPOSE
+# ───────
+# 10 thematically connected missions in the "enterprise technology procurement" domain.
+# An organisation's procurement team negotiates a series of technology contracts over
+# the course of a year.  The same family of commercial issues recurs across missions
+# (price, support tier, contract length, data residency, compliance posture, etc.).
+#
+# A negotiation system with episodic memory should observe these recurring patterns and,
+# for later missions, propose high-recall issues and their canonical option vocabulary
+# without rediscovering them from scratch each time.
+#
+# GROUND TRUTH
+# ────────────
+# Gold issues and gold options for each mission live in:
+#   ground_truth/connected_missions_10_gold.json
+# Issues and options are intentionally absent here — they are discovered dynamically
+# by the pipeline (IntentDiscovery + OptionsGeneration), exactly as in missions.yaml.
+#
+# MEMORY EVALUATION SIGNAL
+# ────────────────────────
+# A memory-less baseline should show roughly constant metrics across the sequence.
+# A memory-augmented system should show improving trends as sequence_index grows:
+#   ↓ rounds to convergence    — memory seeds the agenda with known-good issues
+#   ↑ issue recall             — recurring issues proposed before LLM re-discovers them
+#   ↑ option precision         — canonical option labels reused, not paraphrased
+#
+# EXTRA FIELDS (ignored by the negotiation pipeline, used by the memory eval harness)
+#   sequence_index  : 1-based position in the connected sequence
+#   prior_missions  : sequence_index values this mission's issues draw from
+#   memory_tags     : domain tag for memory retrieval grouping
+
+missions:
+  - name: "Connected 01 - SaaS CRM Procurement"
+    sequence_index: 1
+    prior_missions: []
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The procurement team and a CRM vendor must agree on commercial terms for a company-wide SaaS CRM deployment covering the full sales organisation. The vendor wants a higher annual fee to fund dedicated onboarding and a named support contact; the buyer wants to cap seat costs, keep flexibility on term length, and lock in premium support at a predictable price with a payment schedule that aligns to the company's budget cycle.
+    n_steps: 30
+
+  - name: "Connected 02 - Cloud Object Storage Contract"
+    sequence_index: 2
+    prior_missions: [1]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The infrastructure team and a cloud storage provider must agree on a contract for the object storage layer underpinning the company's data platform.  The legal team has mandated that regulated data must stay within specific jurisdictions; the infrastructure team wants flexibility on storage class to control costs as data ages; and the finance team needs a payment schedule that avoids large upfront commitments.
+    n_steps: 30
+
+  - name: "Connected 03 - Endpoint Security Suite"
+    sequence_index: 3
+    prior_missions: [1]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The security team and an endpoint-protection vendor must agree on a deployment covering all managed devices across three office locations. The security team insists on a specific compliance certification to satisfy an upcoming external audit and needs a contractual response-time guarantee for active incidents; the vendor wants a multi-year commitment to justify assigning a dedicated engineering team to the account.
+    n_steps: 30
+
+  - name: "Connected 04 - API Gateway and Developer Platform"
+    sequence_index: 4
+    prior_missions: [1, 2, 3]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The platform engineering team and an API gateway vendor must agree on terms for the gateway that handles all internal and external API traffic. Commercial dimensions familiar from recent vendor negotiations — price, support quality, contract length, data residency, and incident response time — are all on the table again, alongside one new dimension specific to API platforms: how burst-traffic is handled when usage spikes beyond the contracted throughput ceiling.
+    n_steps: 35
+
+  - name: "Connected 05 - Data Analytics Platform"
+    sequence_index: 5
+    prior_missions: [1, 2, 3, 4]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The data science team and an analytics platform vendor must negotiate a contract that gives analysts access to sensitive business data subject to GDPR and internal data-handling policy.  Data residency and security posture are non-negotiable requirements from the legal and compliance teams; seat count and annual price are the primary commercial levers; and the payment schedule needs to align with a mid-year budget cycle rather than a calendar-year renewal.
+    n_steps: 35
+
+  - name: "Connected 06 - DevOps Toolchain License"
+    sequence_index: 6
+    prior_missions: [1, 5]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The engineering organisation and a DevOps platform vendor must agree on a license covering the full developer population across product and infrastructure teams.  Beyond the familiar price and seat-count levers, the engineering leads care deeply about how quickly new platform versions are made available and how long older releases are supported — the team cannot absorb the operational cost of surprise forced migrations.  Support quality during incidents is also a recurring friction point.
+    n_steps: 30
+
+  - name: "Connected 07 - AI and ML Compute Platform"
+    sequence_index: 7
+    prior_missions: [2, 3, 5, 6]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The AI research team and an ML compute platform vendor must agree on a contract for GPU-backed training and inference infrastructure.  Training data is subject to GDPR so data residency is a hard constraint; the team needs clarity on how GPU generations are upgraded over the contract term so that a 3-year commitment does not leave them on ageing hardware; the deployment model affects how the security team audits the environment; and support responsiveness during training-job failures is critical to meeting research deadlines.
+    n_steps: 35
+
+  - name: "Connected 08 - Enterprise ERP System"
+    sequence_index: 8
+    prior_missions: [1, 2, 3, 5, 6, 7]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The CTO office and an ERP vendor must agree on the largest single software contract the company has ever signed.  Every commercial dimension from prior negotiations is on the table simultaneously: total annual cost, how many employees are licensed, where sensitive financial data is stored, what compliance certifications the platform holds, support quality, payment structure, and the length of the commitment.  The board is also requiring an explicit exit clause after being burned by vendor lock-in on a previous system.
+    n_steps: 40
+
+  - name: "Connected 09 - Network Infrastructure SLA"
+    sequence_index: 9
+    prior_missions: [3, 4, 6, 7]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The network engineering team and a managed network provider must agree on a service agreement for the company's primary and secondary WAN links. Guaranteed response time under a link failure is the engineering team's top priority; how the network is deployed — carrier-managed versus self-managed routers — has major operational and security implications; firmware and hardware upgrade cycles are a recurring source of contention; and the team wants a multi-year rate lock to avoid annual renegotiation.
+    n_steps: 35
+
+  - name: "Connected 10 - Compliance and Audit Platform"
+    sequence_index: 10
+    prior_missions: [1, 3, 5, 8]
+    memory_tags: ["enterprise-tech-procurement"]
+    content_text: >
+      The compliance team and a GRC platform vendor must close the year with a contract for the tool that will manage audits, risk registers, and regulatory evidence across the organisation.  Price, support quality, and contract length are now well-understood territory after nine prior vendor negotiations.  The key new dimension is whether the vendor holds a government-grade accreditation that the company's external auditors are beginning to require — and whether the platform can become the system of record for the company's own compliance posture going forward.
+    n_steps: 30

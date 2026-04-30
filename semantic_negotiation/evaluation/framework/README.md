@@ -5,7 +5,8 @@ across a dataset of missions.  Two complementary workflows are supported:
 
 | Workflow | Script | Purpose |
 |---|---|---|
-| **GOAL A** – LLM negotiation run | `test_via_semantic_neg_agents_configured.py` | Drive real SAO negotiations; save per-mission traces |
+| **GOAL A** – LLM negotiation run | `test_via_semantic_neg_agents_configured.py` | Drive real SAO negotiations via the local semantic-negotiation app; save per-mission traces |
+| **GOAL A-CFN** – LLM negotiation via CFN service | `test_via_cfn_service.py` | Same as GOAL A but routes through the CFN service (`ioc-cognition-fabric-node-svc`) instead of the local app |
 | **GOAL B** – Offline benchmark | `evaluation/eval_pipeline.py` | Score saved traces (or live LLM calls) against gold datasets |
 
 Legacy rule-based scripts (`run_evaluation.py`, `runner.py`, `callback_env.py`) are retained
@@ -22,8 +23,10 @@ evaluation/
 └── framework/
     ├── README.md                       # This file
     ├── missions.yaml                   # All 16 missions (General x 2, Hard x 5, Example x 9)
-    ├── agent_configs.yaml              # Per-mission agent wiring (references persona files)
+    ├── agent_configs.yaml              # Per-mission LLM agent wiring (references persona files)
+    ├── cfn_service_config.yaml         # CFN connection + rule-based agent defaults for GOAL A-CFN
     ├── test_via_semantic_neg_agents_configured.py   # GOAL A v2: per-mission agents + --filter
+    ├── test_via_cfn_service.py                      # GOAL A-CFN: same as v2 but via CFN service
     ├── test_via_semantic_neg_agents.py              # GOAL A v1: original, 3 generic agents
     │
     ├── ground_truth/
@@ -137,6 +140,111 @@ poetry run python evaluation/framework/test_via_semantic_neg_agents_configured.p
 **Key trace file:** `neg_trace/<timestamp>/<mission_slug>/01_initiate_response.json`
 Contains `payload.issues` and `payload.options_per_issue` -- the LLM-discovered
 negotiation space used by GOAL B.
+
+---
+
+## GOAL A-CFN -- Run LLM negotiations via the CFN service
+
+`test_via_cfn_service.py` is identical in purpose to the GOAL A script above, but
+it calls the **CFN service** (`ioc-cognition-fabric-node-svc`) endpoints instead of the
+local semantic-negotiation app.  This lets you validate the full deployment path
+through the Cognition Fabric Node.
+
+### Prerequisites
+
+1. The CFN service must be running (default `http://localhost:9002`):
+
+   ```bash
+   cd ioc-cognition-fabric-node-svc && ./localrun.sh
+   ```
+
+2. A valid `workspace_id` and `mas_id` must exist in the management plane.
+
+### Configuration (`cfn_service_config.yaml`)
+
+All connection settings and agent definitions live in `cfn_service_config.yaml`
+next to the script.  Edit it once instead of passing CLI flags every time:
+
+```yaml
+# CFN service connection
+cfn_url: http://localhost:9002
+workspace_id: ws1
+mas_id: mas1
+
+# Port for the local agent callback server
+agent_port: 8092
+
+# Paths (relative to this config file)
+missions_file: missions.yaml
+agent_configs_file: agent_configs.yaml
+
+# Default rule-based agents — add/remove entries to change the agent count.
+# Per-mission entries in agent_configs.yaml still override these.
+agents:
+  - id: agent-a
+    name: Agent A
+    prefer_low: true       # prefers cheapest options
+    exponent: 2.0          # Boulware concession curve
+    min_reservation: 0.0
+
+  - id: agent-b
+    name: Agent B
+    prefer_low: false      # prefers premium options
+    exponent: 2.0
+    min_reservation: 0.0
+
+  - id: agent-c
+    name: Agent C
+    prefer_low: true
+    exponent: 1.0          # linear (concedes faster)
+    min_reservation: 0.0
+```
+
+**Agent priority order:**
+1. Mission-specific LLM personas from `agent_configs.yaml` (if entry exists for the mission)
+2. Rule-based agents defined under `agents:` in `cfn_service_config.yaml`
+3. Default LLM agents from `agent_configs.yaml → default_agents`
+4. Built-in fallback (3 generic agents A/B/C)
+
+### Usage
+
+```bash
+cd semantic_negotiation
+
+# Minimal — pass the three required identifiers and a mission filter
+poetry run python evaluation/framework/test_via_cfn_service.py \
+    --cfn-url http://localhost:9002 \
+    --workspace-id WSID \
+    --mas-id MASID \
+    --filter "Quick Deal"
+
+# Run all missions
+poetry run python evaluation/framework/test_via_cfn_service.py \
+    --cfn-url http://localhost:9002 \
+    --workspace-id WSID \
+    --mas-id MASID
+
+# Filter shortcuts
+#   --filter hard        → Hard 01-05
+#   --filter example     → Example 01-09
+#   --filter "Hard 01"   → single mission by name substring
+#   --filter connected   → Connected 01-10 (memory evaluation sequence)
+```
+
+### CLI reference
+
+| Flag | Default | Description |
+|---|---|---|
+| `--config PATH` | `cfn_service_config.yaml` | YAML config file (all settings; CLI flags override) |
+| `--cfn-url URL` | from config / `http://localhost:9002` | Base URL of the CFN service |
+| `--workspace-id ID` | from config | Workspace ID for CFN API routes |
+| `--mas-id ID` | from config | Multi-Agentic System ID for CFN API routes |
+| `--agent-port PORT` | from config / `8092` | Port for the local agent callback server |
+| `--missions-file PATH` | from config / `missions.yaml` | Path to YAML missions file |
+| `--agent-configs PATH` | from config / `agent_configs.yaml` | Path to agent persona configs |
+| `--filter TEXT` | `None` | Case-insensitive substring filter on mission names |
+
+Traces are saved under `neg_trace/<YYYYMMDD_HHMMSS>/` in the same format as GOAL A.
 
 ---
 

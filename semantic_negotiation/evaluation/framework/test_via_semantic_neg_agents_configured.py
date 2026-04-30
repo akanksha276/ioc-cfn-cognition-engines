@@ -978,7 +978,104 @@ def make_agent_app(
                     _save_json(round_dir / f"{action}__{slug}__reply.json", reply)
                 return reply
 
-            # Unexpected agent type — return reject as safe fallback.
+            # ── Rule-based agents (LocalAgent / NegMASConcessionAgent) ───────
+            elif isinstance(agent, LocalAgent):
+                current_offer: dict[str, str] = payload.get("current_offer") or {}
+                allowed_actions: list[str] = payload.get("allowed_actions") or []
+
+                if action == "propose":
+                    # Agent is designated proposer — must counter_offer.
+                    offer, _asp = agent.decide_propose(
+                        round_num, n_steps, options_per_issue
+                    )
+                    action_str = "counter_offer"
+                    sao_resp = SAOResponse(
+                        response=ResponseType.REJECT_OFFER,
+                        outcome=offer,
+                    )
+                    if not is_shadow:
+                        if round_num != trace_state["dialogue_last_round"]:
+                            trace_state["dialogue_log"].append("")
+                            trace_state["dialogue_log"].append(
+                                f"[Round {round_num}]  Proposer: {agent.name}"
+                            )
+                            trace_state["dialogue_last_round"] = round_num
+                        offer_str = "  |  ".join(
+                            f"{k}: '{v}'" for k, v in offer.items()
+                        )
+                        trace_state["dialogue_log"].append(f"  OFFER    : {offer_str}")
+                    reply_payload = {
+                        "action": "counter_offer",
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                        "offer": offer,
+                    }
+                else:
+                    # Agent is responding (accept/reject) to an existing offer.
+                    action_str = agent.decide_respond(
+                        current_offer, round_num, n_steps, options_per_issue
+                    )
+                    if action_str == "accept":
+                        sao_resp = SAOResponse(
+                            response=ResponseType.ACCEPT_OFFER,
+                            outcome=current_offer or None,
+                        )
+                        if not is_shadow:
+                            if round_num != trace_state["dialogue_last_round"]:
+                                trace_state["dialogue_log"].append("")
+                                trace_state["dialogue_log"].append(
+                                    f"[Round {round_num}]"
+                                )
+                                if current_offer:
+                                    _os = "  |  ".join(
+                                        f"{k}: '{v}'" for k, v in current_offer.items()
+                                    )
+                                    trace_state["dialogue_log"].append(
+                                        f"  OFFER    : {_os}"
+                                    )
+                                trace_state["dialogue_last_round"] = round_num
+                            trace_state["dialogue_log"].append(
+                                f"  [{agent.name:<8}]  ACCEPT ✓"
+                            )
+                    else:
+                        sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER)
+                        if not is_shadow:
+                            if round_num != trace_state["dialogue_last_round"]:
+                                trace_state["dialogue_log"].append("")
+                                trace_state["dialogue_log"].append(
+                                    f"[Round {round_num}]"
+                                )
+                                if current_offer:
+                                    _os = "  |  ".join(
+                                        f"{k}: '{v}'" for k, v in current_offer.items()
+                                    )
+                                    trace_state["dialogue_log"].append(
+                                        f"  OFFER    : {_os}"
+                                    )
+                                trace_state["dialogue_last_round"] = round_num
+                            trace_state["dialogue_log"].append(
+                                f"  [{agent.name:<8}]  REJECT"
+                            )
+                        action_str = "reject"
+
+                    reply_payload = {
+                        "action": action_str,
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                    }
+
+                reply = _build_sstp_reply(
+                    session_id,
+                    agent.name,
+                    {**reply_payload, "participant_id": participant_id},
+                    sao_response=sao_resp,
+                    sao_state=incoming_sao_state,
+                )
+                if not is_shadow:
+                    _save_json(round_dir / f"{action_str}__{slug}__reply.json", reply)
+                return reply
             reply_payload = {"action": "reject", "round": round_num}
             sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER)
             reply = _build_sstp_reply(

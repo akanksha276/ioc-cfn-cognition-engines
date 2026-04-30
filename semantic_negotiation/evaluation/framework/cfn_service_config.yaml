@@ -1,0 +1,34 @@
+# cfn_service_config.yaml
+#
+# Configuration for test_via_cfn_service.py
+#
+# All values can be overridden via CLI flags; the CLI flag always wins.
+# Run with:
+#   poetry run python evaluation/framework/test_via_cfn_service.py --config evaluation/framework/cfn_service_config.yaml
+
+# ── CFN service connection ─────────────────────────────────────────────────────
+cfn_url: http://localhost:9002
+workspace_id: ws1
+mas_id: mas1
+
+# ── Agent callback server ──────────────────────────────────────────────────────
+# Port for the local FastAPI server that the CFN calls back on each round.
+# Must not clash with the CFN service port or any other running service.
+agent_port: 8092
+
+# ── Missions ───────────────────────────────────────────────────────────────────
+# Path to missions YAML file (relative to this config file).
+# Leave blank to use the default missions.yaml next to this script.
+missions_file: missions.yaml
+
+# ── Agents ────────────────────────────────────────────────────────────────────
+# Rule-based agents (NegMASConcessionAgent). Leave this list empty to use the
+# LLMNegotiationAgent personas from agent_configs_file instead.
+agents: []
+
+# ── Per-mission agent overrides ────────────────────────────────────────────────
+# Path to agent_configs.yaml containing per-mission LLM agent personas
+# (relative to this config file). Leave blank to use agent_configs.yaml
+# in the same directory as this script.
+# When set, per-mission entries in that file override the agents list above.
+agent_configs_file: agent_configs.yaml

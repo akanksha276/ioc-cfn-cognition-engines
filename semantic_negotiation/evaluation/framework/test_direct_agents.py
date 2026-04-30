@@ -57,6 +57,13 @@ if _sna_app_root not in sys.path:
 
 from config.utils import get_llm_provider  # noqa: E402
 
+# Reuse agent-config loading from the configured-agents test script.
+from test_via_semantic_neg_agents_configured import (  # noqa: E402
+    _AGENT_CONFIGS_FILE,
+    _load_agent_configs,
+    _slug,
+)
+
 # ---------------------------------------------------------------------------
 # Missions
 # ---------------------------------------------------------------------------
@@ -82,7 +89,9 @@ def _save_json(path: Path, data: Any) -> None:
 # Agent personas
 # ---------------------------------------------------------------------------
 
-AGENT_PERSONAS: dict[str, dict[str, Any]] = {
+# Hardcoded fallback — used when agent_configs.yaml has no entry for a mission
+# and no default_agents are defined.
+_FALLBACK_PERSONAS: dict[str, dict[str, Any]] = {
     "agent-a": {
         "name": "Agent A",
         "prefer_low": True,
@@ -137,6 +146,55 @@ AGENT_PERSONAS: dict[str, dict[str, Any]] = {
         ),
     },
 }
+
+# Keep the old name as an alias so any external code that references AGENT_PERSONAS
+# still works against the fallback table.
+AGENT_PERSONAS = _FALLBACK_PERSONAS
+
+
+def _build_direct_personas(
+    mission: dict[str, Any],
+    agent_configs: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Resolve per-mission agent personas from *agent_configs*.
+
+    Lookup order (mirrors ``_build_agents_for_mission`` in the configured script):
+    1. ``agent_configs["mission_agents"][<mission_slug>]`` — mission-specific personas
+    2. ``agent_configs["default_agents"]``                 — dataset-level defaults
+    3. ``_FALLBACK_PERSONAS``                              — hardcoded built-in fallback
+
+    Returns a ``{participant_id: {name, persona, prefer_low}}`` dict compatible
+    with ``_call_agent``.
+    """
+    mission_slug = _slug(mission["name"])
+    cfg_list: list[dict[str, Any]] = (
+        agent_configs.get("mission_agents", {}).get(mission_slug)
+        or agent_configs.get("default_agents")
+        or []
+    )
+
+    if cfg_list:
+        source = (
+            "mission-specific"
+            if agent_configs.get("mission_agents", {}).get(mission_slug)
+            else "default"
+        )
+        personas: dict[str, dict[str, Any]] = {}
+        for cfg in cfg_list:
+            pid = cfg["id"]
+            personas[pid] = {
+                "name": cfg.get("name", pid),
+                "prefer_low": bool(cfg.get("prefer_low", True)),
+                "persona": cfg.get("persona", "You are a pragmatic negotiator.").strip(),
+            }
+        print(
+            f"  Agent config  : {source} "
+            f"({len(personas)} agents: {list(personas.keys())})"
+        )
+        return personas
+
+    print("  Agent config  : built-in fallback")
+    return _FALLBACK_PERSONAS
 
 # ---------------------------------------------------------------------------
 # LLM call
@@ -193,9 +251,10 @@ def _call_agent(
     n_steps: int,
     role: str,  # "proposer" or "responder"
     current_proposal: dict | None,
+    personas: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     """Ask one agent for its next move. Returns a structured decision dict."""
-    info = AGENT_PERSONAS[agent_id]
+    info = personas[agent_id]
 
     history_text = "\n".join(f"  [{m['from']}] {m['text']}" for m in history[-20:])
 
@@ -299,11 +358,13 @@ def _run_direct(
     mission: dict[str, Any],
     trace_dir: Path,
     agent_ids: list[str] | None = None,
+    personas: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     content = mission.get("content_text", "").strip().replace("\n", " ")
     n_steps: int = mission.get("n_steps", 30)
+    _personas = personas or _FALLBACK_PERSONAS
     if agent_ids is None:
-        agent_ids = list(AGENT_PERSONAS.keys())
+        agent_ids = list(_personas.keys())
 
     history: list[dict] = []
     message_trace: list[dict] = []
@@ -345,6 +406,7 @@ def _run_direct(
             n_steps=n_steps,
             role="proposer",
             current_proposal=current_proposal,
+            personas=_personas,
         )
 
         proposal_text = decision.get("text", "")
@@ -389,6 +451,7 @@ def _run_direct(
                 n_steps=n_steps,
                 role="responder",
                 current_proposal=current_proposal,
+                personas=_personas,
             )
 
             status = resp.get("status", "counter")
@@ -473,22 +536,37 @@ def _run_direct(
 # ---------------------------------------------------------------------------
 
 
-def run(missions_file: Path | None = None, n_agents: int = 3) -> None:
+def run(
+    missions_file: Path | None = None,
+    n_agents: int = 3,
+    agent_configs_file: Path | None = None,
+) -> None:
     missions = _load_missions(missions_file or _MISSIONS_FILE)
 
-    _all_ids = list(AGENT_PERSONAS.keys())
+    agent_configs = _load_agent_configs(agent_configs_file)
+    cfg_path = agent_configs_file or _AGENT_CONFIGS_FILE
+    if agent_configs["default_agents"] or agent_configs["mission_agents"]:
+        print(
+            f"Agent configs : {cfg_path.resolve()}\n"
+            f"  {len(agent_configs['default_agents'])} default agents, "
+            f"{len(agent_configs['mission_agents'])} mission-specific sets"
+        )
+    else:
+        print("Agent configs : none found — using built-in fallback")
+
+    # Resolve a sample persona set to validate n_agents against the first mission.
+    sample_personas = _build_direct_personas(missions[0], agent_configs)
+    _all_ids = list(sample_personas.keys())
     if n_agents < 2 or n_agents > len(_all_ids):
         raise ValueError(
             f"--n-agents must be between 2 and {len(_all_ids)} (got {n_agents})"
         )
-    active_agent_ids = _all_ids[:n_agents]
 
     run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_trace_dir = Path("neg_trace") / f"direct_{run_timestamp}_{n_agents}ag"
     run_trace_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Run trace root : {run_trace_dir.resolve()}")
-    print(f"Agents         : {n_agents} ({', '.join(active_agent_ids)})")
     print(f"Missions       : {len(missions)}")
     for m in missions:
         print(f"  * {m['name']}")
@@ -508,18 +586,21 @@ def run(missions_file: Path | None = None, n_agents: int = 3) -> None:
         print(f"  Session : {session_id}")
         print(f"{'=' * 62}\n")
 
+        personas = _build_direct_personas(mission, agent_configs)
+        active_agent_ids = list(personas.keys())[:n_agents]
+
         _save_json(
             trace_dir / "00_mission.json",
             {
                 "session_id": session_id,
                 "content_text": mission.get("content_text", ""),
                 "n_steps": mission.get("n_steps", 30),
-                "n_agents": n_agents,
+                "n_agents": len(active_agent_ids),
                 "agents": [
                     {
                         "id": aid,
-                        "name": AGENT_PERSONAS[aid]["name"],
-                        "persona": AGENT_PERSONAS[aid]["persona"],
+                        "name": personas[aid]["name"],
+                        "persona": personas[aid]["persona"],
                     }
                     for aid in active_agent_ids
                 ],
@@ -531,6 +612,7 @@ def run(missions_file: Path | None = None, n_agents: int = 3) -> None:
             mission=mission,
             trace_dir=trace_dir,
             agent_ids=active_agent_ids,
+            personas=personas,
         )
         _save_json(trace_dir / "final_result.json", result)
 
@@ -571,13 +653,22 @@ if __name__ == "__main__":
         help="Path to a YAML missions file (default: missions.yaml)",
     )
     parser.add_argument(
+        "--agent-configs",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to agent_configs.yaml with per-mission LLM agent personas "
+            f"(default: {_AGENT_CONFIGS_FILE})"
+        ),
+    )
+    parser.add_argument(
         "--n-agents",
         type=int,
         default=3,
         metavar="N",
         help=(
-            "Number of agents to include (2-5, default 3). "
-            "Agents are drawn in order: agent-a, agent-b, agent-c, agent-d, agent-e. "
+            "Number of agents to include (default 3). "
+            "Agents are drawn in order from the resolved persona set. "
             "More agents = more LLM calls per round AND a harder consensus condition."
         ),
     )
@@ -585,4 +676,5 @@ if __name__ == "__main__":
     run(
         missions_file=Path(args.missions_file) if args.missions_file else None,
         n_agents=args.n_agents,
+        agent_configs_file=Path(args.agent_configs) if args.agent_configs else None,
     )

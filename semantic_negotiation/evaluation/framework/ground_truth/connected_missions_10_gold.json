@@ -1,0 +1,691 @@
+[
+  {
+    "id": "connected_01",
+    "sentence": "Two parties need to agree on commercial terms for a company-wide SaaS CRM deployment covering the full sales organisation.",
+    "context": "Enterprise SaaS procurement negotiation over price, support quality, contract length, seat count, and payment terms.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "user_seats",
+      "payment_terms"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$20k/year",
+        "$35k/year",
+        "$50k/year",
+        "$75k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "user_seats": [
+        "up to 50 seats",
+        "up to 100 seats",
+        "up to 250 seats",
+        "unlimited seats"
+      ],
+      "payment_terms": [
+        "monthly",
+        "quarterly",
+        "annual upfront",
+        "multi-year upfront"
+      ]
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 5,
+      "sequence_index": 1,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 01 - SaaS CRM Procurement",
+      "recurring_issues": [],
+      "new_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "user_seats",
+        "payment_terms"
+      ],
+      "memory_note": "Baseline mission — establishes the core commercial vocabulary. No prior history."
+    }
+  },
+  {
+    "id": "connected_02",
+    "sentence": "The infrastructure team and a cloud storage provider must agree on a contract for the object storage layer underpinning the company's data platform.",
+    "context": "Cloud infrastructure procurement negotiation introducing data residency and storage tier alongside recurring commercial issues.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "contract_duration",
+      "data_residency",
+      "payment_terms",
+      "storage_tier"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$15k/year",
+        "$30k/year",
+        "$50k/year",
+        "$80k/year"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "data_residency": [
+        "US only",
+        "EU only",
+        "US + EU",
+        "global (any region)"
+      ],
+      "payment_terms": [
+        "monthly",
+        "quarterly",
+        "annual upfront",
+        "multi-year upfront"
+      ],
+      "storage_tier": [
+        "hot (always-on)",
+        "warm (infrequent access)",
+        "cold (archival)",
+        "tiered (auto-migrate)"
+      ]
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "num_issues": 5,
+      "sequence_index": 2,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 02 - Cloud Object Storage Contract",
+      "recurring_issues": [
+        "annual_price",
+        "contract_duration",
+        "payment_terms"
+      ],
+      "new_issues": [
+        "data_residency",
+        "storage_tier"
+      ],
+      "memory_note": "3/5 issues seen in M1. Memory should propose annual_price, contract_duration, payment_terms with correct canonical options."
+    }
+  },
+  {
+    "id": "connected_03",
+    "sentence": "The security team and an endpoint-protection vendor must agree on a deployment covering all managed devices across three office locations.",
+    "context": "Enterprise security software procurement introducing compliance certification, SLA response time, and deployment model.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "security_compliance",
+      "sla_response_time",
+      "deployment_model"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$25k/year",
+        "$45k/year",
+        "$70k/year",
+        "$100k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "security_compliance": [
+        "SOC 2 Type I",
+        "SOC 2 Type II",
+        "ISO 27001",
+        "FedRAMP Moderate"
+      ],
+      "sla_response_time": [
+        "best effort",
+        "4-hour response",
+        "1-hour response",
+        "15-minute response"
+      ],
+      "deployment_model": [
+        "SaaS (cloud-managed)",
+        "on-premises",
+        "hybrid",
+        "air-gapped"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 5,
+      "sequence_index": 3,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 03 - Endpoint Security Suite",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier"
+      ],
+      "new_issues": [
+        "security_compliance",
+        "sla_response_time",
+        "deployment_model"
+      ],
+      "memory_note": "2/5 issues seen in M1. Memory should nail annual_price and support_tier (including option vocabulary) from first occurrence."
+    }
+  },
+  {
+    "id": "connected_04",
+    "sentence": "The platform engineering team and an API gateway vendor must agree on terms for the gateway that handles all internal and external API traffic.",
+    "context": "API platform procurement with dense overlap across prior contracts plus one domain-specific new issue for burst-traffic handling.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "data_residency",
+      "sla_response_time",
+      "rate_limit_policy"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$30k/year",
+        "$55k/year",
+        "$80k/year",
+        "$120k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "data_residency": [
+        "US only",
+        "EU only",
+        "US + EU",
+        "global (any region)"
+      ],
+      "sla_response_time": [
+        "best effort",
+        "4-hour response",
+        "1-hour response",
+        "15-minute response"
+      ],
+      "rate_limit_policy": [
+        "hard cap (no burst)",
+        "soft cap (10 % burst)",
+        "elastic burst (pay-per-use)",
+        "unlimited burst"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 6,
+      "sequence_index": 4,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 04 - API Gateway and Developer Platform",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "data_residency",
+        "sla_response_time"
+      ],
+      "new_issues": [
+        "rate_limit_policy"
+      ],
+      "memory_note": "5/6 issues are recurring. By M4 a memory system should propose 5 correct issues with canonical option sets before LLM runs."
+    }
+  },
+  {
+    "id": "connected_05",
+    "sentence": "The data science team and an analytics platform vendor must negotiate a contract that gives analysts access to sensitive business data subject to GDPR and internal data-handling policy.",
+    "context": "Data analytics platform procurement with GDPR data-residency mandate and all-recurring issue vocabulary.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "contract_duration",
+      "data_residency",
+      "security_compliance",
+      "user_seats",
+      "payment_terms"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$40k/year",
+        "$70k/year",
+        "$100k/year",
+        "$150k/year"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "data_residency": [
+        "US only",
+        "EU only",
+        "US + EU",
+        "global (any region)"
+      ],
+      "security_compliance": [
+        "SOC 2 Type I",
+        "SOC 2 Type II",
+        "ISO 27001",
+        "FedRAMP Moderate"
+      ],
+      "user_seats": [
+        "up to 50 seats",
+        "up to 100 seats",
+        "up to 250 seats",
+        "unlimited seats"
+      ],
+      "payment_terms": [
+        "monthly",
+        "quarterly",
+        "annual upfront",
+        "multi-year upfront"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 6,
+      "sequence_index": 5,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 05 - Data Analytics Platform",
+      "recurring_issues": [
+        "annual_price",
+        "contract_duration",
+        "data_residency",
+        "security_compliance",
+        "user_seats",
+        "payment_terms"
+      ],
+      "new_issues": [],
+      "memory_note": "6/6 issues are recurring. This is the first fully-recurring mission. Memory recall should approach 100%; option precision should be high."
+    }
+  },
+  {
+    "id": "connected_06",
+    "sentence": "The engineering organisation and a DevOps platform vendor must agree on a license covering the full developer population across product and infrastructure teams.",
+    "context": "DevOps toolchain license negotiation introducing software upgrade policy alongside familiar commercial levers.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "user_seats",
+      "upgrade_policy"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$30k/year",
+        "$55k/year",
+        "$85k/year",
+        "$120k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "user_seats": [
+        "up to 50 seats",
+        "up to 100 seats",
+        "up to 250 seats",
+        "unlimited seats"
+      ],
+      "upgrade_policy": [
+        "mandatory (30-day notice)",
+        "mandatory (90-day notice)",
+        "optional (12-month window)",
+        "optional (24-month window)"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 5,
+      "sequence_index": 6,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 06 - DevOps Toolchain License",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "user_seats"
+      ],
+      "new_issues": [
+        "upgrade_policy"
+      ],
+      "memory_note": "4/5 issues recurring from M1/M5. Memory should reach high recall for the 4 known issues immediately."
+    }
+  },
+  {
+    "id": "connected_07",
+    "sentence": "The AI research team and an ML compute platform vendor must agree on a contract for GPU-backed training and inference infrastructure.",
+    "context": "AI/ML compute platform procurement with broad issue overlap across prior contracts and one new compute-tier dimension.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "data_residency",
+      "upgrade_policy",
+      "deployment_model",
+      "compute_tier"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$60k/year",
+        "$100k/year",
+        "$150k/year",
+        "$250k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "data_residency": [
+        "US only",
+        "EU only",
+        "US + EU",
+        "global (any region)"
+      ],
+      "upgrade_policy": [
+        "mandatory (30-day notice)",
+        "mandatory (90-day notice)",
+        "optional (12-month window)",
+        "optional (24-month window)"
+      ],
+      "deployment_model": [
+        "SaaS (cloud-managed)",
+        "on-premises",
+        "hybrid",
+        "air-gapped"
+      ],
+      "compute_tier": [
+        "shared GPU (best effort)",
+        "reserved GPU (guaranteed allocation)",
+        "dedicated node (full isolation)",
+        "bare-metal cluster"
+      ]
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "num_issues": 7,
+      "sequence_index": 7,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 07 - AI and ML Compute Platform",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "data_residency",
+        "upgrade_policy",
+        "deployment_model"
+      ],
+      "new_issues": [
+        "compute_tier"
+      ],
+      "memory_note": "6/7 issues recurring from M2-M6. Largest issue set so far. Memory precision on canonical options should be measurably better than M1-M3 baseline."
+    }
+  },
+  {
+    "id": "connected_08",
+    "sentence": "The CTO office and an ERP vendor must agree on the largest single software contract the company has ever signed.",
+    "context": "Enterprise ERP procurement — maximum issue overlap across all prior contracts plus board-required exit clause.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "data_residency",
+      "security_compliance",
+      "user_seats",
+      "payment_terms",
+      "exit_clause"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$100k/year",
+        "$175k/year",
+        "$250k/year",
+        "$400k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "data_residency": [
+        "US only",
+        "EU only",
+        "US + EU",
+        "global (any region)"
+      ],
+      "security_compliance": [
+        "SOC 2 Type I",
+        "SOC 2 Type II",
+        "ISO 27001",
+        "FedRAMP Moderate"
+      ],
+      "user_seats": [
+        "up to 50 seats",
+        "up to 100 seats",
+        "up to 250 seats",
+        "unlimited seats"
+      ],
+      "payment_terms": [
+        "monthly",
+        "quarterly",
+        "annual upfront",
+        "multi-year upfront"
+      ],
+      "exit_clause": [
+        "no early termination",
+        "exit with 90-day notice (no penalty)",
+        "exit with 90-day notice (3-month penalty)",
+        "exit with 180-day notice (6-month penalty)"
+      ]
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "num_issues": 8,
+      "sequence_index": 8,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 08 - Enterprise ERP System",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "data_residency",
+        "security_compliance",
+        "user_seats",
+        "payment_terms"
+      ],
+      "new_issues": [
+        "exit_clause"
+      ],
+      "memory_note": "7/8 issues recurring from M1-M7. Primary benchmark mission for cumulative memory benefit: the most issues, the richest prior history."
+    }
+  },
+  {
+    "id": "connected_09",
+    "sentence": "The network engineering team and a managed network provider must agree on a service agreement for the company's primary and secondary WAN links.",
+    "context": "Managed network infrastructure SLA negotiation using entirely recurring issue vocabulary.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "sla_response_time",
+      "deployment_model",
+      "upgrade_policy"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$50k/year",
+        "$80k/year",
+        "$120k/year",
+        "$180k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "sla_response_time": [
+        "best effort",
+        "4-hour response",
+        "1-hour response",
+        "15-minute response"
+      ],
+      "deployment_model": [
+        "SaaS (cloud-managed)",
+        "on-premises",
+        "hybrid",
+        "air-gapped"
+      ],
+      "upgrade_policy": [
+        "mandatory (30-day notice)",
+        "mandatory (90-day notice)",
+        "optional (12-month window)",
+        "optional (24-month window)"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 6,
+      "sequence_index": 9,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 09 - Network Infrastructure SLA",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "sla_response_time",
+        "deployment_model",
+        "upgrade_policy"
+      ],
+      "new_issues": [],
+      "memory_note": "6/6 issues recurring. Second fully-recurring mission. Tests plateau: memory recall and precision should be near-perfect."
+    }
+  },
+  {
+    "id": "connected_10",
+    "sentence": "The compliance team and a GRC platform vendor must close the year with a contract for the tool that will manage audits, risk registers, and regulatory evidence across the organisation.",
+    "context": "GRC platform procurement closing the sequence — familiar commercial vocabulary plus government-grade certification level.",
+    "domain": "enterprise_tech_procurement",
+    "gold_issues": [
+      "annual_price",
+      "support_tier",
+      "contract_duration",
+      "security_compliance",
+      "certification_level",
+      "payment_terms"
+    ],
+    "gold_options": {
+      "annual_price": [
+        "$35k/year",
+        "$60k/year",
+        "$90k/year",
+        "$130k/year"
+      ],
+      "support_tier": [
+        "basic",
+        "standard",
+        "premium",
+        "enterprise"
+      ],
+      "contract_duration": [
+        "1 year",
+        "2 years",
+        "3 years",
+        "5 years"
+      ],
+      "security_compliance": [
+        "SOC 2 Type I",
+        "SOC 2 Type II",
+        "ISO 27001",
+        "FedRAMP Moderate"
+      ],
+      "certification_level": [
+        "self-attested",
+        "third-party audited",
+        "government-accredited (IL2)",
+        "government-accredited (IL4)"
+      ],
+      "payment_terms": [
+        "monthly",
+        "quarterly",
+        "annual upfront",
+        "multi-year upfront"
+      ]
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "num_issues": 6,
+      "sequence_index": 10,
+      "source_yaml": "mission_connected.yaml",
+      "source_mission": "Connected 10 - Compliance and Audit Platform",
+      "recurring_issues": [
+        "annual_price",
+        "support_tier",
+        "contract_duration",
+        "security_compliance",
+        "payment_terms"
+      ],
+      "new_issues": [
+        "certification_level"
+      ],
+      "memory_note": "5/6 issues recurring. Final sequence mission. The 3 universal issues (annual_price, support_tier, contract_duration) appear for the 9th/10th time — a mature memory system should propose them with zero LLM assistance."
+    }
+  }
+]

@@ -225,13 +225,15 @@ def load_dataset(path: str) -> List[Dict[str, Any]]:
 def load_trace_dir(trace_dir: str) -> Dict[str, Dict[str, Any]]:
     """Scan a ``test_via_semantic_neg_agents.py`` run directory for initiate responses.
 
-    Walks ``<trace_dir>/*/01_initiate_response.json`` and returns a dict:
+    Walks ``<trace_dir>/*/01_initiate_response.json`` (SSTP format) and
+    ``<trace_dir>/*/00_start_response.json`` (CFN /start format) and returns:
     ``{ mission_slug: {"issues": [...], "options_per_issue": {...}} }``.
 
     The mission slug is the subdirectory name (already slugified by the script).
     """
     base = Path(trace_dir)
     traces: Dict[str, Dict[str, Any]] = {}
+    # Format 1: SSTP initiate responses (payload-wrapped)
     for json_file in sorted(base.glob("*/01_initiate_response.json")):
         mission_slug = json_file.parent.name
         try:
@@ -240,6 +242,20 @@ def load_trace_dir(trace_dir: str) -> Dict[str, Dict[str, Any]]:
             traces[mission_slug] = {
                 "issues": payload.get("issues") or [],
                 "options_per_issue": payload.get("options_per_issue") or {},
+                "source_file": str(json_file),
+            }
+        except Exception as exc:
+            logger.warning("Could not read %s: %s", json_file, exc)
+    # Format 2: CFN /start responses (top-level keys)
+    for json_file in sorted(base.glob("*/00_start_response.json")):
+        mission_slug = json_file.parent.name
+        if mission_slug in traces:
+            continue  # prefer 01_initiate_response if both exist
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+            traces[mission_slug] = {
+                "issues": data.get("issues") or [],
+                "options_per_issue": data.get("options_per_issue") or {},
                 "source_file": str(json_file),
             }
         except Exception as exc:
