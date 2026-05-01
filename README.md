@@ -5,58 +5,85 @@ A collection of cognitive agents for processing OpenTelemetry data and evidence 
 ## Agents
 
 - **[Ingestion Service](ingestion/)** – Extracts knowledge from OpenTelemetry traces (entities, relations, embeddings).
-- **[Evidence Gathering Service](evidence/)** – Retrieves relevant evidence from the knowledge graph (e.g. “What does Miss-Marple do?”).
+- **[Evidence Gathering Service](evidence/)** – Retrieves relevant evidence from the knowledge graph (e.g. "What does Miss-Marple do?").
 - **[Semantic Negotiation Agent](semantic_negotiation/)** – Handles multi-party semantic negotiation using NegMAS and SSTP (Semantic State Transfer Protocol).
 
-The evidence service can use an optional **mocked DB** (Neo4j-backed graph API). For that setup, run the mocked-db service and set `CFN_URL` or `MOCKED_DB_BASE_URL`; see [evidence/README.md](evidence/README.md).
+The evidence and ingestion services retrieve and store knowledge via the CFN service (`CFN_URL`), which routes requests to `ioc-knowledge-memory-svc`.
+
+## Table of Contents
+
+- [IoC CFN Cognitive Agents](#ioc-cfn-cognitive-agents)
+  - [Agents](#agents)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+    - [Run the gateway with Docker (recommended)](#run-the-gateway-with-docker-recommended)
+    - [Run the gateway locally (no Docker)](#run-the-gateway-locally-no-docker)
+    - [Run agents individually (development only)](#run-agents-individually-development-only)
+    - [Testing Semantic Negotiation](#testing-semantic-negotiation)
+  - [Development](#development)
+    - [Prerequisites](#prerequisites)
+    - [Environment setup (required for local and Docker)](#environment-setup-required-for-local-and-docker)
+    - [Run with CFN Stack](#run-with-cfn-stack)
+    - [Testing](#testing)
+    - [Code Quality](#code-quality)
+  - [Architecture](#architecture)
+  - [Troubleshooting](#troubleshooting)
+    - [Embedding Model Download Issues](#embedding-model-download-issues)
+    - [Docker Build Fails with SSL Errors](#docker-build-fails-with-ssl-errors)
+    - [LLM Connection Errors](#llm-connection-errors)
+    - [Tests Fail with "Directory not found"](#tests-fail-with-directory-not-found)
+  - [Project Structure](#project-structure)
+  - [CI/CD Workflow](#cicd-workflow)
+    - [Automated Docker Builds](#automated-docker-builds)
+      - [Pull Request (Build Validation)](#pull-request-build-validation)
+      - [Merge to Main (Latest Release)](#merge-to-main-latest-release)
+      - [Tag Push (Versioned Release)](#tag-push-versioned-release)
+    - [Using Published Images](#using-published-images)
+    - [Multi-Platform Support](#multi-platform-support)
+    - [Release Checklist](#release-checklist)
+  - [Contributing](#contributing)
+  - [License](#license)
+
+---
 
 ## Quick Start
 
 ### Run the gateway with Docker (recommended)
 
-The gateway serves both ingestion and evidence on **port 9004**. It uses a **`.env` file** at repo root (see [Environment setup](#environment-setup)); create it from `.env.example` if needed.
+The gateway serves ingestion, evidence and semantic negotiation on **port 9004**. It uses a **`.env` file** at repo root (see [Environment setup](#environment-setup-required-for-local-and-docker)); create it from `.env.example` if needed.
 
 ```bash
-# From repo root (ensure .env exists with Azure OpenAI credentials, etc.)
+# From repo root (ensure .env exists)
 docker compose up --build
 ```
 
 Then use the API at `http://localhost:9004`:
 
-| Backend   | Path | Example |
-|-----------|------|--------|
-| Gateway health | `/health` | `GET http://localhost:9004/health` |
-| Ingestion | `/api/knowledge-mgmt/extraction` | `POST http://localhost:9004/api/knowledge-mgmt/extraction` |
-| Evidence  | `/api/knowledge-mgmt/reasoning/evidence` | `POST http://localhost:9004/api/knowledge-mgmt/reasoning/evidence` |
+| Backend        | Path                                          | Example                                                            |
+|----------------|-----------------------------------------------|--------------------------------------------------------------------|
+| Gateway health | `/api/internal/diagnostics/health`                                     | `GET http://localhost:9004/api/internal/diagnostics/health`                                 |
+| Ingestion      | `/api/knowledge-mgmt/extraction`              | `POST http://localhost:9004/api/knowledge-mgmt/extraction`         |
+| Evidence       | `/api/knowledge-mgmt/reasoning/evidence`      | `POST http://localhost:9004/api/knowledge-mgmt/reasoning/evidence` |
 
-**Confluence paths** (above); prefixed paths also work: `/ingestion/...`, `/evidence/...`.
+Prefixed paths also work: `/ingestion/...`, `/evidence/...`.
 
 ### Run the gateway locally (no Docker)
 
-**Requirement: a `.env` file** with at least Azure OpenAI credentials (see [Environment setup](#environment-setup) below). Create it from the template:
+Create `.env` from the template and set your credentials (see [Environment setup](#environment-setup-required-for-local-and-docker)):
 
 ```bash
 cp .env.example .env
-# Edit .env and set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, etc.
 ```
 
-One-time setup so the gateway can import ingestion and evidence:
-
-```bash
-./scripts/setup_local_links.sh
-```
-
-Then (from repo root):
+Then from repo root:
 
 ```bash
 PYTHONPATH=. poetry run uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004
 ```
 
-Use `http://localhost:9004` as the base URL (see API paths in the Quick Start section above).
-
 ### Run agents individually (development only)
 
-**⚠️ For normal use, run the gateway above** (port 9004) – it's the single unified entry point that includes ingestion and evidence.
+**For normal use, run the gateway above** (port 9004) — it's the unified entry point for ingestion and evidence.
 
 For development/testing, you can run agents as standalone services:
 
@@ -83,7 +110,7 @@ poetry run uvicorn app.main:app --host 0.0.0.0 --port 8089
 
 </details>
 
-**Note:** The gateway (port 9004) is the recommended production setup. It runs ingestion + evidence in a single process. The semantic negotiation agent is a separate service that runs independently.
+**Note:** The gateway (port 9004) is the recommended setup. It runs ingestion + evidence in a single process. The semantic negotiation agent is a separate service that runs independently.
 
 ### Testing Semantic Negotiation
 
@@ -102,145 +129,6 @@ Two test harnesses are available under `semantic_negotiation/evaluation/framewor
 
 ---
 
-## CI/CD Workflow
-
-### 🔄 Automated Docker Builds
-
-The CI pipeline automatically builds and publishes a unified Docker image using GitHub Actions.
-
-#### **Pull Request** (Build Validation)
-When you open a PR:
-```bash
-git checkout -b feature/my-changes
-git push origin feature/my-changes
-# Open PR on GitHub
-```
-
-**What happens:**
-- ✅ Runs unit tests
-- ✅ Builds unified Docker image (validation only)
-- ❌ Does **NOT** push image to registry
-- 🎯 Purpose: Catch Docker build regressions early
-
-#### **Merge to Main** (Latest Release)
-When you merge to `main`:
-```bash
-git checkout main
-git pull origin main
-git merge feature/my-changes
-git push origin main
-```
-
-**What happens:**
-- ✅ Runs unit tests
-- ✅ Builds unified Docker image
-- ✅ Pushes with `latest` tag to GHCR
-
-**Published image:**
-```
-ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
-```
-
-#### **Tag Push** (Versioned Release)
-To create a production release:
-```bash
-# Create and push a semantic version tag
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-**What happens:**
-- ✅ Validates tag follows semantic versioning (`vX.Y.Z`)
-- ✅ Runs unit tests
-- ✅ Builds unified Docker image
-- ✅ Pushes with version tag to GHCR
-
-**Published image:**
-```
-ghcr.io/<org>/ioc-cfn-cognitive-agents:v1.0.0
-```
-
-**Valid tag formats:**
-- `v1.0.0` - Standard release
-- `v2.3.4-alpha.1` - Pre-release
-- `v1.0.0-beta` - Beta release
-- `v3.2.1-rc.2` - Release candidate
-
-**Invalid tags will fail CI:**
-- `1.0.0` (missing `v` prefix)
-- `v1.2` (incomplete version)
-- `release-1` (not semver)
-
-### 📦 Using Published Images
-
-The recommended way to run is the **unified gateway image** (single process, port 9004):
-
-```bash
-# Pull and run the unified gateway (ingestion + evidence on port 9004)
-docker pull ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
-docker run -p 9004:9004 ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
-```
-
-Then use `http://localhost:9004` for ingestion and evidence paths (see Quick Start).
-
-### 🏗️ Multi-Platform Support
-
-All images are built for:
-- `linux/amd64` (x86_64)
-- `linux/arm64` (Apple Silicon, ARM servers)
-
-### 🚀 Release Checklist
-
-1. **Ensure tests pass**: `poetry run pytest`
-2. **Update version in code** (if needed)
-3. **Create semantic version tag**: `git tag v1.0.0`
-4. **Push tag**: `git push origin v1.0.0`
-5. **Monitor CI**: Check GitHub Actions for build status
-6. **Verify image**: `docker pull ghcr.io/<org>/ioc-cfn-cognitive-agents:v1.0.0`
-
----
-
-## 📦 Python Package Publishing
-
-The `cognition-engine` package auto-publishes to Artifactory on push to `clawbee` branch.
-
-### Publishing Workflow
-
-```bash
-git checkout clawbee
-git push origin clawbee
-```
-
-**CI automatically:**
-- Generates dev version: `0.1.0.dev1`, `0.1.0.dev2`, etc. (PEP 440)
-- Builds `.tar.gz` and `.whl` packages
-- Publishes to Artifactory using Vault credentials
-
-### Bumping Version
-
-```bash
-# Update version in pyproject.toml
-poetry version minor  # 0.1.0 → 0.2.0 (or: patch, major)
-
-# Commit and push
-git add pyproject.toml
-git commit -m "chore: bump version to 0.2.0"
-git push origin clawbee
-```
-
-Next publish will be `0.2.0.dev1`, then `0.2.0.dev2`, etc.
-
-### Installing
-
-```bash
-pip install cognition-engine --extra-index-url https://<artifactory-url>/artifactory/api/pypi/outshift-pypi/simple
-```
-
-**Package includes:** `ingestion`, `evidence`, `gateway` modules
-**Usage examples:** [docs/usage.md](docs/usage.md)
-
----
-
 ## Development
 
 ### Prerequisites
@@ -251,37 +139,92 @@ pip install cognition-engine --extra-index-url https://<artifactory-url>/artifac
 
 ### Environment setup (required for local and Docker)
 
-A **`.env` file is required** for the gateway (local and Docker) so ingestion and evidence have credentials and options.
-
-**Location:** Place `.env` at **repo root** (`ioc-cfn-cognitive-agents/.env`). This single file is used by:
-- Local development (gateway, ingestion, evidence)
-- Docker Compose (via `env_file` in compose.yaml)
-- CI/CD workflows
-
-**Create from template:**
+A **`.env` file is required** at **repo root** (`ioc-cfn-cognitive-agents/.env`). Create it from the template:
 
 ```bash
-# From repo root
 cp .env.example .env
-# Edit .env and set your values (see below)
 ```
+
+This single file is used by local development, Docker Compose, and CI/CD workflows.
 
 **Required and optional variables:**
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `AZURE_OPENAI_ENDPOINT` | Yes (for ingestion) | Azure OpenAI endpoint URL. Ingestion needs this for LLM-based extraction. |
-| `AZURE_OPENAI_API_KEY` | Yes (for ingestion) | Azure OpenAI API key. |
-| `AZURE_OPENAI_DEPLOYMENT` | No | Deployment name (default: `gpt-4o`). |
-| `AZURE_OPENAI_API_VERSION` | No | API version (default: `2024-08-01-preview`). |
-| `EMBEDDING_MODEL_PATH` | No | Path to local `bge-small-en-v1.5` folder. If set, ingestion and evidence use it instead of downloading from Hugging Face. Use `bge-small-en-v1.5` (relative to repo root) or an absolute path. |
+| `LLM_BASE_URL` | Yes | LLM endpoint URL (e.g. LiteLLM proxy). |
+| `LLM_API_KEY` | Yes | LLM API key. |
+| `LLM_MODEL` | Yes | Model name (e.g. `openai/azure/gpt-4o`). |
+| `CFN_URL` | Yes | URL of the CFN service (e.g. `http://localhost:9002`). |
+| `MGMT_PLANE_URL` | No | Management plane URL for auto-registration on startup. |
+| `COGNITION_ENGINE_HOST` | No | Advertised host for this service (used during registration). |
+| `COGNITION_ENGINE_PORT` | No | Advertised port for this service (default: `9004`). |
+| `EMBEDDING_MODEL_PATH` | No | Path to local `bge-small-en-v1.5` folder. Uses Hugging Face download if unset. |
 | `ENABLE_EMBEDDINGS` | No | Enable embedding generation (default: `true`). |
 | `ENABLE_DEDUP` | No | Enable semantic deduplication (default: `true`). |
 | `SIMILARITY_THRESHOLD` | No | Dedup threshold 0.0–1.0 (default: `0.95`). |
-| `MOCKED_DB_BASE_URL` | No | Evidence: external mocked DB URL (optional). |
-| `MGMT_PLANE_URL`, `COGNITION_ENGINE_*` | No | Management plane / engine registration. |
 
-The same `.env` can contain variables for multiple services; each app ignores unknown keys. See [.env.example](.env.example) for a full template.
+Each app ignores unknown keys, so the same `.env` can contain variables for multiple services. See [.env.example](.env.example) for a full template.
+
+### Run with CFN Stack
+
+Run the cognitive agents locally while connecting to the full CFN stack.
+
+**1. Start the CFN stack**
+
+Follow the instructions in the [ioc-cfn-mgmt-backend-svc README](https://github.com/cisco-eti/ioc-cfn-mgmt-backend-svc/tree/main) to bring up the full stack using the `full-stack` Docker Compose profile.
+
+Once the stack is up, stop the `ioc-cfn-cognition-engine` container — you'll run this service locally instead:
+
+```bash
+cd ioc-cfn-mgmt-backend-svc
+docker compose stop ioc-cfn-cognition-engine
+```
+
+Also update `COGNITION_ENGINE_SVC_URL` in `docker-compose.yml` under `ioc-cfn-svc` so it can reach your locally-running engine:
+
+```yaml
+- COGNITION_ENGINE_SVC_URL=http://host.docker.internal:9004
+```
+
+The remaining services and their ports:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `ioc-cfn-mgmt-plane-svc` | `9000` | Management plane backend |
+| `ioc-cfn-svc` | `9002` | Cognition Fabric Node |
+| `ioc-knowledge-memory-svc` | `9003` | Knowledge graph + vector store |
+
+**2. Configure `.env`**
+
+Set these variables to point at the running CFN stack:
+
+```bash
+# LLM credentials
+LLM_BASE_URL=https://your-litellm-endpoint
+LLM_API_KEY=sk-your-api-key
+LLM_MODEL=openai/azure/gpt-4o
+
+# Point at the local CFN service
+CFN_URL=http://localhost:9002
+
+# Auto-register with management plane on startup
+MGMT_PLANE_URL=http://localhost:9000
+COGNITION_ENGINE_HOST=localhost
+COGNITION_ENGINE_PORT=9004
+```
+
+**3. Run the Cognition Engine**
+
+```bash
+# From repo root — gateway serves ingestion + evidence + semantic negotiation on port 9004
+PYTHONPATH=. poetry run uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004 --reload
+```
+
+Verify connectivity:
+
+```bash
+curl http://localhost:9004/api/internal/diagnostics/health
+```
 
 ### Testing
 
@@ -314,30 +257,29 @@ poetry run ruff format .
 
 ## Architecture
 
-The **unified gateway** runs ingestion and evidence in one process (port 9004):
+The **unified gateway** runs ingestion and evidence in one process (port 9004), connected to the CFN stack:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   OpenTelemetry Traces                  │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-         ┌────────────────────────────────────────────────┐
-         │  Unified Gateway (port 9004)                    │
-         │  ┌─────────────────────┐  ┌──────────────────┐ │
-         │  │ Ingestion            │  │ Evidence         │ │
-         │  │ - Extract entities   │  │ - Query intent   │ │
-         │  │ - Generate embeddings│  │ - Path finding   │ │
-         │  │ - Build relations    │  │ - Evidence rank  │ │
-         │  └──────────┬───────────┘  └────────┬─────────┘ │
-         │             └───────────────┬────────┘           │
-         └─────────────────────────────┼───────────────────┘
-                                       │
-                      (optional)       ▼
-              ┌───────────────────────────────┐
-              │ External graph (e.g. Neo4j)   │
-              │ when CFN_URL set  │
-              └───────────────────────────────┘
+                         MAS (Multi-Agent System)
+                                  │
+                                  ▼
+                    ┌─────────────────────────┐
+                    │    ioc-cfn-svc (9002)   │  Cognition Fabric Node
+                    │                         │
+                    │  ┌──────────────────┐   │   ┌─────────────────────────┐
+                    │  │  Knowledge &     │◄──┼───►│ ioc-knowledge-memory-svc│
+                    │  │  Memory routing  │   │   │        (9003)            │
+                    │  └──────────────────┘   │   └─────────────────────────┘
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │  Cognition Engine (9004) │  ← this repo
+                    │  ┌──────────────────┐   │
+                    │  │ Ingestion        │   │
+                    │  │ Evidence         │   │
+                    │  │ Semantic Neg.    │   │
+                    │  └──────────────────┘   │
+                    └─────────────────────────┘
 ```
 
 ---
@@ -403,9 +345,9 @@ RUN export HF_HUB_DISABLE_SSL_VERIFY=1 && \
     /opt/venv/bin/python -c "from fastembed import TextEmbedding; ..."
 ```
 
-### Azure OpenAI Connection Errors
+### LLM Connection Errors
 
-**Problem:** `[SSL: CERTIFICATE_VERIFY_FAILED]` when calling Azure OpenAI API.
+**Problem:** `[SSL: CERTIFICATE_VERIFY_FAILED]` when calling the LLM API.
 
 **Solution:** The code automatically disables SSL verification when `HTTPX_VERIFY=false` is set in `.env`:
 
@@ -413,8 +355,6 @@ RUN export HF_HUB_DISABLE_SSL_VERIFY=1 && \
 # Add to .env
 HTTPX_VERIFY=false
 ```
-
-The ingestion and evidence services read this variable and configure `httpx.Client(verify=False)` for the Azure OpenAI client.
 
 ### Tests Fail with "Directory not found"
 
@@ -439,31 +379,94 @@ poetry run pytest
 
 ---
 
-## Project Structure (Good Practice for Package Publishing)
-
-This monorepo uses Poetry with `package-mode = true` and is ready for publishing to JFrog or PyPI:
+## Project Structure
 
 ```
 ioc-cfn-cognitive-agents/
 ├── pyproject.toml          # Single package definition
-├── gateway/                # Unified FastAPI app
-│   ├── __init__.py
+├── gateway/                # Unified FastAPI app (port 9004)
 │   └── app/
 ├── ingestion/              # Knowledge extraction service
-│   ├── __init__.py
 │   └── app/
 ├── evidence/               # Evidence gathering service
-│   ├── __init__.py
 │   └── app/
-└── semantic_negotiation/  # Separate negotiation service
+└── semantic_negotiation/   # Semantic negotiation service (port 8089)
+    └── app/
 ```
 
-**Benefits:**
-- ✅ Single `pip install ioc-cfn-cognitive-agents` gets everything
-- ✅ Shared dependencies in one `pyproject.toml`
-- ✅ Directory names match Python imports (`from ingestion.app...`)
-- ✅ No symlink workarounds needed
-- ✅ Ready for `poetry build` and `poetry publish`
+---
+
+## CI/CD Workflow
+
+### Automated Docker Builds
+
+The CI pipeline automatically builds and publishes a unified Docker image using GitHub Actions.
+
+#### Pull Request (Build Validation)
+
+When you open a PR:
+```bash
+git checkout -b feature/my-changes
+git push origin feature/my-changes
+# Open PR on GitHub
+```
+
+**What happens:**
+- Runs unit tests
+- Builds unified Docker image (validation only, does **not** push to registry)
+
+#### Merge to Main (Latest Release)
+
+When you merge to `main`:
+
+**What happens:**
+- Runs unit tests
+- Builds and pushes image with `latest` tag to GHCR
+
+**Published image:**
+```
+ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
+```
+
+#### Tag Push (Versioned Release)
+
+To create a production release:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+**What happens:**
+- Validates tag follows semantic versioning (`vX.Y.Z`)
+- Runs unit tests
+- Builds and pushes image with version tag to GHCR
+
+**Published image:**
+```
+ghcr.io/<org>/ioc-cfn-cognitive-agents:v1.0.0
+```
+
+**Valid tag formats:** `v1.0.0`, `v2.3.4-alpha.1`, `v1.0.0-beta`, `v3.2.1-rc.2`
+
+### Using Published Images
+
+```bash
+docker pull ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
+docker run -p 9004:9004 ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
+```
+
+### Multi-Platform Support
+
+All images are built for `linux/amd64` and `linux/arm64` (Apple Silicon, ARM servers).
+
+### Release Checklist
+
+1. **Ensure tests pass**: `poetry run pytest`
+2. **Update version in code** (if needed)
+3. **Create semantic version tag**: `git tag v1.0.0`
+4. **Push tag**: `git push origin v1.0.0`
+5. **Monitor CI**: Check GitHub Actions for build status
+6. **Verify image**: `docker pull ghcr.io/<org>/ioc-cfn-cognitive-agents:v1.0.0`
 
 ---
 
