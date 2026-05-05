@@ -147,7 +147,7 @@ async def _register_engine(
         # Register engine
         register_url = f"{mgmt_url}/api/workspaces/{workspace_id}/cognition-engines"
         payload = {
-            "cognitive_engine_name": engine_name,
+            "cognition_engine_name": engine_name,
             "config": {
                 "url": engine_url,
             },
