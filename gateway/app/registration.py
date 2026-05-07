@@ -103,7 +103,7 @@ async def _register_cognition_engine(
     logger.info(f"Registering cognition engine '{engine_name}' at {register_url}")
 
     payload = {
-        "cognition_engine_name": engine_name,
+        "name": engine_name,
         "config": {
             "url": engine_url,
         },
