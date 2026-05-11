@@ -15,8 +15,8 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # Constants
-COGNITION_ENGINE_KNOWLEDGE_MANAGEMENT = "Knowledge Management Cognitive Engine"
-COGNITION_ENGINE_SEMANTIC_NEGOTIATION = "Semantic Negotiation Cognitive Engine"
+COGNITION_ENGINE_KNOWLEDGE_MANAGEMENT = "Knowledge Management Cognition Engine"
+COGNITION_ENGINE_SEMANTIC_NEGOTIATION = "Semantic Negotiation Cognition Engine"
 DEFAULT_WORKSPACE_NAME = "Default Workspace"
 
 
