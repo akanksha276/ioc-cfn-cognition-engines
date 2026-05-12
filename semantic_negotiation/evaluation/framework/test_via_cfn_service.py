@@ -19,7 +19,7 @@ This script follows the exact call flow documented in
    → returns ``{status, session_id, round, issues, options_per_issue, messages}``
 2. For each message, forward it to the local agent callback server (port 8092)
    to get the agent's decision.
-3. Map agent replies to ``{agent_id, action, offer?}`` and POST to ``/decide``
+3. Map agent replies to ``{participant_id, action, offer?}`` and POST to ``/decide``
    with ``{session_id, agent_replies}``.
 4. Repeat until ``status`` is terminal (``agreed``, ``failed``, ``timedout``).
 
@@ -167,13 +167,13 @@ def _extract_agent_reply(sstp_reply: dict[str, Any]) -> dict[str, Any]:
     The agent server returns full SSTPNegotiateMessage dicts.  The CFN
     ``/decide`` endpoint expects::
 
-        {"agent_id": "...", "action": "accept"|"reject"|"counter_offer", "offer": {...}}
+        {"participant_id": "...", "action": "accept"|"reject"|"counter_offer", "offer": {...}}
 
     We extract ``participant_id`` and ``action`` from the reply payload.
     """
     payload = sstp_reply.get("payload", {})
     reply: dict[str, Any] = {
-        "agent_id": payload.get("participant_id", "unknown"),
+        "participant_id": payload.get("participant_id", "unknown"),
         "action": payload.get("action", "reject"),
     }
     if payload.get("offer"):
@@ -208,10 +208,10 @@ def _cfn_health_check(cfn_url: str) -> None:
 
     body = r.json()
     status = body.get("status", "").lower()
-    if status != "healthy":
+    if status not in ("healthy", "up"):
         print(
             f"ERROR: CFN service reports status '{body.get('status')}' "
-            f"(expected 'healthy'). Response: {body}"
+            f"(expected 'healthy' or 'up'). Response: {body}"
         )
         sys.exit(1)
 
@@ -380,11 +380,10 @@ async def run(
         resp = httpx.post(
             f"{api_base}/start",
             json=start_body,
-            timeout=120.0,
+            timeout=600.0,
         )
         resp.raise_for_status()
         start_data = resp.json()
-        _save_json(mission_trace_dir / "00_start_response.json", start_data)
 
         status = start_data.get("status", "unknown")
         print(f"  → status={status}")
@@ -392,6 +391,9 @@ async def run(
         # Capture issues/options from the start response for the dialogue log
         issues = start_data.get("issues", [])
         options_per_issue = start_data.get("options_per_issue", {})
+
+        _save_json(mission_trace_dir / "00_start_response.json", start_data)
+
         if issues and options_per_issue:
             trace_state["dialogue_log"].append("")
             trace_state["dialogue_log"].append("  ISSUES IDENTIFIED")
@@ -438,7 +440,7 @@ async def run(
             # Log agent decisions to dialogue
             for ar in agent_replies:
                 action = ar["action"]
-                agent_name = ar["agent_id"]
+                agent_name = ar["participant_id"]
                 if action == "counter_offer":
                     if current_round != trace_state["dialogue_last_round"]:
                         trace_state["dialogue_log"].append("")
@@ -477,11 +479,19 @@ async def run(
 
             # POST /decide
             print(f"  POST {api_base}/decide  ({len(agent_replies)} replies)")
-            decide_resp = httpx.post(
-                f"{api_base}/decide",
-                json=decide_body,
-                timeout=120.0,
-            )
+            for _attempt in range(2):
+                try:
+                    decide_resp = httpx.post(
+                        f"{api_base}/decide",
+                        json=decide_body,
+                        timeout=600.0,
+                    )
+                    break
+                except httpx.ReadTimeout:
+                    if _attempt == 0:
+                        print("  /decide timed out, retrying…")
+                        continue
+                    raise
             decide_resp.raise_for_status()
             decide_data = decide_resp.json()
 
