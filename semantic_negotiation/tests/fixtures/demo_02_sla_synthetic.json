@@ -1,0 +1,248 @@
+[
+  {
+    "kind": "negotiate",
+    "message_id": "init-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:00:00Z",
+    "origin": {
+      "actor_id": "test-runner",
+      "tenant_id": "demo"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "content_text": "Define urgent response for enterprise SLA support.",
+      "agents": [
+        {
+          "id": "agent-a",
+          "name": "Agent A"
+        },
+        {
+          "id": "agent-b",
+          "name": "Agent B"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "init-response-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:00:01Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [
+        "urgent response time",
+        "escalation path"
+      ],
+      "options_per_issue": {
+        "urgent response time": [
+          "within 1 hour",
+          "within 24 hours",
+          "within 4 hours",
+          "best effort"
+        ],
+        "escalation path": [
+          "direct page to on-call engineer",
+          "ticket system with SLA tracking",
+          "Slack channel notification"
+        ]
+      },
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "initiated",
+      "issues": [
+        "urgent response time",
+        "escalation path"
+      ],
+      "options_per_issue": {
+        "urgent response time": [
+          "within 1 hour",
+          "within 24 hours",
+          "within 4 hours",
+          "best effort"
+        ],
+        "escalation path": [
+          "direct page to on-call engineer",
+          "ticket system with SLA tracking",
+          "Slack channel notification"
+        ]
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r1-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:01:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 1,
+      "current_offer": {
+        "urgent response time": "within 1 hour",
+        "escalation path": "direct page to on-call engineer"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r2-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:02:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 2,
+      "current_offer": {
+        "urgent response time": "within 24 hours",
+        "escalation path": "ticket system with SLA tracking"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r3-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:03:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 3,
+      "current_offer": {
+        "urgent response time": "within 4 hours",
+        "escalation path": "direct page to on-call engineer"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r4-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:04:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 4,
+      "current_offer": {
+        "urgent response time": "within 4 hours",
+        "escalation path": "ticket system with SLA tracking"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r5-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:05:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 5,
+      "current_offer": {
+        "urgent response time": "best effort",
+        "escalation path": "Slack channel notification"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-accept-demo_02_sla_synthetic",
+    "dt_created": "2026-01-01T00:06:00Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-demo_02_sla_synthetic"
+    },
+    "semantic_context": {
+      "session_id": "sess-demo_02_sla_synthetic",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "urgent response time": "best effort",
+          "escalation path": "Slack channel notification"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 5,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "urgent response time": "best effort",
+        "escalation path": "Slack channel notification"
+      }
+    }
+  }
+]

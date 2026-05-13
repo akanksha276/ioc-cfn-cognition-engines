@@ -35,9 +35,11 @@ from .intent_discovery import IntentDiscovery
 from .negotiation_model import NegotiationParticipant, NegotiationResult
 from .options_generation import OptionsGeneration
 from .semantic_alignment_validation_pipeline import (
-    SemanticAlignmentValidationPipeline,
     ValidationResult,
+    SemanticAlignmentValidationPipeline,
 )
+# CFN-compatible traces: normalize a throwaway copy for Step 4 only (see module docstring).
+from .validation_trace_adapter import adapt_sstp_trace_for_alignment_validation
 
 logger = logging.getLogger(__name__)
 
@@ -131,57 +133,39 @@ class SemanticNegotiationPipeline:
     def run_alignment_validation(
         self,
         trace: List[Dict[str, Any]],
-    ) -> ValidationResult:
+    ) -> Optional[ValidationResult]:
         """Run Step 4 — semantic alignment validation on the completed negotiation trace.
 
         Called immediately after the SAO reaches a terminal state and before
         :meth:`build_commit_envelope`.  Returns a :class:`ValidationResult`
-        that is included in the terminal response so callers can act on the
-        recommendation (``accept``, ``request_justification``,
-        ``restart_negotiation``, or ``escalate``) before persisting the commit.
-
-        Validation errors (malformed trace) are logged and surfaced via the
-        returned result's ``failure_modes`` list rather than propagating as
-        exceptions, so a validation problem never blocks the commit path.
+        on success, or ``None`` if the pipeline raises an unexpected exception
+        (logged as a warning; the commit path is not blocked).
 
         Args:
             trace: The ``sstp_message_trace`` list of dicts accumulated during
                 the negotiation session.
 
         Returns:
-            :class:`ValidationResult` describing detected failure modes and the
-            recommended next action.
+            :class:`ValidationResult` on success, ``None`` on failure.
         """
-        logger.info(
-            "run_alignment_validation trace_len=%d",
-            len(trace),
-        )
+        logger.info("run_alignment_validation trace_len=%d", len(trace))
         try:
             validation = self._alignment_validator.run(trace)
             logger.info(
                 "run_alignment_validation done severity=%s score=%.2f "
-                "needs_intervention=%s recommendation=%s failure_modes=%s",
+                "needs_intervention=%s recommendation=%s timed_out=%s",
                 validation.severity,
                 validation.alignment_score,
                 validation.needs_intervention,
                 validation.recommendation,
-                validation.failure_modes,
+                validation.timed_out,
             )
             return validation
         except Exception as exc:
             logger.warning(
-                "run_alignment_validation failed — returning degraded result: %s", exc
+                "run_alignment_validation failed — skipping validation: %s", exc
             )
-            from .semantic_alignment_validation_pipeline import FailureMode
-
-            return ValidationResult(
-                needs_intervention=False,
-                severity="low",
-                alignment_score=0.0,
-                failure_modes=[FailureMode.COMMUNICATION_BREAKDOWN],
-                reasoning=f"Validation pipeline raised an exception: {exc}",
-                recommendation="accept",
-            )
+            return None
 
     def start_negotiation(
         self,
@@ -592,19 +576,37 @@ class SemanticNegotiationPipeline:
 
         # ── Step 4: Semantic alignment validation ─────────────────────────
         # Run before building the commit so callers can act on the
-        # recommendation (accept / request_justification / restart / escalate).
-        validation = self.run_alignment_validation(sess.sstp_message_trace)
-        logger.info(
-            "execute step4 alignment_validation complete "
-            "session_id=%s severity=%s score=%.2f needs_intervention=%s "
-            "recommendation=%s failure_modes=%s",
-            session_id,
-            validation.severity,
-            validation.alignment_score,
-            validation.needs_intervention,
-            validation.recommendation,
-            validation.failure_modes or [],
+        # recommendation (accept / request_justification / escalate).
+        # ``sess.sstp_message_trace`` may omit gateway-style initiate rows and may
+        # store bare agent dicts (CFN path). Pass an adapted *copy* so ACSE
+        # ``validate_input`` succeeds without changing persisted trace or CFN API.
+        validation = self.run_alignment_validation(
+            adapt_sstp_trace_for_alignment_validation(
+                sess.sstp_message_trace,
+                session_id=sess.session_id,
+                content_text=sess.content_text or "",
+                issues=sess.issues,
+                options_per_issue=sess.options_per_issue,
+                participants=sess.participants,
+                n_steps=sess.n_steps,
+            )
         )
+        if validation is not None:
+            logger.info(
+                "execute step4 alignment_validation complete "
+                "session_id=%s severity=%s score=%.2f needs_intervention=%s "
+                "recommendation=%s timed_out=%s",
+                session_id,
+                validation.severity,
+                validation.alignment_score,
+                validation.needs_intervention,
+                validation.recommendation,
+                validation.timed_out,
+            )
+        else:
+            logger.warning(
+                "execute step4 alignment_validation skipped session_id=%s", session_id
+            )
 
         try:
             commit = self.build_commit_envelope(
@@ -634,10 +636,13 @@ class SemanticNegotiationPipeline:
                 "needs_intervention": validation.needs_intervention,
                 "severity": validation.severity,
                 "alignment_score": validation.alignment_score,
+                "cognitive_alignment": validation.cognitive_alignment,
                 "failure_modes": validation.failure_modes,
+                "timed_out": validation.timed_out,
+                "cross_issue_conflicts": validation.cross_issue_conflicts,
                 "reasoning": validation.reasoning,
                 "recommendation": validation.recommendation,
-            },
+            } if validation is not None else None,
         }
 
     def build_commit_envelope(

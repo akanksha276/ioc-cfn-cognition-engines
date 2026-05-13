@@ -167,8 +167,13 @@ def _stub_validation() -> ValidationResult:
         needs_intervention=False,
         severity="low",
         alignment_score=1.0,
+        cognitive_alignment=1.0,
         failure_modes=[],
+        per_issue_evaluations=[],
         reasoning="stub",
+        agreement_coherence=1.0,
+        cross_issue_conflicts=[],
+        timed_out=False,
         recommendation="accept",
     )
 
@@ -299,8 +304,13 @@ class TestAlignmentValidationStep4:
             needs_intervention=True,
             severity="high",
             alignment_score=0.2,
+            cognitive_alignment=0.3,
             failure_modes=["deadlock_detected"],
+            per_issue_evaluations=[],
             reasoning="Agents never moved.",
+            agreement_coherence=1.0,
+            cross_issue_conflicts=[],
+            timed_out=False,
             recommendation="escalate",
         )
         with patch.object(pipeline._alignment_validator, "run", return_value=stub):

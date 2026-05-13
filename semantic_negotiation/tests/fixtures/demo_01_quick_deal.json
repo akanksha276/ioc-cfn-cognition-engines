@@ -1,0 +1,2552 @@
+[
+  {
+    "kind": "negotiate",
+    "message_id": "init-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:00:00Z",
+    "origin": {
+      "actor_id": "test-runner",
+      "tenant_id": "demo"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "content_text": "Two parties need to agree on price and delivery speed for an urgent supply order.",
+      "agents": [
+        {
+          "id": "agent-a",
+          "name": "Agent A"
+        },
+        {
+          "id": "agent-b",
+          "name": "Agent B"
+        },
+        {
+          "id": "agent-c",
+          "name": "Agent C"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "init-response-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:00:01Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [
+        "price",
+        "delivery speed"
+      ],
+      "options_per_issue": {
+        "price": [
+          "$1500",
+          "$1000",
+          "$2000"
+        ],
+        "delivery speed": [
+          "next-day",
+          "2 days",
+          "3-5 days",
+          "same-day"
+        ]
+      },
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "initiated",
+      "issues": [
+        "price",
+        "delivery speed"
+      ],
+      "options_per_issue": {
+        "price": [
+          "$1500",
+          "$1000",
+          "$2000"
+        ],
+        "delivery speed": [
+          "next-day",
+          "2 days",
+          "3-5 days",
+          "same-day"
+        ]
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r1-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:01:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 1,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "server"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r1-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:01:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 1,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r1-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:01:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 1,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r1-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:01:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 1,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r2-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:02:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 2,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r2-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:02:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 2,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r2-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:02:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 2,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r2-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:02:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 2,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r3-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:03:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 3,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r3-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:03:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 3,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r3-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:03:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 3,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r3-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:03:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 3,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r4-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:04:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 4,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "3-5 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r4-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:04:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "3-5 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 4,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "3-5 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r4-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:04:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 4,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r4-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:04:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 4,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r5-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:05:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 5,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r5-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:05:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 5,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r5-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:05:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 5,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r5-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:05:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 5,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r6-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:06:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 6,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r6-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:06:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 6,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r6-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:06:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 6,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r6-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:06:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 6,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r7-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:07:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 7,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r7-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:07:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 7,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r7-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:07:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 7,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r7-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:07:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 7,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r8-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:08:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 8,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r8-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:08:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 8,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r8-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:08:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 8,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r8-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:08:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 8,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r9-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:09:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 9,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r9-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:09:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 9,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r9-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:09:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 9,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r9-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:09:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 9,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r10-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:10:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 10,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r10-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:10:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 10,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r10-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:10:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 10,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r10-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:10:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 10,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r11-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:11:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 11,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r11-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:11:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 11,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r11-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:11:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 11,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r11-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:11:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 11,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r12-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:12:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 12,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r12-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:12:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 12,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r12-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:12:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 12,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r12-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:12:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 12,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r13-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:13:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 13,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r13-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:13:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 13,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r13-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:13:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 13,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r13-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:13:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 13,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r14-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:14:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 14,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r14-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:14:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 14,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r14-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:14:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 14,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r14-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:14:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 14,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r15-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:15:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 15,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r15-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:15:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 15,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r15-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:15:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 15,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r15-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:15:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 15,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r16-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:16:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 16,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r16-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:16:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 16,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r16-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:16:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 16,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r16-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:16:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 16,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r17-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:17:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 17,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r17-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:17:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 17,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r17-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:17:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 17,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r17-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:17:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 17,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r18-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:18:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 18,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r18-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:18:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 18,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r18-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:18:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 18,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r18-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:18:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 18,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r19-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:19:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 19,
+      "current_offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      },
+      "proposer_id": "agent-b"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r19-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:19:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$2000",
+          "delivery speed": "2 days"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 19,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$2000",
+        "delivery speed": "2 days"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r19-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:19:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 19,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r19-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:19:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 19,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r20-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:20:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 20,
+      "current_offer": {
+        "price": "$1500",
+        "delivery speed": "same-day"
+      },
+      "proposer_id": "agent-c"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r20-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:20:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1500",
+          "delivery speed": "same-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 20,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1500",
+        "delivery speed": "same-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r20-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:20:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 20,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r20-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:20:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "REJECT_OFFER",
+        "outcome": null,
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "reject",
+      "round": 20,
+      "issues": [],
+      "options_per_issue": {}
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "server-r21-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:21:00Z",
+    "origin": {
+      "actor_id": "negotiation-server",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": null
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "respond",
+      "round": 21,
+      "current_offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      },
+      "proposer_id": "agent-a"
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-a-r21-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:21:01Z",
+    "origin": {
+      "actor_id": "agent-a",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "COUNTER_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "counter_offer",
+      "round": 21,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-b-r21-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:21:01Z",
+    "origin": {
+      "actor_id": "agent-b",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 21,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  },
+  {
+    "kind": "negotiate",
+    "message_id": "agent-c-r21-demo_01_quick_deal",
+    "dt_created": "2026-01-01T00:21:01Z",
+    "origin": {
+      "actor_id": "agent-c",
+      "tenant_id": "sess-20260317_165555-quick_deal"
+    },
+    "semantic_context": {
+      "session_id": "sess-20260317_165555-quick_deal",
+      "issues": [],
+      "options_per_issue": {},
+      "sao_state": null,
+      "sao_response": {
+        "response": "ACCEPT_OFFER",
+        "outcome": {
+          "price": "$1000",
+          "delivery speed": "next-day"
+        },
+        "data": null
+      }
+    },
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": {
+      "action": "accept",
+      "round": 21,
+      "issues": [],
+      "options_per_issue": {},
+      "offer": {
+        "price": "$1000",
+        "delivery speed": "next-day"
+      }
+    }
+  }
+]

@@ -4,144 +4,75 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, List, Optional
+import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
-from .negotiation_model import NegotiationResult
+from .acse import (
+    GoalSpecExtractor,
+    InteractionSignalExtractor,
+    IssueEvaluation,
+    NegotiationTrace,
+    RoundRecord,
+    SemanticAlignmentEvaluator,
+    TraceStateBuilder,
+)
+from ..config.utils import get_llm_provider
 
-
-# ── Failure mode constants (based on MAST taxonomy, arxiv:2503.13657) ────────
-
-class FailureMode:
-    """
-    Catalogue of observable failure modes in multi-agent negotiation systems.
-
-    Derived from the MAST (Multi-Agent System Failure Taxonomy) framework
-    (arxiv:2503.13657), adapted for semantic negotiation contexts.
-    """
-
-    # Communication breakdowns
-    COMMUNICATION_BREAKDOWN = "communication_breakdown"
-    """Agents failed to convey information accurately across rounds, leading to
-    misaligned shared understanding of the negotiation state or outstanding offers."""
-
-    CONVERSATION_HISTORY_LOSS = "conversation_history_loss"
-    """An agent lost access to prior round context, causing it to repeat rejected
-    offers or ignore previously accepted concessions."""
-
-    # Role and instruction failures
-    ROLE_DISOBEDIENCE = "role_disobedience"
-    """An agent acted contrary to its designated role (e.g., a responder issued
-    unsolicited proposals, or an agent ignored its utility function)."""
-
-    ROLE_SPECIFICATION_AMBIGUITY = "role_specification_ambiguity"
-    """The agent's responsibilities were underspecified, causing it to operate
-    outside its intended scope during propose or respond phases."""
-
-    # Termination failures
-    PREMATURE_TERMINATION = "premature_termination"
-    """The negotiation halted before a genuine agreement or timeout, typically
-    because an agent incorrectly signalled acceptance of an unresolved offer."""
-
-    UNAWARE_OF_STOPPING_CONDITIONS = "unaware_of_stopping_conditions"
-    """An agent continued proposing beyond the step budget or after a final
-    agreement had already been reached, indicating missing termination awareness."""
-
-    STEP_REPETITION = "step_repetition"
-    """An agent repeatedly submitted identical offers across consecutive rounds
-    without concession, indicating a reasoning loop or frozen aspiration curve."""
-
-    # Awareness and state failures
-    AWARENESS_GAP = "awareness_gap"
-    """An agent operated with incomplete knowledge of the negotiation state —
-    missing current offer, issue list, or options — leading to invalid decisions."""
-
-    # Alignment-specific failures
-    UTILITY_MISALIGNMENT = "utility_misalignment"
-    """The agreed outcome yields a utility distribution that is asymmetrically
-    unfair: one party's utility is near reservation value while the other's is
-    near maximum, suggesting coercion or defective preference expression."""
-
-    SEMANTIC_DRIFT = "semantic_drift"
-    """The final agreement diverges semantically from the original negotiation
-    intent expressed in the mission text — e.g., agreeing on options that do
-    not correspond to the discovered issues."""
-
-    INVALID_OFFER = "invalid_offer"
-    """An agent submitted an offer containing issue keys or option values not
-    present in the options_per_issue space defined for this session."""
-
-    LOW_PARETO_EFFICIENCY = "low_pareto_efficiency"
-    """The agreement is dominated by an alternative outcome that would improve
-    at least one party's utility without harming the other, indicating the
-    negotiation settled for a suboptimal joint outcome."""
-
-    IGNORED_OTHER_AGENT_INPUT = "ignored_other_agent_input"
-    """An agent disregarded the other party's most recent offer or concession,
-    continuing to propose as if no input had been received — indicating a failure
-    to model or incorporate the counterpart's negotiation moves."""
-
-    NO_CONSENSUS_REACHED = "no_consensus_reached"
-    """The negotiation exhausted its full step budget without any party accepting
-    an offer — distinct from premature termination in that all rounds were used.
-    Typically caused by incompatible preferences, overly rigid strategies (e.g.
-    Boulware deadlock), or insufficient step budget relative to the issue space."""
+logger = logging.getLogger(__name__)
 
 
-# ── ValidationResult ──────────────────────────────────────────────────────────
+# ── ValidationResult ─────────────────────────────────────────────────────
 
 @dataclass
 class ValidationResult:
     """
-    Output of the SemanticAlignmentValidationPipeline.
+    Output of SemanticAlignmentValidationPipeline.run().
 
-    Summarises whether a completed negotiation agreement is semantically sound,
-    fair, and free of the failure modes catalogued in the MAST taxonomy
-    (arxiv:2503.13657).
+    Combines the full ACSE semantic evaluation with protocol-level outcomes
+    and an orchestration recommendation.  All fields are always populated.
     """
 
+    # ── Semantic evaluation (from ACSE) ──────────────────────────────────────
     needs_intervention: bool
-    """True when the validation pipeline determines that a human or system-level
-    intervention is required before the agreement can be safely committed.
-    Typically set when severity is 'high' or a critical failure mode is present."""
+    """True when the agreement requires human or system review before committing."""
 
     severity: str
-    """Estimated severity of any detected issues.  One of:
-      - ``"low"``    — minor anomaly, agreement is likely acceptable as-is.
-      - ``"medium"`` — notable concern; justification or review is advisable.
-      - ``"high"``   — critical problem; the agreement should not be committed
-                       without escalation or re-negotiation.
-    Set to ``"low"`` with an empty ``failure_modes`` list when no issues are found."""
+    """One of "low", "medium", or "high"."""
 
     alignment_score: float
-    """A scalar in ``[0.0, 1.0]`` reflecting how well the final agreement aligns
-    with the original negotiation intent and the participants' stated preferences.
-    Computed as a weighted combination of utility balance, Pareto efficiency, and
-    semantic fidelity to the mission text.  Values below 0.4 typically trigger
-    ``needs_intervention = True``."""
+    """Scalar in [0.0, 1.0] — weighted average of per-issue ACSE scores."""
+
+    cognitive_alignment: float
+    """Overall confidence that agents reached genuine shared understanding."""
 
     failure_modes: List[str]
-    """Zero or more failure mode identifiers detected in this negotiation session.
-    Use constants from :class:`FailureMode` (e.g. ``FailureMode.STEP_REPETITION``).
-    An empty list indicates a clean negotiation with no observed anomalies."""
+    """SM-X failure strings from the ACSE evaluator (semantic layer only).
+    Protocol-level outcomes are expressed as dedicated fields (e.g. timed_out)."""
+
+    per_issue_evaluations: List[IssueEvaluation]
+    """Per-issue breakdown: resolution quality, constraint fit, consistency, focus."""
 
     reasoning: str
-    """Human-readable explanation of the validation outcome.  Describes which
-    failure modes were detected, why the alignment score was assigned, and what
-    evidence from the negotiation trace led to the recommendation."""
+    """Human-readable explanation of the evaluation outcome."""
 
+    agreement_coherence: float
+    """Cross-issue coherence: do the final choices across issues contradict each other?"""
+
+    cross_issue_conflicts: List[str]
+    """Pairs of issues whose final choices are mutually incompatible."""
+
+    # ── Protocol-level ────────────────────────────────────────────────────────
+    timed_out: bool
+    """True when the negotiation exhausted its step budget without agreement."""
+
+    # ── Orchestration ─────────────────────────────────────────────────────────
     recommendation: str
-    """Suggested next action for the orchestrating system.  One of:
-      - ``"accept"``                — agreement is sound; proceed to commit.
-      - ``"request_justification"`` — ask one or both agents to explain their
-                                      final offer before committing.
-      - ``"restart_negotiation"``   — discard the current result and re-run the
-                                      full negotiation pipeline.
-      - ``"escalate"``              — surface the issue to a human operator or
-                                      a higher-authority decision system."""
+    """Suggested next action: "accept", "request_justification", or "escalate"."""
 
-    statistical_events: Optional[int] = field(default=None)
-    """Reserved for future implementation."""
+    # ── Debug ─────────────────────────────────────────────────────────────────
+    raw_llm: Optional[Dict[str, Any]] = None
+    """Raw LLM response, present only when the LLM evaluation path was used."""
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -190,8 +121,6 @@ class SemanticAlignmentValidationPipeline:
           ``options_per_issue`` in its ``semantic_context``.
         * Every message that carries a ``sao_state`` must have a non-None
           ``current_offer`` inside it.
-        * Every negotiation step must have at least one agent decision (a message
-          with a non-None ``sao_response`` at that step).
         * When the last message's ``semantic_context.sao_response.response`` is
           ``"ACCEPT_OFFER"``, ``sao_response.outcome`` must be a non-empty dict.
 
@@ -225,7 +154,6 @@ class SemanticAlignmentValidationPipeline:
         session_ids: set = set()
         has_issues = False
         has_options = False
-        responses_by_step: dict = {}  # step -> list of sao_response values
 
         for i, msg in enumerate(trace):
             if not isinstance(msg, dict):
@@ -259,17 +187,13 @@ class SemanticAlignmentValidationPipeline:
             if isinstance(options, dict) and options:
                 has_options = True
 
-            # current_offer must be non-None on every message that has a sao_state;
-            # also collect sao_response per step to verify agent decisions
+            # current_offer must be non-None on every message that has a sao_state
             sao_state = sc.get("sao_state")
             if isinstance(sao_state, dict):
                 if sao_state.get("current_offer") is None:
                     errors.append(
                         f"trace[{i}].semantic_context.sao_state.current_offer must not be None"
                     )
-                step = sao_state.get("step")
-                if step is not None:
-                    responses_by_step.setdefault(step, []).append(sc.get("sao_response"))
 
         # ── Cross-message checks ──────────────────────────────────────────────
         if len(session_ids) > 1:
@@ -291,13 +215,49 @@ class SemanticAlignmentValidationPipeline:
                 "dict in semantic_context"
             )
 
-        # ── Per-step agent decision checks ────────────────────────────────────
-        for step, resps in responses_by_step.items():
-            if not any(r is not None for r in resps):
-                errors.append(
-                    f"step {step} has no agent decision — at least one message "
-                    f"in each step must carry a non-None sao_response"
-                )
+        # ── options_per_issue / issues alignment ──────────────────────────────
+        # Check using the first non-empty issues/options found in the trace
+        found_issues: List[str] = []
+        found_options: Dict[str, List] = {}
+        for msg in trace:
+            if not isinstance(msg, dict):
+                continue
+            sc = msg.get("semantic_context") or {}
+            if not found_issues and isinstance(sc.get("issues"), list) and sc["issues"]:
+                found_issues = sc["issues"]
+            if not found_options and isinstance(sc.get("options_per_issue"), dict) and sc["options_per_issue"]:
+                found_options = sc["options_per_issue"]
+            if found_issues and found_options:
+                break
+
+        if found_issues and found_options:
+            for issue in found_issues:
+                if issue not in found_options:
+                    errors.append(
+                        f"options_per_issue is missing key for issue '{issue}'"
+                    )
+                elif not found_options[issue]:
+                    errors.append(
+                        f"options_per_issue['{issue}'] must have at least one option"
+                    )
+
+        # ── server respond messages must have non-empty current_offer and proposer_id ──
+        for i, msg in enumerate(trace):
+            if not isinstance(msg, dict):
+                continue
+            origin = msg.get("origin") or {}
+            if origin.get("actor_id") != "negotiation-server":
+                continue
+            payload = msg.get("payload") or {}
+            if payload.get("action") == "respond":
+                if not payload.get("current_offer"):
+                    errors.append(
+                        f"trace[{i}]: server 'respond' message has empty or missing current_offer"
+                    )
+                if not payload.get("proposer_id"):
+                    errors.append(
+                        f"trace[{i}]: server 'respond' message has empty or missing proposer_id"
+                    )
 
         # ── Last message / outcome checks ─────────────────────────────────────
         last = trace[-1] if isinstance(trace[-1], dict) else {}
@@ -324,26 +284,137 @@ class SemanticAlignmentValidationPipeline:
 
         Args:
             trace: A list of SSTPNegotiateMessage dicts as written by the
-                negotiation server to ``sstp_message_trace.json``.  Each entry
-                is a ``kind='negotiate'`` message carrying ``semantic_context``
-                (with ``session_id``, ``issues``, ``options_per_issue``,
-                ``sao_state``) and, for agent-reply messages, ``sao_response``.
+                negotiation server to ``sstp_message_trace.json``.
 
         Returns:
-            A :class:`ValidationResult` describing any detected failure modes
-            and the recommended next action.
+            A :class:`ValidationResult` with the full ACSE semantic
+            evaluation, protocol-level outcomes, and orchestration recommendation.
 
         Raises:
             ValidationInputError: If *trace* is malformed or missing required fields.
         """
         self.validate_input(trace)
 
-        # TODO - implement the actual validation logic here
-        return ValidationResult(
-            needs_intervention=False,
-            severity="low",
-            alignment_score=1.0,
-            failure_modes=[],
-            reasoning="Validation not yet implemented.",
-            recommendation="accept",
+        mission_goal, issues, options_per_issue, neg_trace = self._extract_from_sstp_trace(trace)
+
+        logger.info(
+            "SemanticAlignmentValidationPipeline.run: session=%s issues=%d rounds=%d status=%s",
+            (trace[0].get("semantic_context") or {}).get("session_id", "?"),
+            len(issues),
+            neg_trace.total_rounds,
+            "timeout" if neg_trace.timedout else "agreed",
         )
+
+        llm_provider = get_llm_provider()
+        goal_spec = GoalSpecExtractor(llm_provider=llm_provider).extract(
+            mission_goal=mission_goal,
+            issues=issues,
+            options_per_issue=options_per_issue,
+        )
+        trace_state = TraceStateBuilder().build(neg_trace, issues)
+        interaction_signals = InteractionSignalExtractor().extract(trace_state, options_per_issue)
+        ae = SemanticAlignmentEvaluator(llm_provider=llm_provider).evaluate(
+            goal_spec=goal_spec,
+            trace_state=trace_state,
+            interaction_signals=interaction_signals,
+        )
+
+        recommendation = self._derive_recommendation(ae.needs_intervention, ae.severity.value)
+
+        return ValidationResult(
+            needs_intervention=ae.needs_intervention,
+            severity=ae.severity.value,
+            alignment_score=ae.alignment_score,
+            cognitive_alignment=ae.cognitive_alignment,
+            failure_modes=list(ae.failure_modes),
+            per_issue_evaluations=list(ae.issue_scores.values()),
+            reasoning=ae.reasoning,
+            agreement_coherence=ae.agreement_coherence or 1.0,
+            cross_issue_conflicts=list(ae.cross_issue_conflicts),
+            timed_out=neg_trace.timedout,
+            recommendation=recommendation,
+            raw_llm=ae.raw_llm,
+        )
+
+    # ── SSTP trace extraction ─────────────────────────────────────────────────
+
+    def _extract_from_sstp_trace(
+        self, trace: List[Any]
+    ) -> Tuple[str, List[str], Dict[str, List[str]], NegotiationTrace]:
+        """Extract mission_goal, issues, options_per_issue and a NegotiationTrace
+        from the SSTP message list accepted by ``run()``.
+
+        Offers are carried in ``payload.action`` / ``payload.round`` /
+        ``payload.current_offer`` (server "respond" messages) or
+        ``payload.offer`` (agent "counter_offer" messages).  Both the server
+        and the responding agent share the same ``round`` value, so a
+        sequential list is used to preserve both entries without collision.
+        """
+        # Mission goal from the first message's payload
+        mission_goal: str = (
+            (trace[0].get("payload") or {}).get("content_text", "")
+            if trace
+            else ""
+        )
+
+        # Issues and options_per_issue: take first non-empty occurrence
+        issues: List[str] = []
+        options_per_issue: Dict[str, List[str]] = {}
+        for msg in trace:
+            sc = msg.get("semantic_context") or {}
+            if not issues and isinstance(sc.get("issues"), list) and sc["issues"]:
+                issues = sc["issues"]
+            if not options_per_issue and isinstance(sc.get("options_per_issue"), dict) and sc["options_per_issue"]:
+                options_per_issue = sc["options_per_issue"]
+            if issues and options_per_issue:
+                break
+
+        # Rounds: server "respond" and agent "counter_offer" messages both carry
+        # the same round number, so a sequential list preserves both entries.
+        records: List[Tuple[str, Dict[str, str]]] = []  # (proposer, offer)
+
+        for msg in trace:
+            origin = msg.get("origin") or {}
+            actor = origin.get("actor_id", "")
+            payload = msg.get("payload") or {}
+            action = payload.get("action", "")
+            if action == "respond" and actor == "negotiation-server":
+                current_offer = payload.get("current_offer") or {}
+                if current_offer:
+                    records.append((payload.get("proposer_id") or "server", current_offer))
+
+        rounds: List[RoundRecord] = [
+            RoundRecord(round_index=i, proposer_id=proposer, offer=offer)
+            for i, (proposer, offer) in enumerate(records)
+        ]
+        total_rounds = len(records)
+
+        # Final agreement: last ACCEPT_OFFER with a non-empty outcome
+        final_agreement: Dict[str, str] = {}
+        for msg in reversed(trace):
+            sc = msg.get("semantic_context") or {}
+            resp = sc.get("sao_response") or {}
+            if resp.get("response") == "ACCEPT_OFFER" and isinstance(resp.get("outcome"), dict) and resp["outcome"]:
+                final_agreement = {str(k): str(v) for k, v in resp["outcome"].items()}
+                break
+
+        timedout = bool(records) and not final_agreement
+
+        neg_trace = NegotiationTrace(
+            rounds=rounds,
+            final_agreement=final_agreement,
+            timedout=timedout,
+            broken=False,
+            total_rounds=total_rounds,
+        )
+        return mission_goal, issues, options_per_issue, neg_trace
+
+    # ── Recommendation logic ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _derive_recommendation(needs_intervention: bool, severity: str) -> str:
+        if not needs_intervention:
+            return "accept"
+        if severity == "medium":
+            return "request_justification"
+        return "escalate"
