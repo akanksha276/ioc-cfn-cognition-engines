@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -161,6 +162,15 @@ class SemanticNegotiationPipeline:
                 validation.recommendation,
                 validation.timed_out,
             )
+            if validation.heuristic_scores is not None:
+                logger.info(
+                    "run_alignment_validation heuristic_scores overall_instability=%.4f "
+                    "per_issue_divergence=%s positional_instability=%s oscillation_rate=%s",
+                    validation.heuristic_scores.overall_instability_score,
+                    validation.heuristic_scores.per_issue_divergence,
+                    validation.heuristic_scores.positional_instability,
+                    validation.heuristic_scores.oscillation_rate,
+                )
             return validation
         except Exception as exc:
             logger.warning(
@@ -655,6 +665,10 @@ class SemanticNegotiationPipeline:
                 "cross_issue_conflicts": validation.cross_issue_conflicts,
                 "reasoning": validation.reasoning,
                 "recommendation": validation.recommendation,
+                "heuristic_scores": (
+                    dataclasses.asdict(validation.heuristic_scores)
+                    if validation.heuristic_scores is not None else None
+                ),
             } if validation is not None else None,
         }
 

@@ -11,11 +11,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from .acse import (
     GoalSpecExtractor,
     InteractionSignalExtractor,
+    InteractionSignals,
     IssueEvaluation,
     NegotiationTrace,
     RoundRecord,
     SemanticAlignmentEvaluator,
     TraceStateBuilder,
+    ValidationConfig,
 )
 from ..config.utils import get_llm_provider
 
@@ -70,6 +72,12 @@ class ValidationResult:
     recommendation: str
     """Suggested next action: "accept", "request_justification", or "escalate"."""
 
+    # ── Heuristic / statistical signals ──────────────────────────────────────
+    heuristic_scores: Optional[InteractionSignals] = None
+    """Raw interaction signals computed from trace dynamics (positional instability,
+    per-issue divergence, oscillation rate, overall instability score).
+    Always populated — independent of whether the LLM or heuristic path was used."""
+
     # ── Debug ─────────────────────────────────────────────────────────────────
     raw_llm: Optional[Dict[str, Any]] = None
     """Raw LLM response, present only when the LLM evaluation path was used."""
@@ -84,8 +92,8 @@ class ValidationInputError(ValueError):
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 
 class SemanticAlignmentValidationPipeline:
-    def __init__(self):
-        pass
+    def __init__(self, config: Optional[ValidationConfig] = None) -> None:
+        self._config = config if config is not None else ValidationConfig()
 
     # ── Input validation ──────────────────────────────────────────────────────
 
@@ -313,7 +321,10 @@ class SemanticAlignmentValidationPipeline:
         )
         trace_state = TraceStateBuilder().build(neg_trace, issues)
         interaction_signals = InteractionSignalExtractor().extract(trace_state, options_per_issue)
-        ae = SemanticAlignmentEvaluator(llm_provider=llm_provider).evaluate(
+        ae = SemanticAlignmentEvaluator(
+            llm_provider=llm_provider,
+            config=self._config,
+        ).evaluate(
             goal_spec=goal_spec,
             trace_state=trace_state,
             interaction_signals=interaction_signals,
@@ -333,6 +344,7 @@ class SemanticAlignmentValidationPipeline:
             cross_issue_conflicts=list(ae.cross_issue_conflicts),
             timed_out=neg_trace.timedout,
             recommendation=recommendation,
+            heuristic_scores=interaction_signals,
             raw_llm=ae.raw_llm,
         )
 

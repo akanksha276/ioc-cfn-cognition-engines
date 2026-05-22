@@ -14,6 +14,7 @@ import json
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
+from .config import ValidationConfig
 from .models import (
     AlignmentEvaluation,
     GoalSpec,
@@ -27,25 +28,17 @@ from .utils import clamp01, is_vague_option, mean, safe_json_parse
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Scoring thresholds
-# ---------------------------------------------------------------------------
-
-_SCORE_ALIGNED = 0.75          # alignment_score + cognitive_alignment floor for "aligned"
-_SCORE_INTERVENTION = 0.6      # alignment_score below this → needs_intervention
-_COGNITIVE_INTERVENTION = 0.5  # cognitive_alignment below this → needs_intervention
-_SCORE_HIGH_SEVERITY = 0.4     # alignment_score threshold for HIGH severity
-_SCORE_MEDIUM_SEVERITY = 0.75  # alignment_score threshold for MEDIUM severity
-_CONSTRAINT_FIT_CRITICAL = 0.25  # constraint_fit below this → critical issue penalty
-_HIGH_STAKES_KEYWORDS = frozenset([
-    "enterprise", "critical", "infrastructure", "sla", "production", "multi-year",
-    "high-stakes",
-])
+_DEFAULT_CONFIG = ValidationConfig()
 
 
 class SemanticAlignmentEvaluator:
-    def __init__(self, llm_provider: Optional[Callable[[str], str]] = None) -> None:
+    def __init__(
+        self,
+        llm_provider: Optional[Callable[[str], str]] = None,
+        config: Optional[ValidationConfig] = None,
+    ) -> None:
         self._llm = llm_provider
+        self._cfg = config or _DEFAULT_CONFIG
 
     def evaluate(
         self,
@@ -101,11 +94,11 @@ class SemanticAlignmentEvaluator:
         """Cap alignment score when any issue has critically low constraint_fit."""
         critical_failures = [
             ev for ev in issue_scores.values()
-            if ev.constraint_fit < _CONSTRAINT_FIT_CRITICAL
+            if ev.constraint_fit < self._cfg.constraint_fit_critical
         ]
         if critical_failures:
             n = len(critical_failures)
-            cap = 0.50 if n == 1 else 0.40
+            cap = self._cfg.critical_cap_single if n == 1 else self._cfg.critical_cap_multiple
             return min(alignment_score, cap)
         return alignment_score
 
@@ -116,10 +109,11 @@ class SemanticAlignmentEvaluator:
         interaction_signals: InteractionSignals,
         llm_eval: Dict[str, Any],
     ) -> AlignmentEvaluation:
+        cfg = self._cfg
         issue_scores: Dict[str, IssueEvaluation] = {}
         llm_issue_scores = llm_eval.get("issue_scores") or {}
         mission_text = (goal_spec.original_goal or "").lower()
-        high_stakes = any(kw in mission_text for kw in _HIGH_STAKES_KEYWORDS)
+        high_stakes = any(kw in mission_text for kw in cfg.high_stakes_keywords)
 
         for issue in goal_spec.issues:
             s = llm_issue_scores.get(issue, {})
@@ -152,17 +146,18 @@ class SemanticAlignmentEvaluator:
                 )
 
         per_issue_scores = [
-            0.4 * ev.resolution_quality
-            + 0.3 * ev.constraint_fit
-            + 0.2 * ev.consistency
-            + 0.1 * ev.focus_retention
+            cfg.weight_resolution_quality * ev.resolution_quality
+            + cfg.weight_constraint_fit * ev.constraint_fit
+            + cfg.weight_consistency * ev.consistency
+            + cfg.weight_focus_retention * ev.focus_retention
             for ev in issue_scores.values()
         ]
         per_issue_avg = mean(per_issue_scores)
         per_issue_avg = self._apply_critical_issue_penalty(per_issue_avg, issue_scores)
 
         agreement_coherence = float(llm_eval.get("agreement_coherence", 1.0))
-        alignment_score = round(0.9 * per_issue_avg + 0.1 * agreement_coherence, 4)
+        w = cfg.weight_agreement_coherence
+        alignment_score = round((1.0 - w) * per_issue_avg + w * agreement_coherence, 4)
         cognitive_alignment = float(llm_eval.get("cognitive_alignment", 0.5))
 
         raw_failure_modes = list(llm_eval.get("failure_modes") or [])
@@ -176,14 +171,15 @@ class SemanticAlignmentEvaluator:
         cross_issue_conflicts = [str(c) for c in (llm_eval.get("cross_issue_conflicts") or [])]
         reasoning = str(llm_eval.get("reasoning") or "").strip()
 
-        aligned = alignment_score >= _SCORE_ALIGNED and cognitive_alignment >= _SCORE_ALIGNED
+        aligned = alignment_score >= cfg.score_aligned and cognitive_alignment >= cfg.score_aligned
         needs_intervention = (
-            alignment_score < _SCORE_INTERVENTION or cognitive_alignment < _COGNITIVE_INTERVENTION
+            alignment_score < cfg.score_intervention
+            or cognitive_alignment < cfg.cognitive_intervention
         )
 
-        if alignment_score < _SCORE_HIGH_SEVERITY and cognitive_alignment < _COGNITIVE_INTERVENTION:
+        if alignment_score < cfg.score_high_severity and cognitive_alignment < cfg.cognitive_intervention:
             severity = Severity.HIGH
-        elif alignment_score < _SCORE_MEDIUM_SEVERITY or cognitive_alignment < _COGNITIVE_INTERVENTION:
+        elif alignment_score < cfg.score_medium_severity or cognitive_alignment < cfg.cognitive_intervention:
             severity = Severity.MEDIUM
         else:
             severity = Severity.LOW
@@ -210,10 +206,11 @@ class SemanticAlignmentEvaluator:
         trace_state: TraceState,
         interaction_signals: InteractionSignals,
     ) -> AlignmentEvaluation:
+        cfg = self._cfg
         issue_scores: Dict[str, IssueEvaluation] = {}
         failure_modes: List[str] = []
         mission_text = (goal_spec.original_goal or "").lower()
-        high_stakes = any(kw in mission_text for kw in _HIGH_STAKES_KEYWORDS)
+        high_stakes = any(kw in mission_text for kw in cfg.high_stakes_keywords)
 
         for issue in goal_spec.issues:
             final_choice = trace_state.final_agreement.get(issue, "")
@@ -257,7 +254,11 @@ class SemanticAlignmentEvaluator:
                     for i in range(2, len(positions))
                     if positions[i] == positions[i - 2] and positions[i] != positions[i - 1]
                 )
-                base = 1.0 - min(1.0, 0.25 * changes + 0.35 * reversals)
+                base = 1.0 - min(
+                    1.0,
+                    cfg.consistency_change_penalty * changes
+                    + cfg.consistency_reversal_penalty * reversals,
+                )
                 per_agent_consistency.append(clamp01(base))
             consistency = round(mean(per_agent_consistency), 4)
 
@@ -281,11 +282,11 @@ class SemanticAlignmentEvaluator:
                 failure_modes.append(f"SM-4: {issue}: issue left unresolved — no final choice made")
             elif resolution_quality < 0.35:
                 failure_modes.append(f"SM-1: {issue}: agreed option is too vague to operationalize")
-            if consistency < 0.4:
+            if consistency < cfg.consistency_drift_threshold:
                 failure_modes.append(
                     f"SM-5: {issue}: high position inconsistency suggests pressure capitulation"
                 )
-            if focus_retention < 0.25:
+            if focus_retention < cfg.focus_drift_threshold:
                 failure_modes.append(
                     f"SM-4: {issue}: low focus retention — agents drifted from this issue"
                 )
@@ -306,23 +307,24 @@ class SemanticAlignmentEvaluator:
         cognitive_alignment = round(mean(divergence_scores), 4)
 
         per_issue_scores = [
-            0.4 * ev.resolution_quality
-            + 0.3 * ev.constraint_fit
-            + 0.2 * ev.consistency
-            + 0.1 * ev.focus_retention
+            cfg.weight_resolution_quality * ev.resolution_quality
+            + cfg.weight_constraint_fit * ev.constraint_fit
+            + cfg.weight_consistency * ev.consistency
+            + cfg.weight_focus_retention * ev.focus_retention
             for ev in issue_scores.values()
         ]
         alignment_score = round(mean(per_issue_scores), 4)
         alignment_score = self._apply_critical_issue_penalty(alignment_score, issue_scores)
 
-        aligned = alignment_score >= _SCORE_ALIGNED and cognitive_alignment >= _SCORE_ALIGNED
+        aligned = alignment_score >= cfg.score_aligned and cognitive_alignment >= cfg.score_aligned
         needs_intervention = (
-            alignment_score < _SCORE_INTERVENTION or cognitive_alignment < _COGNITIVE_INTERVENTION
+            alignment_score < cfg.score_intervention
+            or cognitive_alignment < cfg.cognitive_intervention
         )
 
-        if alignment_score < _SCORE_HIGH_SEVERITY and cognitive_alignment < _COGNITIVE_INTERVENTION:
+        if alignment_score < cfg.score_high_severity and cognitive_alignment < cfg.cognitive_intervention:
             severity = Severity.HIGH
-        elif alignment_score < _SCORE_MEDIUM_SEVERITY:
+        elif alignment_score < cfg.score_medium_severity:
             severity = Severity.MEDIUM
         else:
             severity = Severity.LOW

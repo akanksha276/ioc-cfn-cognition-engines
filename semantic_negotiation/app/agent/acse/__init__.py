@@ -12,6 +12,7 @@ Components:
   evaluator  — SemanticAlignmentEvaluator: LLM-backed evaluation with heuristic fallback
 """
 
+from .config import ValidationConfig
 from .models import (
     AlignmentEvaluation,
     GoalSpec,
@@ -39,4 +40,5 @@ __all__ = [
     "Severity",
     "TraceState",
     "TraceStateBuilder",
+    "ValidationConfig",
 ]

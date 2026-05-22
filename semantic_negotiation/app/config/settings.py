@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
+
 # Resolve .env relative to the project root (semantic_negotiation/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _ENV_FILE = _PROJECT_ROOT / ".env"
@@ -75,6 +76,25 @@ class Settings(BaseSettings):
             "ToughNegotiator, NiceNegotiator, MiCRONegotiator."
         ),
     )
+
+    # ── Semantic alignment validation thresholds ──────────────────────────────
+    validation_score_aligned: float = Field(default=0.75)
+    validation_score_intervention: float = Field(default=0.6)
+    validation_cognitive_intervention: float = Field(default=0.5)
+    validation_score_high_severity: float = Field(default=0.4)
+    validation_score_medium_severity: float = Field(default=0.75)
+    validation_constraint_fit_critical: float = Field(default=0.25)
+    validation_critical_cap_single: float = Field(default=0.50)
+    validation_critical_cap_multiple: float = Field(default=0.40)
+    validation_weight_resolution_quality: float = Field(default=0.4)
+    validation_weight_constraint_fit: float = Field(default=0.3)
+    validation_weight_consistency: float = Field(default=0.2)
+    validation_weight_focus_retention: float = Field(default=0.1)
+    validation_weight_agreement_coherence: float = Field(default=0.1)
+    validation_consistency_change_penalty: float = Field(default=0.25)
+    validation_consistency_reversal_penalty: float = Field(default=0.35)
+    validation_focus_drift_threshold: float = Field(default=0.25)
+    validation_consistency_drift_threshold: float = Field(default=0.4)
 
 
 # Singleton settings instance
