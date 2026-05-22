@@ -57,6 +57,22 @@ class ReasonerCognitionRequest(BaseModel):
 
 # ============== Response Models ==============
 
+class TokenUsage(BaseModel):
+    """Token usage information from LLM calls."""
+    prompt: int = Field(..., description="Number of prompt tokens")
+    completion: int = Field(..., description="Number of completion tokens")
+    total: int = Field(..., description="Total tokens (prompt + completion)")
+    model: str = Field(..., description="Model used for the LLM call")
+
+
+class TokenUsageMeta(BaseModel):
+    """Metadata including token usage, latency, and cost."""
+    tokens: TokenUsage = Field(..., description="Token usage information")
+    latency_ms: float = Field(..., description="LLM call latency in milliseconds")
+    cost_usd: Optional[float] = Field(None, description="Estimated cost in USD")
+    timestamp: str = Field(..., description="ISO 8601 timestamp of the LLM call")
+
+
 class KnowledgeRecord(BaseModel):
     id: str = Field(default="auto")
     type: Literal["json"] = "json"
@@ -77,6 +93,8 @@ class ReasonerCognitionResponse(BaseModel):
     error: Optional[ErrorDetail] = None
     records: List[KnowledgeRecord] = Field(default_factory=list)
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    # Token usage metadata (optional, present when LLM calls are made)
+    meta: Optional[TokenUsageMeta] = Field(None, description="LLM token usage and performance metrics")
 
 
 # ---- Placeholder DB-facing schemas (to be finalized later) ----

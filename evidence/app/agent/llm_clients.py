@@ -7,6 +7,8 @@ import asyncio
 import json
 import logging
 import time
+from datetime import datetime, timezone
+from dataclasses import dataclass
 from pydantic import BaseModel
 
 import litellm
@@ -14,6 +16,18 @@ import litellm
 from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LLMTokenMetadata:
+    """Token usage metadata from an LLM call."""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    model: str
+    latency_ms: float
+    cost_usd: Optional[float]
+    timestamp: str
 
 # Global counter of successful LLM chat calls
 _LLM_CALL_COUNT = 0
@@ -114,6 +128,17 @@ class _LLMBaseClient:
         Invoke the LLM via litellm tool_calls with a Pydantic schema.
         Raises on empty/filtered/refused responses.
         """
+        parsed, _ = self._call_chat_structured_with_tokens(system, user, response_model)
+        return parsed
+
+    def _call_chat_structured_with_tokens(
+        self, system: str, user: str, response_model: Type[_T]
+    ) -> Tuple[_T, LLMTokenMetadata]:
+        """
+        Invoke the LLM via litellm tool_calls with a Pydantic schema.
+        Returns (parsed_response, token_metadata) tuple.
+        Raises on empty/filtered/refused responses.
+        """
         tool = _model_to_tool_schema(response_model)
         kwargs: dict = {
             "model": settings.LLM_MODEL,
@@ -132,8 +157,33 @@ class _LLMBaseClient:
             settings.LLM_MODEL, response_model.__name__,
         )
 
+        # Track timing
+        start_time = time.time()
+
+        # Call LLM
         resp = litellm.completion(**kwargs)
         _inc_llm_call_count()
+
+        # Calculate latency
+        latency_ms = (time.time() - start_time) * 1000
+
+        # Extract token usage
+        usage = resp.usage
+        token_metadata = LLMTokenMetadata(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            model=resp.model,
+            latency_ms=latency_ms,
+            cost_usd=None,  # Can be calculated if needed
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # Calculate cost (optional)
+        try:
+            token_metadata.cost_usd = litellm.completion_cost(completion_response=resp)
+        except Exception:
+            pass  # Cost calculation is optional
 
         choice = resp.choices[0] if resp.choices else None
         finish_reason = getattr(choice, "finish_reason", None) if choice else None
@@ -162,10 +212,10 @@ class _LLMBaseClient:
         parsed = response_model(**data)
 
         logger.debug(
-            "[LLM._call_chat_structured] response | finish_reason=%s | parsed: %s",
-            finish_reason, parsed,
+            "[LLM._call_chat_structured] response | finish_reason=%s | tokens=%d | latency=%.2fms",
+            finish_reason, token_metadata.total_tokens, latency_ms,
         )
-        return parsed
+        return parsed, token_metadata
 
 
 class EvidenceJudge(_LLMBaseClient):
@@ -290,9 +340,12 @@ class ResponseGenerator(_LLMBaseClient):
         symbolic_paths: List[str],
         verdict: str,
         rag_snippets: Optional[List[Dict[str, Any]]] = None,
-    ) -> str:
+        return_tokens: bool = False,
+    ) -> str | Tuple[str, Optional[LLMTokenMetadata]]:
         rag_snippets = rag_snippets or []
         if not intent and not symbolic_paths and not verdict and not rag_snippets:
+            if return_tokens:
+                return "Insufficient Evidence", None
             return "Insufficient Evidence"
 
         base_rules = (
@@ -351,12 +404,19 @@ class ResponseGenerator(_LLMBaseClient):
         user = f"User intent: {intent or '(none)'}\n\n{evidence_block}\n\nGenerate a short answer using only the evidence above."
 
         last_error: BaseException | None = None
+        last_token_metadata: Optional[LLMTokenMetadata] = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                result = self._call_chat_structured(system, user, ResponseGeneratorResponse)
+                if return_tokens:
+                    result, token_metadata = self._call_chat_structured_with_tokens(system, user, ResponseGeneratorResponse)
+                    last_token_metadata = token_metadata
+                else:
+                    result = self._call_chat_structured(system, user, ResponseGeneratorResponse)
                 answer = (result.answer or "").strip()
                 if not answer:
                     raise ValueError("LLM returned empty answer")
+                if return_tokens:
+                    return answer, last_token_metadata
                 return answer
             except Exception as e:
                 last_error = e
@@ -376,9 +436,10 @@ class ResponseGenerator(_LLMBaseClient):
         symbolic_paths: List[str],
         verdict: str,
         rag_snippets: Optional[List[Dict[str, Any]]] = None,
-    ) -> str:
+        return_tokens: bool = False,
+    ) -> str | Tuple[str, Optional[LLMTokenMetadata]]:
         return await asyncio.to_thread(
-            self.generate_final_response, intent, symbolic_paths, verdict, rag_snippets
+            self.generate_final_response, intent, symbolic_paths, verdict, rag_snippets, return_tokens
         )
 
 

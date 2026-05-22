@@ -40,11 +40,13 @@ if str(_semantic_negotiation_root) not in sys.path:
 
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
+import time
 
 import httpx
 import litellm
 
 from ..config.settings import settings
+from .token_tracker import TokenAccumulator
 
 from app.agent.http_repo import (
     SharedMemoryQueryError,
@@ -310,7 +312,13 @@ class OptionsGeneration:
         self._agent_query = agent_interpretation_query or mock_agent_interpretation_query
         logger.info("OptionsGeneration initialized")
 
-    def _call_llm_tool(self, prompt: str, negotiable_entities: list[Any], source: str) -> list[TermOptions]:
+    def _call_llm_tool(
+        self,
+        prompt: str,
+        negotiable_entities: list[Any],
+        source: str,
+        token_accumulator: Optional[TokenAccumulator] = None,
+    ) -> list[TermOptions]:
         """Call litellm with the record_options tool and parse the result into TermOptions."""
         kwargs: dict[str, Any] = {
             "model": settings.llm_model,
@@ -323,7 +331,14 @@ class OptionsGeneration:
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
 
+        start_time = time.time()
         resp = litellm.completion(**kwargs)
+        latency_ms = (time.time() - start_time) * 1000
+
+        if token_accumulator:
+            token_accumulator.add(resp.usage)
+            token_accumulator.add_latency(latency_ms)
+            token_accumulator.set_model(resp.model)
 
         by_term: dict[str, list[str]] = {}
         tool_calls = resp.choices[0].message.tool_calls
@@ -356,6 +371,7 @@ class OptionsGeneration:
         negotiable_entities: list[Any],
         sentence: str,
         context: Optional[str] = None,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> OptionsGenerationOutput:
         """
         Strategy 1: LLM proposes plausible meanings using its own judgment.
@@ -372,7 +388,7 @@ class OptionsGeneration:
         terms_blob = self._format_terms_for_prompt(negotiable_entities)
         context_str = context if context else "not specified"
         prompt = _LLM_ONLY_PROMPT.format(sentence=sentence, context=context_str, terms_blob=terms_blob)
-        term_options = self._call_llm_tool(prompt, negotiable_entities, source="llm")
+        term_options = self._call_llm_tool(prompt, negotiable_entities, source="llm", token_accumulator=token_accumulator)
         result = OptionsGenerationResult(
             sentence=sentence, context=context, term_options=term_options, strategy_used="llm_only",
         )
@@ -395,6 +411,7 @@ class OptionsGeneration:
         fabric_node_base_url: Optional[str] = None,
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> OptionsGenerationOutput:
         """
         Strategy 2: Resolve memory via *fabric_node_base_url* / *workspace_id* / *mas_id*,
@@ -417,7 +434,7 @@ class OptionsGeneration:
                 "falling back to LLM-only options."
             )
             return self.generate_options_llm_only(
-                negotiable_entities, sentence, context
+                negotiable_entities, sentence, context, token_accumulator=token_accumulator
             )
         issues = issue_labels_from_negotiable_entities(negotiable_entities)
         if not issues:
@@ -467,7 +484,7 @@ class OptionsGeneration:
                 exc,
             )
             return self.generate_options_llm_only(
-                negotiable_entities, sentence, context
+                negotiable_entities, sentence, context, token_accumulator=token_accumulator
             )
         #print(f"Memory data: {memory_data}")
         memory_blob = json.dumps(memory_data, indent=2)
@@ -476,7 +493,7 @@ class OptionsGeneration:
         prompt = _MEMORY_LLM_PROMPT.format(
             sentence=sentence, context=context_str, memory_blob=memory_blob, terms_blob=terms_blob,
         )
-        term_options = self._call_llm_tool(prompt, negotiable_entities, source="memory_llm")
+        term_options = self._call_llm_tool(prompt, negotiable_entities, source="memory_llm", token_accumulator=token_accumulator)
         result = OptionsGenerationResult(
             sentence=sentence, context=context, term_options=term_options, strategy_used="memory_llm",
         )
@@ -546,6 +563,7 @@ class OptionsGeneration:
         fabric_node_base_url: Optional[str] = None,
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> OptionsGenerationOutput:
         """
         Generate options for negotiable entities.
@@ -569,8 +587,9 @@ class OptionsGeneration:
                 fabric_node_base_url=fabric_node_base_url,
                 workspace_id=workspace_id,
                 mas_id=mas_id,
+                token_accumulator=token_accumulator,
             )
-        return self.generate_options_llm_only(negotiable_entities, sentence, context)
+        return self.generate_options_llm_only(negotiable_entities, sentence, context, token_accumulator=token_accumulator)
 
     def _format_terms_for_prompt(self, negotiable_entities: list[Any]) -> str:
         lines = []

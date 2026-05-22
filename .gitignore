@@ -151,3 +151,7 @@ mocked_db/
 
 # http_db service / local data (not committed)
 http_db/
+
+.claude/
+.vscode/
+temp/

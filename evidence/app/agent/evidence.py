@@ -317,12 +317,14 @@ async def process_evidence(
                 if reason:
                     sufficient_reasons.append(reason)
         verdict = " ".join(sufficient_reasons) if sufficient_reasons else ""
+        token_meta = None
         try:
-            final_response = await response_generator.async_generate_final_response(
+            final_response, token_meta = await response_generator.async_generate_final_response(
                 intent,
                 cumulated_paths,
                 verdict,
                 rag_snippets if use_unified_rag_final else None,
+                return_tokens=True,
             )
         except Exception:
             final_response = verdict or "Insufficient Evidence"
@@ -358,6 +360,23 @@ async def process_evidence(
         if use_unified_rag_final:
             combined_content["trace"]["rag_snippets"] = rag_snippets
         combined_record = KnowledgeRecord(type="json", content=combined_content)
+
+        # Convert token metadata to response format
+        response_meta = None
+        if token_meta:
+            from ..api.schemas import TokenUsage, TokenUsageMeta
+            response_meta = TokenUsageMeta(
+                tokens=TokenUsage(
+                    prompt=token_meta.prompt_tokens,
+                    completion=token_meta.completion_tokens,
+                    total=token_meta.total_tokens,
+                    model=token_meta.model,
+                ),
+                latency_ms=token_meta.latency_ms,
+                cost_usd=token_meta.cost_usd,
+                timestamp=token_meta.timestamp,
+            )
+
         return ReasonerCognitionResponse(
             header=response_header,
             response_id=response_id,
@@ -373,15 +392,17 @@ async def process_evidence(
                 "rag_unified_final": use_unified_rag_final,
                 "rag_chunks_returned": len(rag_snippets) if use_unified_rag_final else 0,
             },
+            meta=response_meta,
         )
 
     if use_unified_rag_final and records_out:
+        last_token_meta = None
         for rec in records_out:
             graph_paths = _get_paths_strings(rec)
             verdict_one = _verdict_from_record(rec)
             try:
-                final_text = await response_generator.async_generate_final_response(
-                    intent, graph_paths, verdict_one, rag_snippets
+                final_text, last_token_meta = await response_generator.async_generate_final_response(
+                    intent, graph_paths, verdict_one, rag_snippets, return_tokens=True
                 )
             except Exception:
                 final_text = verdict_one or "Insufficient Evidence"
@@ -395,6 +416,22 @@ async def process_evidence(
             }
             tr = (rec.content or {}).setdefault("trace", {})
             tr["rag_snippets"] = rag_snippets
+
+        # Convert last token metadata to response format (if available)
+        response_meta_final = None
+        if use_unified_rag_final and last_token_meta:
+            from ..api.schemas import TokenUsage, TokenUsageMeta
+            response_meta_final = TokenUsageMeta(
+                tokens=TokenUsage(
+                    prompt=last_token_meta.prompt_tokens,
+                    completion=last_token_meta.completion_tokens,
+                    total=last_token_meta.total_tokens,
+                    model=last_token_meta.model,
+                ),
+                latency_ms=last_token_meta.latency_ms,
+                cost_usd=last_token_meta.cost_usd,
+                timestamp=last_token_meta.timestamp,
+            )
 
     return ReasonerCognitionResponse(
         header=response_header,
@@ -410,4 +447,5 @@ async def process_evidence(
             "rag_unified_final": use_unified_rag_final,
             "rag_chunks_returned": len(rag_snippets) if use_unified_rag_final else 0,
         },
+        meta=response_meta_final if use_unified_rag_final else None,
     )

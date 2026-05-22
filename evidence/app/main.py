@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from .api.routes import router as api_router
 from .config.settings import settings
 from common.diagnostics.router import make_diagnostics_router, HealthCheck
+from common.metrics import init_metrics_client, get_metrics_client
 
 
 logging.basicConfig(
@@ -25,7 +26,21 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting %s...", settings.service_name)
+
+    # Initialize metrics client if CFN URL is configured
+    if settings.CFN_URL:
+        init_metrics_client(settings.CFN_URL, enabled=True)
+        logger.info("✅ Metrics client initialized: %s", settings.CFN_URL)
+    else:
+        logger.warning("⚠️  Metrics client disabled (CFN_URL not set)")
+
     yield
+
+    # Cleanup
+    client = get_metrics_client()
+    if client:
+        await client.close()
+
     logger.info("Shutting down %s...", settings.service_name)
 
 

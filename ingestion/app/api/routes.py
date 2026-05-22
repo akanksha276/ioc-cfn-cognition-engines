@@ -121,6 +121,23 @@ async def knowledge_extraction(
             result["meta"]["concept_similarity_hits"] = len(similarity_hits)
             result["meta"]["concept_similarity"] = similarity_hits
 
+        # Extract token metadata if present
+        token_meta = None
+        if "token_meta" in result:
+            from .schemas import TokenUsage, TokenUsageMeta
+            tm = result["token_meta"]
+            token_meta = TokenUsageMeta(
+                tokens=TokenUsage(
+                    prompt=tm.prompt_tokens,
+                    completion=tm.completion_tokens,
+                    total=tm.total_tokens,
+                    model=tm.model,
+                ),
+                latency_ms=tm.latency_ms,
+                cost_usd=tm.cost_usd,
+                timestamp=tm.timestamp,
+            )
+
         return ExtractionResponseModel(
             header=body.header,
             response_id=response_id,
@@ -129,6 +146,7 @@ async def knowledge_extraction(
             descriptor=result.get("descriptor", data_format),
             metadata=result.get("meta", {}),
             rag_chunks=result.get("rag_chunks", []),
+            meta=token_meta,
         )
 
     except Exception as e:

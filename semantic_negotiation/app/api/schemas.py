@@ -11,6 +11,25 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
+# ============== Token tracking ==============
+
+
+class TokenUsage(BaseModel):
+    """LLM token consumption metrics."""
+    prompt: int = Field(..., description="Input tokens consumed")
+    completion: int = Field(..., description="Output tokens generated")
+    total: int = Field(..., description="Total tokens (prompt + completion)")
+    model: str = Field(..., description="Model identifier")
+
+
+class TokenUsageMeta(BaseModel):
+    """LLM call metadata including token usage."""
+    tokens: TokenUsage
+    latency_ms: float = Field(..., description="Time taken for LLM call in milliseconds")
+    cost_usd: Optional[float] = Field(None, description="Calculated cost in USD")
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+
+
 # ============== Shared header ==============
 
 
@@ -111,6 +130,7 @@ class NegotiateResponse(BaseModel):
         description="SAO trace as (step, negotiator_id, offer) tuples",
     )
     error: Optional[NegotiationError] = None
+    meta: Optional[TokenUsageMeta] = Field(None, description="LLM token usage metadata")
 
 
 # ============== Initiate ==============

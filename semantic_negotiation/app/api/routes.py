@@ -309,6 +309,30 @@ async def negotiate_initiate(
             ),
         )
 
+    # Extract token metadata and include in response meta
+    token_metadata = result.pop("token_metadata", None)
+    logger.info(f"Token metadata extracted: {token_metadata is not None}")
+    if token_metadata:
+        from .schemas import TokenUsage, TokenUsageMeta
+        # Construct meta field
+        result_meta = TokenUsageMeta(
+            tokens=TokenUsage(
+                prompt=token_metadata.prompt_tokens,
+                completion=token_metadata.completion_tokens,
+                total=token_metadata.total_tokens,
+                model=token_metadata.model,
+            ),
+            latency_ms=token_metadata.latency_ms,
+            cost_usd=token_metadata.cost_usd,
+            timestamp=token_metadata.timestamp,
+        )
+        logger.info(f"Token meta constructed: prompt={result_meta.tokens.prompt} completion={result_meta.tokens.completion}")
+        # Add to result payload
+        if "payload" not in result:
+            result["payload"] = {}
+        result["payload"]["meta"] = result_meta.model_dump()
+        logger.info(f"Token meta added to result.payload")
+
     envelope = _wrap_sstp_response(session_id, request_id, result)
     return JSONResponse(content=dump_negotiate_message_json(envelope))
 

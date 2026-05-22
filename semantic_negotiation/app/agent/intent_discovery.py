@@ -30,6 +30,7 @@ for _p in (_project_root, _src_root):
         sys.path.insert(0, str(_p))
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 
@@ -43,6 +44,7 @@ from app.agent.http_repo import (
     shared_memories_query_path,
 )
 from ..config.settings import settings
+from .token_tracker import TokenAccumulator
 
 
 def _format_agent_line_for_intent(agent_names: Optional[List[str]]) -> str:
@@ -221,6 +223,7 @@ class IntentDiscovery:
         fabric_node_base_url: Optional[str] = None,
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> IntentDiscoveryResult:
         """
         Extract negotiable entities from a sentence.
@@ -255,7 +258,14 @@ class IntentDiscovery:
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
 
+        start_time = time.time()
         resp = litellm.completion(**kwargs)
+        latency_ms = (time.time() - start_time) * 1000
+
+        if token_accumulator:
+            token_accumulator.add(resp.usage)
+            token_accumulator.add_latency(latency_ms)
+            token_accumulator.set_model(resp.model)
 
         entities: list[str] = []
         raw: Optional[str] = None

@@ -38,6 +38,7 @@ from .semantic_alignment_validation_pipeline import (
     ValidationResult,
     SemanticAlignmentValidationPipeline,
 )
+from .token_tracker import TokenAccumulator
 # CFN-compatible traces: normalize a throwaway copy for Step 4 only (see module docstring).
 from .validation_trace_adapter import adapt_sstp_trace_for_alignment_validation
 
@@ -262,6 +263,7 @@ class SemanticNegotiationPipeline:
         mas_id: str | None = None,
         fabric_node_base_url: str | None = None,
         agent_names: List[str] | None = None,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> tuple[List[str], Dict[str, List[str]], Optional[str]]:
         """Run only Components 1 and 2 and return ``(issues, options_per_issue, options_memory_blob)``.
 
@@ -299,6 +301,7 @@ class SemanticNegotiationPipeline:
                 fabric_node_base_url=fabric_node_base_url,
                 workspace_id=workspace_id,
                 mas_id=mas_id,
+                token_accumulator=token_accumulator,
             )
             if hasattr(issues, "negotiable_entities"):
                 issues = issues.negotiable_entities
@@ -309,6 +312,7 @@ class SemanticNegotiationPipeline:
                 fabric_node_base_url=fabric_node_base_url,
                 workspace_id=workspace_id,
                 mas_id=mas_id,
+                token_accumulator=token_accumulator,
             )
             logger.info(
                 "discover_and_generate done issues=%d options_keys=%d memory_blob=%s",
@@ -423,6 +427,9 @@ class SemanticNegotiationPipeline:
                         "agents information is required to initiate a session"
                     )
 
+                # Create TokenAccumulator for tracking tokens across LLM calls
+                token_accumulator = TokenAccumulator()
+
                 # ── Step 1: Discover Issues ────────────────────────────────
                 # IntentDiscovery extracts the negotiable entities (issues) from
                 # the free-text description of the negotiation context.
@@ -432,6 +439,7 @@ class SemanticNegotiationPipeline:
                     fabric_node_base_url=fabric_node_base_url,
                     workspace_id=workspace_id,
                     mas_id=mas_id,
+                    token_accumulator=token_accumulator,
                 )
                 if hasattr(issues, "negotiable_entities"):
                     issues = issues.negotiable_entities
@@ -453,6 +461,7 @@ class SemanticNegotiationPipeline:
                     fabric_node_base_url=fabric_node_base_url,
                     workspace_id=workspace_id,
                     mas_id=mas_id,
+                    token_accumulator=token_accumulator,
                 )
                 options_per_issue = gen_out.options_per_issue
                 options_memory_blob = gen_out.memory_blob
@@ -504,6 +513,9 @@ class SemanticNegotiationPipeline:
                     session_id,
                     effective_n,
                 )
+                # Convert accumulated tokens to metadata
+                token_metadata = token_accumulator.to_metadata()
+
                 return {
                     "status": "initiated",
                     "session_id": session_id,
@@ -513,6 +525,7 @@ class SemanticNegotiationPipeline:
                     "n_steps": effective_n,
                     "round": 1,
                     "messages": messages,
+                    "token_metadata": token_metadata,
                 }
 
             # ── Step 3 (continue): Decide ──────────────────────────────────

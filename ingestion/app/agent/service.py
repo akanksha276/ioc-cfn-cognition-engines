@@ -26,8 +26,10 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
 
 import litellm
 
@@ -37,6 +39,18 @@ from ..api.schemas import LLMConceptsResult, LLMRelationshipsResult
 from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LLMTokenMetadata:
+    """Token metadata from LLM calls."""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    model: str
+    latency_ms: float
+    cost_usd: Optional[float]
+    timestamp: str
 
 
 def _llm_creds() -> dict:
@@ -138,13 +152,14 @@ class TelemetryExtractionService(AdapterSDK):
         
         # Step 1a: Extract the main user query only from root spans
         query_concept_name = None
+        token_metadata = None
         for record in otel_records:
             if record.get("SpanId", "") not in root_span_ids:
                 continue
             span_attrs = record.get("SpanAttributes", {})
             raw_prompt = self._extract_raw_user_prompt(span_attrs)
             if raw_prompt:
-                distilled_query = self._distill_user_query(raw_prompt)
+                distilled_query, token_metadata = self._distill_user_query(raw_prompt)
                 short_hash = self._generate_id(raw_prompt)
                 query_concept_name = f"query_{short_hash}"
                 concepts_map[query_concept_name] = {
@@ -419,8 +434,8 @@ class TelemetryExtractionService(AdapterSDK):
             })
         
         rid = request_id or self._generate_id(f"{datetime.now().isoformat()}_{len(otel_records)}")
-        
-        return {
+
+        result = {
             "knowledge_cognition_request_id": rid,
             "concepts": concepts,
             "relations": formatted_relations,
@@ -431,6 +446,12 @@ class TelemetryExtractionService(AdapterSDK):
                 "relations_extracted": len(formatted_relations)
             }
         }
+
+        # Add token metadata if LLM was used
+        if token_metadata:
+            result["token_meta"] = token_metadata
+
+        return result
     
     @staticmethod
     def _extract_raw_user_prompt(span_attrs: Dict[str, Any]) -> Optional[str]:
@@ -454,13 +475,16 @@ class TelemetryExtractionService(AdapterSDK):
                     return content.strip()
         return None
     
-    def _distill_user_query(self, raw_prompt: str) -> str:
+    def _distill_user_query(self, raw_prompt: str) -> tuple[str, Optional[LLMTokenMetadata]]:
         """
         Distill the core question or query from a raw user prompt using the LLM.
         Falls back to returning the raw prompt truncated if no LLM is configured.
+
+        Returns:
+            tuple: (distilled_query, token_metadata)
         """
         if not self._has_llm():
-            return raw_prompt[:200].strip()
+            return raw_prompt[:200].strip(), None
         try:
             prompt = (
                 "Extract ONLY the core user question or query from the text below. "
@@ -471,6 +495,7 @@ class TelemetryExtractionService(AdapterSDK):
                 f"Text:\n{raw_prompt}\n\n"
                 "Return ONLY the extracted question, nothing else."
             )
+            start_time = time.time()
             resp = litellm.completion(
                 model=settings.llm_model,
                 messages=[
@@ -480,12 +505,27 @@ class TelemetryExtractionService(AdapterSDK):
                 temperature=0.0,
                 **_llm_creds(),
             )
+            latency_ms = (time.time() - start_time) * 1000
+
             extracted = (resp.choices[0].message.content or "").strip()
+
+            # Capture token metadata
+            usage = resp.usage
+            token_meta = LLMTokenMetadata(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                model=resp.model,
+                latency_ms=latency_ms,
+                cost_usd=None,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+
             if extracted:
-                return extracted
+                return extracted, token_meta
         except Exception as e:
             logger.warning("LLM query distillation failed, using raw prompt: %s", e)
-        return raw_prompt[:200].strip()
+        return raw_prompt[:200].strip(), None
     
     @staticmethod
     def _extract_completion_content(span_attrs: Dict[str, Any]) -> Optional[str]:
@@ -782,8 +822,13 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         self,
         compact_payload: List[Dict[str, Any]],
         system_prompt: str,
-    ) -> List[Dict[str, Any]]:
-        """Stage 1: Extract concepts from the compact payload via litellm tool_calls."""
+    ) -> tuple[List[Dict[str, Any]], Optional[LLMTokenMetadata]]:
+        """Stage 1: Extract concepts from the compact payload via litellm tool_calls.
+
+        Returns:
+            tuple: (concepts, token_metadata)
+        """
+        start_time = time.time()
         resp = litellm.completion(
             model=self._llm_model,
             messages=[
@@ -795,12 +840,26 @@ class ConceptRelationshipExtractionService(AdapterSDK):
             temperature=0.0,
             **self._creds(),
         )
+        latency_ms = (time.time() - start_time) * 1000
+
+        # Capture token metadata
+        usage = resp.usage
+        token_meta = LLMTokenMetadata(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            model=resp.model,
+            latency_ms=latency_ms,
+            cost_usd=None,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
         tool_calls = resp.choices[0].message.tool_calls
         if not tool_calls:
-            return []
+            return [], token_meta
         raw = tool_calls[0].function.arguments
         data = json.loads(raw) if isinstance(raw, str) else raw
-        return LLMConceptsResult(**data).model_dump()["concepts"]
+        return LLMConceptsResult(**data).model_dump()["concepts"], token_meta
 
     # ------------------------------------------------------------------
     # Step 3b – Ask LLM to extract relationships given concepts + payload
@@ -811,8 +870,13 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         concepts: List[Dict[str, Any]],
         compact_payload: List[Dict[str, Any]],
         system_prompt: str,
-    ) -> List[Dict[str, Any]]:
-        """Stage 2: Extract relationships given concepts + payload via litellm tool_calls."""
+    ) -> tuple[List[Dict[str, Any]], Optional[LLMTokenMetadata]]:
+        """Stage 2: Extract relationships given concepts + payload via litellm tool_calls.
+
+        Returns:
+            tuple: (relationships, token_metadata)
+        """
+        start_time = time.time()
         user_msg = json.dumps({"concepts": concepts, "records": compact_payload}, indent=2)
         resp = litellm.completion(
             model=self._llm_model,
@@ -825,12 +889,26 @@ class ConceptRelationshipExtractionService(AdapterSDK):
             temperature=0.0,
             **self._creds(),
         )
+        latency_ms = (time.time() - start_time) * 1000
+
+        # Capture token metadata
+        usage = resp.usage
+        token_meta = LLMTokenMetadata(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            model=resp.model,
+            latency_ms=latency_ms,
+            cost_usd=None,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
         tool_calls = resp.choices[0].message.tool_calls
         if not tool_calls:
-            return []
+            return [], token_meta
         raw = tool_calls[0].function.arguments
         data = json.loads(raw) if isinstance(raw, str) else raw
-        return LLMRelationshipsResult(**data).model_dump()["relationships"]
+        return LLMRelationshipsResult(**data).model_dump()["relationships"], token_meta
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -876,6 +954,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
             }
 
         # Step 3 – LLM two-stage extraction (requires configured LLM or mock mode)
+        token_metadata = None
         if self.mock_mode:
             logger.info("Mock mode enabled - generating mock concepts and relationships")
             raw_concepts = self._generate_mock_concepts(compact_payload, data_format)
@@ -883,11 +962,27 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         elif not self._has_llm():
             raise RuntimeError("LLM is not configured. Set LLM_API_KEY or LLM_BASE_URL, or enable mock_mode=True.")
         else:
-            raw_concepts = self._llm_extract_concepts(compact_payload, concept_prompt)
+            raw_concepts, concept_tokens = self._llm_extract_concepts(compact_payload, concept_prompt)
             logger.info("LLM concept extraction returned %d concepts", len(raw_concepts))
 
-            raw_relationships = self._llm_extract_relationships(raw_concepts, compact_payload, relationship_prompt)
+            raw_relationships, relationship_tokens = self._llm_extract_relationships(raw_concepts, compact_payload, relationship_prompt)
             logger.info("LLM relationship extraction returned %d relationships", len(raw_relationships))
+
+            # Aggregate token metadata from both LLM calls
+            if concept_tokens and relationship_tokens:
+                token_metadata = LLMTokenMetadata(
+                    prompt_tokens=concept_tokens.prompt_tokens + relationship_tokens.prompt_tokens,
+                    completion_tokens=concept_tokens.completion_tokens + relationship_tokens.completion_tokens,
+                    total_tokens=concept_tokens.total_tokens + relationship_tokens.total_tokens,
+                    model=concept_tokens.model,
+                    latency_ms=concept_tokens.latency_ms + relationship_tokens.latency_ms,
+                    cost_usd=None,
+                    timestamp=concept_tokens.timestamp,
+                )
+            elif concept_tokens:
+                token_metadata = concept_tokens
+            elif relationship_tokens:
+                token_metadata = relationship_tokens
 
         # Step 4 – format into knowledge-cognition output schema
         # Extract session_time from the last record in the batch, keyed by format
@@ -939,7 +1034,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
 
         rid = request_id or self._generate_id(f"{datetime.now().isoformat()}_{len(compact_payload)}")
 
-        return {
+        result = {
             "knowledge_cognition_request_id": rid,
             "concepts": concepts,
             "relations": relations,
@@ -950,6 +1045,12 @@ class ConceptRelationshipExtractionService(AdapterSDK):
                 "relations_extracted": len(relations),
             },
         }
+
+        # Add token metadata if available
+        if token_metadata:
+            result["token_meta"] = token_metadata
+
+        return result
 
 
 

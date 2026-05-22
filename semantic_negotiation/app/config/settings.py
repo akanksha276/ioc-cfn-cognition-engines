@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
 
     # LLM configuration (litellm provider/model format, e.g. openai/gpt-4o, anthropic/claude-sonnet-4-6)
+    # For Azure: set llm_model to azure/deployment-name, llm_base_url to AZURE_OPENAI_ENDPOINT, llm_api_key to AZURE_OPENAI_API_KEY
     llm_model: str = Field(default="openai/gpt-4o")
     llm_api_key: str | None = Field(default=None)
     llm_base_url: str | None = Field(default=None)

@@ -21,6 +21,7 @@ from .api.routes import router as api_router
 from .api.schemas import HealthResponse
 from .config.settings import settings
 from common.diagnostics.router import make_diagnostics_router, HealthCheck
+from common.metrics import init_metrics_client, get_metrics_client
 
 # Configure logging
 logging.basicConfig(
@@ -34,7 +35,21 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
     logger.info("Starting %s...", settings.service_name)
+
+    # Initialize metrics client if CFN URL is configured
+    if settings.cfn_url:
+        init_metrics_client(settings.cfn_url, enabled=True)
+        logger.info("✅ Metrics client initialized: %s", settings.cfn_url)
+    else:
+        logger.warning("⚠️  Metrics client disabled (CFN_URL not set)")
+
     yield
+
+    # Cleanup
+    client = get_metrics_client()
+    if client:
+        await client.close()
+
     logger.info("Shutting down %s...", settings.service_name)
 
 
