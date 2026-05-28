@@ -99,7 +99,7 @@ async def knowledge_extraction(
         return JSONResponse(status_code=400, content=error_resp.model_dump())
 
     try:
-        result = ingest_service.ingest(
+        result = await ingest_service.ingest(
             payload_data,
             request_id=response_id,
             format_descriptor=data_format,
@@ -121,22 +121,37 @@ async def knowledge_extraction(
             result["meta"]["concept_similarity_hits"] = len(similarity_hits)
             result["meta"]["concept_similarity"] = similarity_hits
 
-        # Extract token metadata if present
+        # Extract token metadata if present (dataclass from ingestion service)
         token_meta = None
-        if "token_meta" in result:
+        tm = result.pop("token_meta", None)
+        if tm is not None:
             from .schemas import TokenUsage, TokenUsageMeta
-            tm = result["token_meta"]
-            token_meta = TokenUsageMeta(
-                tokens=TokenUsage(
-                    prompt=tm.prompt_tokens,
-                    completion=tm.completion_tokens,
-                    total=tm.total_tokens,
-                    model=tm.model,
-                ),
-                latency_ms=tm.latency_ms,
-                cost_usd=tm.cost_usd,
-                timestamp=tm.timestamp,
-            )
+
+            if hasattr(tm, "to_dict"):
+                td = tm.to_dict()
+                token_meta = TokenUsageMeta(
+                    tokens=TokenUsage(
+                        prompt=td["prompt_tokens"],
+                        completion=td["completion_tokens"],
+                        total=td["total_tokens"],
+                        model=td["model"],
+                    ),
+                    latency_ms=td["latency_ms"],
+                    cost_usd=td.get("cost_usd"),
+                    timestamp=td["timestamp"],
+                )
+            else:
+                token_meta = TokenUsageMeta(
+                    tokens=TokenUsage(
+                        prompt=tm.prompt_tokens,
+                        completion=tm.completion_tokens,
+                        total=tm.total_tokens,
+                        model=tm.model,
+                    ),
+                    latency_ms=tm.latency_ms,
+                    cost_usd=tm.cost_usd,
+                    timestamp=tm.timestamp,
+                )
 
         return ExtractionResponseModel(
             header=body.header,
@@ -337,7 +352,7 @@ async def extract_concepts_and_relationships_from_file(
         path = Path(file_path)
         otel_data = repository.load_from_file(path)
 
-        result = ingest_service.ingest(otel_data)
+        result = await ingest_service.ingest(otel_data)
 
         processor = get_knowledge_processor()
         result = processor.process(result)

@@ -6,6 +6,8 @@
 Unit tests for extraction services and KnowledgeProcessor.
 """
 
+import asyncio
+
 import pytest
 
 from ingestion.app.agent.ingest_data import IngestDataService
@@ -34,8 +36,10 @@ class TestConceptRelationshipExtractionService:
     def test_empty_compact_payload_returns_expected_structure(
         self, concept_relationship_service
     ):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[]
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[]
+            )
         )
         assert "knowledge_cognition_request_id" in result
         assert "concepts" in result
@@ -47,52 +51,66 @@ class TestConceptRelationshipExtractionService:
     def test_custom_request_id_is_echoed(
         self, concept_relationship_service
     ):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[], request_id="cr-custom-id"
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[], request_id="cr-custom-id"
+            )
         )
         assert result["knowledge_cognition_request_id"] == "cr-custom-id"
 
     def test_format_descriptor_is_used(
         self, concept_relationship_service
     ):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[], format_descriptor="observe-sdk-otel"
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[], format_descriptor="observe-sdk-otel"
+            )
         )
         assert result["descriptor"] == "observe-sdk-otel"
 
     def test_default_descriptor(self, concept_relationship_service):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[]
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[]
+            )
         )
         assert result["descriptor"] == "observe-sdk-otel"
 
     def test_empty_records(self, concept_relationship_service):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[]
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[]
+            )
         )
         assert result["concepts"] == []
         assert result["relations"] == []
         assert result["meta"]["records_processed"] == 0
 
     def test_empty_records_with_custom_id(self, concept_relationship_service):
-        result = concept_relationship_service.extract_concepts_and_relationships(
-            compact_payload=[], request_id="empty-cr"
+        result = asyncio.run(
+            concept_relationship_service.extract_concepts_and_relationships(
+                compact_payload=[], request_id="empty-cr"
+            )
         )
         assert result["knowledge_cognition_request_id"] == "empty-cr"
 
     def test_unsupported_format_raises(self, concept_relationship_service):
         with pytest.raises(ValueError, match="Unsupported data format"):
-            concept_relationship_service.extract_concepts_and_relationships(
-                compact_payload=[],
-                format_descriptor="unknown-format",
+            asyncio.run(
+                concept_relationship_service.extract_concepts_and_relationships(
+                    compact_payload=[],
+                    format_descriptor="unknown-format",
+                )
             )
 
     def test_non_empty_compact_payload_requires_llm(self):
         svc = ConceptRelationshipExtractionService(mock_mode=False)
         with pytest.raises(RuntimeError, match="LLM is not configured"):
-            svc.extract_concepts_and_relationships(
-                compact_payload=[{"ServiceName": "svc"}],
-                format_descriptor="observe-sdk-otel",
+            asyncio.run(
+                svc.extract_concepts_and_relationships(
+                    compact_payload=[{"ServiceName": "svc"}],
+                    format_descriptor="observe-sdk-otel",
+                )
             )
 
     def test_semneg_relations_include_domain_and_session_time(self):
@@ -100,13 +118,13 @@ class TestConceptRelationshipExtractionService:
             def _has_llm(self):
                 return True
 
-            def _llm_extract_concepts(self, compact_payload, system_prompt):
+            async def _llm_extract_concepts(self, compact_payload, system_prompt):
                 return [
                     {"name": "agent_a", "type": "agent", "description": "Agent A"},
                     {"name": "agent_b", "type": "agent", "description": "Agent B"},
                 ]
 
-            def _llm_extract_relationships(self, concepts, compact_payload, system_prompt):
+            async def _llm_extract_relationships(self, concepts, compact_payload, system_prompt):
                 return [
                     {
                         "source": "agent_a",
@@ -121,10 +139,12 @@ class TestConceptRelationshipExtractionService:
             {"dt_created": "2026-01-01T01:00:00Z"},
             {"dt_created": "2026-01-02T12:30:00Z"},
         ]
-        result = svc.extract_concepts_and_relationships(
-            compact_payload=payload,
-            request_id="semneg-id",
-            format_descriptor="semneg",
+        result = asyncio.run(
+            svc.extract_concepts_and_relationships(
+                compact_payload=payload,
+                request_id="semneg-id",
+                format_descriptor="semneg",
+            )
         )
 
         assert result["knowledge_cognition_request_id"] == "semneg-id"
@@ -143,7 +163,7 @@ class TestIngestDataService:
             def __init__(self):
                 self.last_payload = None
 
-            def extract_concepts_and_relationships(
+            async def extract_concepts_and_relationships(
                 self, compact_payload, request_id=None, format_descriptor=None
             ):
                 self.last_payload = compact_payload
@@ -161,10 +181,12 @@ class TestIngestDataService:
 
         stub = StubConceptService()
         ingest = IngestDataService(stub, enable_rag_ingest=False)
-        result = ingest.ingest(
-            sample_otel_records,
-            request_id="req-1",
-            format_descriptor="observe-sdk-otel",
+        result = asyncio.run(
+            ingest.ingest(
+                sample_otel_records,
+                request_id="req-1",
+                format_descriptor="observe-sdk-otel",
+            )
         )
         assert result["knowledge_cognition_request_id"] == "req-1"
         assert "rag_chunks" in result
@@ -174,13 +196,15 @@ class TestIngestDataService:
 
     def test_ingest_empty_records_returns_empty_shape(self):
         class StubConceptService:
-            def extract_concepts_and_relationships(
+            async def extract_concepts_and_relationships(
                 self, compact_payload, request_id=None, format_descriptor=None
             ):
                 raise AssertionError("Graph stage should not run for empty filtered input")
 
         ingest = IngestDataService(StubConceptService(), enable_rag_ingest=False)
-        result = ingest.ingest([], request_id="empty-1", format_descriptor="observe-sdk-otel")
+        result = asyncio.run(
+            ingest.ingest([], request_id="empty-1", format_descriptor="observe-sdk-otel")
+        )
         assert result["knowledge_cognition_request_id"] == "empty-1"
         assert result["concepts"] == []
         assert result["relations"] == []
@@ -189,18 +213,20 @@ class TestIngestDataService:
 
     def test_ingest_unsupported_format_raises(self):
         class StubConceptService:
-            def extract_concepts_and_relationships(
+            async def extract_concepts_and_relationships(
                 self, compact_payload, request_id=None, format_descriptor=None
             ):
                 return {}
 
         ingest = IngestDataService(StubConceptService(), enable_rag_ingest=False)
         with pytest.raises(ValueError, match="Unsupported data format"):
-            ingest.ingest([{}], request_id="bad-format", format_descriptor="unknown")
+            asyncio.run(
+                ingest.ingest([{}], request_id="bad-format", format_descriptor="unknown")
+            )
 
     def test_ingest_rag_enabled_attaches_rag_chunks(self, sample_otel_records):
         class StubConceptService:
-            def extract_concepts_and_relationships(
+            async def extract_concepts_and_relationships(
                 self, compact_payload, request_id=None, format_descriptor=None
             ):
                 return {
@@ -231,10 +257,12 @@ class TestIngestDataService:
             enable_rag_ingest=True,
             rag_pipeline=StubRagPipeline(),
         )
-        result = ingest.ingest(
-            sample_otel_records,
-            request_id="req-rag",
-            format_descriptor="observe-sdk-otel",
+        result = asyncio.run(
+            ingest.ingest(
+                sample_otel_records,
+                request_id="req-rag",
+                format_descriptor="observe-sdk-otel",
+            )
         )
 
         assert result["knowledge_cognition_request_id"] == "req-rag"
@@ -243,7 +271,7 @@ class TestIngestDataService:
 
     def test_ingest_rag_failure_does_not_fail_graph(self, sample_otel_records):
         class StubConceptService:
-            def extract_concepts_and_relationships(
+            async def extract_concepts_and_relationships(
                 self, compact_payload, request_id=None, format_descriptor=None
             ):
                 return {
@@ -267,10 +295,12 @@ class TestIngestDataService:
             enable_rag_ingest=True,
             rag_pipeline=FailingRagPipeline(),
         )
-        result = ingest.ingest(
-            sample_otel_records,
-            request_id="req-rag-fail",
-            format_descriptor="observe-sdk-otel",
+        result = asyncio.run(
+            ingest.ingest(
+                sample_otel_records,
+                request_id="req-rag-fail",
+                format_descriptor="observe-sdk-otel",
+            )
         )
 
         assert result["knowledge_cognition_request_id"] == "req-rag-fail"

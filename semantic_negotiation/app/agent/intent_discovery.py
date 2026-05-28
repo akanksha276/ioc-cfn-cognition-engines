@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 
 import httpx
-import litellm
+from ..config.utils import litellm_completion_compat
 
 logger = logging.getLogger(__name__)
 
@@ -258,14 +258,16 @@ class IntentDiscovery:
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
 
+
         start_time = time.time()
-        resp = litellm.completion(**kwargs)
+        resp = litellm_completion_compat(**kwargs)
         latency_ms = (time.time() - start_time) * 1000
 
         if token_accumulator:
             token_accumulator.add(resp.usage)
             token_accumulator.add_latency(latency_ms)
             token_accumulator.set_model(resp.model)
+
 
         entities: list[str] = []
         raw: Optional[str] = None

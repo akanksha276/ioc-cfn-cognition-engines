@@ -7,13 +7,14 @@ import asyncio
 import json
 import logging
 import time
+
+import litellm
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pydantic import BaseModel
 
-import litellm
-
 from ..config.settings import settings
+from ..config.utils import litellm_acompletion_compat
 
 logger = logging.getLogger(__name__)
 
@@ -123,15 +124,15 @@ class _LLMBaseClient:
             settings.LLM_BASE_URL or "(default)",
         )
 
-    def _call_chat_structured(self, system: str, user: str, response_model: Type[_T]) -> _T:
+    async def _call_chat_structured(self, system: str, user: str, response_model: Type[_T]) -> _T:
         """
         Invoke the LLM via litellm tool_calls with a Pydantic schema.
         Raises on empty/filtered/refused responses.
         """
-        parsed, _ = self._call_chat_structured_with_tokens(system, user, response_model)
+        parsed, _ = await self._call_chat_structured_with_tokens(system, user, response_model)
         return parsed
 
-    def _call_chat_structured_with_tokens(
+    async def _call_chat_structured_with_tokens(
         self, system: str, user: str, response_model: Type[_T]
     ) -> Tuple[_T, LLMTokenMetadata]:
         """
@@ -161,7 +162,8 @@ class _LLMBaseClient:
         start_time = time.time()
 
         # Call LLM
-        resp = litellm.completion(**kwargs)
+        resp = await litellm_acompletion_compat(**kwargs)
+
         _inc_llm_call_count()
 
         # Calculate latency
@@ -227,7 +229,7 @@ class EvidenceJudge(_LLMBaseClient):
     def __init__(self, temperature: float = 0.2):
         super().__init__(temperature=temperature, client_label="EvidenceJudge")
 
-    def select_paths_and_check_sufficiency(
+    async def select_paths_and_check_sufficiency(
         self, question: str, candidate_paths: List[str], select_k: int
     ) -> Tuple[List[int], bool, str]:
         logger.info("[EvidenceJudge] Judge invoked | candidates=%d | select_k=%d", len(candidate_paths), select_k)
@@ -249,7 +251,7 @@ class EvidenceJudge(_LLMBaseClient):
         last_error: BaseException | None = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                result = self._call_chat_structured(system, user, JudgeResponse)
+                result = await self._call_chat_structured(system, user, JudgeResponse)
                 clean = [i for i in result.selected if 0 <= i < len(candidate_paths)]
                 clean = clean[:select_k]
                 reason = result.reason.strip().splitlines()[0] if result.reason else ""
@@ -260,7 +262,7 @@ class EvidenceJudge(_LLMBaseClient):
                 if attempt < _MAX_RETRIES:
                     wait = min(2 ** (attempt - 1), 16)
                     logger.warning("[EvidenceJudge] Attempt %d/%d failed: %s. Retrying in %ds...", attempt, _MAX_RETRIES, e, wait)
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
                 else:
                     logger.error("[EvidenceJudge] All %d attempts failed.", _MAX_RETRIES)
         raise RuntimeError(
@@ -270,7 +272,7 @@ class EvidenceJudge(_LLMBaseClient):
     async def async_select_paths_and_check_sufficiency(
         self, question: str, candidate_paths: List[str], select_k: int
     ) -> Tuple[List[int], bool, str]:
-        return await asyncio.to_thread(self.select_paths_and_check_sufficiency, question, candidate_paths, select_k)
+        return await self.select_paths_and_check_sufficiency(question, candidate_paths, select_k)
 
 
 class EvidenceRanker(_LLMBaseClient):
@@ -282,7 +284,7 @@ class EvidenceRanker(_LLMBaseClient):
     def __init__(self, temperature: float = 0.2):
         super().__init__(temperature=temperature, client_label="EvidenceRanker")
 
-    def rank_paths(self, question: str, candidate_paths_repr: List[str]) -> Dict[int, float]:
+    async def rank_paths(self, question: str, candidate_paths_repr: List[str]) -> Dict[int, float]:
         if not candidate_paths_repr:
             return {}
 
@@ -300,7 +302,7 @@ class EvidenceRanker(_LLMBaseClient):
         last_error: BaseException | None = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                result = self._call_chat_structured(system, user, RankerResponse)
+                result = await self._call_chat_structured(system, user, RankerResponse)
                 scores: Dict[int, float] = {}
                 for item in result.scores:
                     if 0 <= item.index < len(candidate_paths_repr):
@@ -314,7 +316,7 @@ class EvidenceRanker(_LLMBaseClient):
                 if attempt < _MAX_RETRIES:
                     wait = min(2 ** (attempt - 1), 16)
                     logger.warning("[EvidenceRanker] Attempt %d/%d failed: %s. Retrying in %ds...", attempt, _MAX_RETRIES, e, wait)
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
                 else:
                     logger.error("[EvidenceRanker] All %d attempts failed.", _MAX_RETRIES)
         raise RuntimeError(
@@ -322,7 +324,7 @@ class EvidenceRanker(_LLMBaseClient):
         ) from last_error
 
     async def async_rank_paths(self, question: str, candidate_paths_repr: List[str]) -> Dict[int, float]:
-        return await asyncio.to_thread(self.rank_paths, question, candidate_paths_repr)
+        return await self.rank_paths(question, candidate_paths_repr)
 
 
 class ResponseGenerator(_LLMBaseClient):
@@ -334,7 +336,7 @@ class ResponseGenerator(_LLMBaseClient):
     def __init__(self, temperature: float = 0.2):
         super().__init__(temperature=temperature, client_label="ResponseGenerator")
 
-    def generate_final_response(
+    async def generate_final_response(
         self,
         intent: str,
         symbolic_paths: List[str],
@@ -408,10 +410,10 @@ class ResponseGenerator(_LLMBaseClient):
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
                 if return_tokens:
-                    result, token_metadata = self._call_chat_structured_with_tokens(system, user, ResponseGeneratorResponse)
+                    result, token_metadata = await self._call_chat_structured_with_tokens(system, user, ResponseGeneratorResponse)
                     last_token_metadata = token_metadata
                 else:
-                    result = self._call_chat_structured(system, user, ResponseGeneratorResponse)
+                    result = await self._call_chat_structured(system, user, ResponseGeneratorResponse)
                 answer = (result.answer or "").strip()
                 if not answer:
                     raise ValueError("LLM returned empty answer")
@@ -423,7 +425,7 @@ class ResponseGenerator(_LLMBaseClient):
                 if attempt < _MAX_RETRIES:
                     wait = min(2 ** (attempt - 1), 16)
                     logger.warning("[ResponseGenerator] Attempt %d/%d failed: %s. Retrying in %ds...", attempt, _MAX_RETRIES, e, wait)
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
                 else:
                     logger.error("[ResponseGenerator] All %d attempts failed.", _MAX_RETRIES)
         raise RuntimeError(
@@ -460,7 +462,7 @@ class EntityExtractor(_LLMBaseClient):
     def __init__(self, temperature: float = 0.1):
         super().__init__(temperature=temperature, client_label="EntityExtractor")
 
-    def extract_entities_from_request(self, request) -> List[Dict]:
+    async def extract_entities_from_request(self, request) -> List[Dict]:
         intent = request.payload.intent or ""
         texts: List[str] = []
         for rec in request.payload.records or []:
@@ -478,7 +480,9 @@ class EntityExtractor(_LLMBaseClient):
         last_error: BaseException | None = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                result = self._call_chat_structured(self.SYSTEM_PROMPT, user_prompt, EntityExtractorResponse)
+                result = await self._call_chat_structured(
+                    self.SYSTEM_PROMPT, user_prompt, EntityExtractorResponse
+                )
                 out = [{"name": e.name.strip()} for e in result.entities if e.name.strip()]
                 if not out:
                     raise ValueError("LLM returned no entities")
@@ -489,7 +493,7 @@ class EntityExtractor(_LLMBaseClient):
                 if attempt < _MAX_RETRIES:
                     wait = min(2 ** (attempt - 1), 16)
                     logger.warning("[EntityExtractor] Attempt %d/%d failed: %s. Retrying in %ds...", attempt, _MAX_RETRIES, e, wait)
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
                 else:
                     logger.error("[EntityExtractor] All %d attempts failed.", _MAX_RETRIES)
         raise RuntimeError(
@@ -497,7 +501,7 @@ class EntityExtractor(_LLMBaseClient):
         ) from last_error
 
     async def async_extract_entities_from_request(self, request) -> List[Dict]:
-        return await asyncio.to_thread(self.extract_entities_from_request, request)
+        return await self.extract_entities_from_request(request)
 
 
 class QueryDecomposer(_LLMBaseClient):
@@ -544,7 +548,7 @@ class QueryDecomposer(_LLMBaseClient):
             final = ordered[:2]
         return final
 
-    def decompose(self, text: str, entities: List[str] | None = None) -> List[Dict]:
+    async def decompose(self, text: str, entities: List[str] | None = None) -> List[Dict]:
         """
         Returns: List[{index:int, sentence:str, entities:[str]}]
         """
@@ -564,7 +568,7 @@ class QueryDecomposer(_LLMBaseClient):
         last_error: BaseException | None = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                result = self._call_chat_structured(system_content, user_input, DecomposerResponse)
+                result = await self._call_chat_structured(system_content, user_input, DecomposerResponse)
                 if not result.items:
                     raise ValueError("LLM returned no decomposition items")
                 out: List[Dict] = []
@@ -581,7 +585,7 @@ class QueryDecomposer(_LLMBaseClient):
                 if attempt < _MAX_RETRIES:
                     wait = min(2 ** (attempt - 1), 16)
                     logger.warning("[QueryDecomposer] Attempt %d/%d failed: %s. Retrying in %ds...", attempt, _MAX_RETRIES, e, wait)
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
                 else:
                     logger.error("[QueryDecomposer] All %d attempts failed.", _MAX_RETRIES)
         raise RuntimeError(
@@ -589,4 +593,4 @@ class QueryDecomposer(_LLMBaseClient):
         ) from last_error
 
     async def async_decompose(self, text: str, entities: List[str] | None = None) -> List[Dict]:
-        return await asyncio.to_thread(self.decompose, text, entities)
+        return await self.decompose(text, entities)

@@ -4,7 +4,7 @@
 
 """Unit tests for the evidence-gathering agent."""
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from evidence.app.agent.evidence import process_evidence
 from evidence.app.api.schemas import ReasonerCognitionRequest
@@ -14,7 +14,7 @@ from evidence.app.api.schemas import ReasonerCognitionRequest
 async def test_process_evidence_empty_entities_returns_ok():
     """When no entities are extracted, process_evidence returns OK with empty records."""
     with patch("app.agent.evidence.LLMEntityExtractor") as MockExtractor:
-        MockExtractor.return_value.extract_entities_from_request.return_value = []
+        MockExtractor.return_value.extract_entities_from_request = AsyncMock(return_value=[])
         req = ReasonerCognitionRequest(
             mas_id="mas-1",
             workspace_id="ws-1",

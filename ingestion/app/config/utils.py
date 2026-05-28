@@ -2,23 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Semantic negotiation config utilities (LiteLLM: Bedrock uses sync ``completion`` only)."""
+"""Ingestion config utilities (LiteLLM: Bedrock uses sync ``completion`` only)."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, Optional
+from typing import Any
 
 import litellm
-
-from .settings import settings
 
 logger = logging.getLogger(__name__)
 
 
 def litellm_model_uses_bedrock_sync_path(model: str | None) -> bool:
-    """True when the model string indicates Bedrock (sync ``litellm.completion`` only)."""
+    """True when the model string indicates Bedrock (sync ``litellm.completion`` only).
+
+    Case-insensitive ``bedrock`` substring covers ``bedrock/``, ``aws_bedrock/``, ARNs, etc.
+    """
     if not model or not str(model).strip():
         return False
     return "bedrock" in str(model).strip().lower()
@@ -46,24 +47,3 @@ async def litellm_acompletion_compat(**kwargs: Any) -> Any:
         )
         return await asyncio.to_thread(litellm.completion, **kwargs)
     return await litellm.acompletion(**kwargs)
-
-
-def get_llm_provider(model: Optional[str] = None) -> Callable[[str], str]:
-    """Return a callable(prompt) -> str backed by litellm."""
-    _model = model or settings.llm_model
-
-    def _call(prompt: str) -> str:
-        kwargs: dict = {
-            "model": _model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": settings.llm_temperature,
-            "max_tokens": 8000,
-        }
-        if settings.llm_api_key:
-            kwargs["api_key"] = settings.llm_api_key
-        if settings.llm_base_url:
-            kwargs["base_url"] = settings.llm_base_url
-        resp = litellm_completion_compat(**kwargs)
-        return resp.choices[0].message.content or ""
-
-    return _call

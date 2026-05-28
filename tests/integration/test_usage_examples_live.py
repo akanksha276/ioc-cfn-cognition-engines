@@ -100,10 +100,12 @@ class TestUsageExamplesLive:
         processor = KnowledgeProcessor(enable_embeddings=False, enable_dedup=False)
 
         # Extract → Process → Store
-        result = concept_service.extract_concepts_and_relationships(
-            SAMPLE_OTEL_PAYLOAD,
-            request_id="test-req-llm-001",
-            format_descriptor="observe-sdk-otel"
+        result = asyncio.run(
+            concept_service.extract_concepts_and_relationships(
+                SAMPLE_OTEL_PAYLOAD,
+                request_id="test-req-llm-001",
+                format_descriptor="observe-sdk-otel",
+            )
         )
 
         # Verify extraction returned data
@@ -199,9 +201,11 @@ class TestUsageExamplesLive:
             mock_mode=False,
         )
 
-        result = concept_service.extract_concepts_and_relationships(
-            SAMPLE_OTEL_PAYLOAD,
-            request_id="test-req-llm-002"
+        result = asyncio.run(
+            concept_service.extract_concepts_and_relationships(
+                SAMPLE_OTEL_PAYLOAD,
+                request_id="test-req-llm-002",
+            )
         )
 
         # Verify structure

@@ -159,7 +159,11 @@ def sample_extraction_result(extraction_service, sample_otel_records) -> Dict[st
 @pytest.fixture
 def sample_concept_result(concept_relationship_service, sample_otel_records) -> Dict[str, Any]:
     """Provide a sample concept extraction result shape from compact-payload API."""
-    return concept_relationship_service.extract_concepts_and_relationships(
-        compact_payload=[],
-        format_descriptor="observe-sdk-otel",
+    import asyncio
+
+    return asyncio.run(
+        concept_relationship_service.extract_concepts_and_relationships(
+            compact_payload=[],
+            format_descriptor="observe-sdk-otel",
+        )
     )

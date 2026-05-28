@@ -11,6 +11,7 @@ It reads settings from `ingestion/.env` through `ingestion.app.config.settings`.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import uuid
 from pathlib import Path
@@ -103,10 +104,12 @@ def main() -> int:
     with compact_output_path.open("w", encoding="utf-8") as f:
         json.dump(compact_payload, f, indent=2)
 
-    result = service.extract_concepts_and_relationships(
-        records=records,
-        request_id=request_id,
-        format_descriptor=args.format,
+    result = asyncio.run(
+        service.extract_concepts_and_relationships(
+            compact_payload=compact_payload,
+            request_id=request_id,
+            format_descriptor=args.format,
+        )
     )
 
     processor = get_knowledge_processor()

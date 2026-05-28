@@ -41,12 +41,10 @@ embedding_manager = EmbeddingManager()
 _PRIOR_PATHS_CONTEXT_LIMIT = 8
 
 
-def extract_entities(request: ReasonerCognitionRequest) -> List[Dict]:
-    """
-    Thin wrapper to use the LLM-based entity extractor client with a system prompt.
-    """
+async def extract_entities(request: ReasonerCognitionRequest) -> List[Dict]:
+    """Thin async wrapper around the LLM entity extractor."""
     client = LLMEntityExtractor(temperature=0.2)
-    return client.extract_entities_from_request(request)
+    return await client.extract_entities_from_request(request)
 
 
 def _get_context_paths_for_next(rec: KnowledgeRecord) -> List[str]:
@@ -126,7 +124,7 @@ async def process_evidence(
     )
 
     logger.info("[Evidence] Starting entity extraction via LLM.")
-    entities = LLMEntityExtractor(temperature=0).extract_entities_from_request(request)
+    entities = await LLMEntityExtractor(temperature=0).extract_entities_from_request(request)
     logger.info("[Evidence] Extracted %d entities.", len(entities))
     if not entities:
         return ReasonerCognitionResponse(

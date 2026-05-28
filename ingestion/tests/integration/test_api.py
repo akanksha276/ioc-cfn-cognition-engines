@@ -17,7 +17,7 @@ class _StubIngestService:
     def __init__(self):
         self.calls = []
 
-    def ingest(self, payload_data, request_id=None, format_descriptor=None):
+    async def ingest(self, payload_data, request_id=None, format_descriptor=None):
         self.calls.append(
             {
                 "payload_data": payload_data,

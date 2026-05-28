@@ -42,8 +42,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 import time
 
-import httpx
-import litellm
+from ..config.utils import litellm_completion_compat
 
 from ..config.settings import settings
 from .token_tracker import TokenAccumulator
@@ -51,8 +50,9 @@ from .token_tracker import TokenAccumulator
 from app.agent.http_repo import (
     SharedMemoryQueryError,
     SharedMemoryNotFoundError,
+    gather_shared_memories_queries,
     issue_labels_from_negotiable_entities,
-    post_shared_memories_query,
+    run_coro_in_own_loop,
     shared_memories_query_path,
 )
 from app.config.utils import get_llm_provider
@@ -331,14 +331,16 @@ class OptionsGeneration:
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
 
+
         start_time = time.time()
-        resp = litellm.completion(**kwargs)
+        resp = litellm_completion_compat(**kwargs)
         latency_ms = (time.time() - start_time) * 1000
 
         if token_accumulator:
             token_accumulator.add(resp.usage)
             token_accumulator.add_latency(latency_ms)
             token_accumulator.set_model(resp.model)
+
 
         by_term: dict[str, list[str]] = {}
         tool_calls = resp.choices[0].message.tool_calls
@@ -452,17 +454,52 @@ class OptionsGeneration:
         )
         memory_data: dict[str, Any]
         try:
-            with httpx.Client(base_url=base, timeout=120.0) as client:
+
+            async def _fetch_fabric_evidence() -> dict[str, Any]:
+                intents = [
+                    build_evidence_lookup_intent_for_issue(
+                        sentence, context, issue, agent_names
+                    )
+                    for issue in issues
+                ]
+                logger.info(
+                    "generate_options_with_memory: parallel fabric POSTs path=%s intents=%d "
+                    "intent_chars=%d timeout_s=%s",
+                    path,
+                    len(intents),
+                    sum(len(s) for s in intents),
+                    120.0,
+                )
+                rows = await gather_shared_memories_queries(
+                    base, path, intents, timeout=120.0
+                )
+                rows_aligned: list[Any] = list(rows)
+                if len(rows_aligned) != len(issues):
+                    logger.warning(
+                        "generate_options_with_memory: fabric row count mismatch "
+                        "issues=%d rows=%d; padding with None or truncating extras.",
+                        len(issues),
+                        len(rows_aligned),
+                    )
+                    if len(rows_aligned) < len(issues):
+                        rows_aligned.extend([None] * (len(issues) - len(rows_aligned)))
+                    else:
+                        rows_aligned = rows_aligned[: len(issues)]
+                if rows_aligned and all(data is None for data in rows_aligned):
+                    raise SharedMemoryQueryError(
+                        "All fabric shared-memories queries timed out",
+                        status_code=None,
+                    )
                 by_issue: list[dict[str, Any]] = []
                 message_sections: list[str] = []
                 response_ids: list[str] = []
-                for issue in issues:
-                    intent = build_evidence_lookup_intent_for_issue(
-                        sentence, context, issue, agent_names
-                    )
-                    data = post_shared_memories_query(client, path, intent)
-                    msg = data.get("message")
-                    rid = data.get("response_id")
+                for issue, data in zip(issues, rows_aligned, strict=True):
+                    if data is None:
+                        msg = "(fabric evidence request timed out)"
+                        rid = None
+                    else:
+                        msg = data.get("message")
+                        rid = data.get("response_id")
                     by_issue.append({"issue": issue, "message": msg, "response_id": rid})
                     message_sections.append(
                         f"## Evidence for issue: {issue}\n"
@@ -470,12 +507,14 @@ class OptionsGeneration:
                     )
                     if rid is not None:
                         response_ids.append(str(rid))
-                memory_data = {
+                return {
                     "evidence_by_issue": by_issue,
                     "evidence_message": "\n\n".join(message_sections),
                     "evidence_response_id": ";".join(response_ids) if response_ids else None,
                     "source": "fabric_node_shared_memories_query",
                 }
+
+            memory_data = run_coro_in_own_loop(_fetch_fabric_evidence())
         except (SharedMemoryQueryError, SharedMemoryNotFoundError) as exc:
             logger.warning(
                 "generate_options_with_memory: fabric lookup failed "

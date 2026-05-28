@@ -31,12 +31,11 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
-import litellm
-
 from .base import AdapterSDK
 from .prompts import get_concept_prompt, get_relationship_prompt, SUPPORTED_FORMATS
 from ..api.schemas import LLMConceptsResult, LLMRelationshipsResult
 from ..config.settings import settings
+from ..config.utils import litellm_acompletion_compat, litellm_completion_compat
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +43,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LLMTokenMetadata:
     """Token metadata from LLM calls."""
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -51,6 +51,18 @@ class LLMTokenMetadata:
     latency_ms: float
     cost_usd: Optional[float]
     timestamp: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-serializable dict for API responses and logging."""
+        return {
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "model": self.model,
+            "latency_ms": self.latency_ms,
+            "cost_usd": self.cost_usd,
+            "timestamp": self.timestamp,
+        }
 
 
 def _llm_creds() -> dict:
@@ -495,8 +507,9 @@ class TelemetryExtractionService(AdapterSDK):
                 f"Text:\n{raw_prompt}\n\n"
                 "Return ONLY the extracted question, nothing else."
             )
+
             start_time = time.time()
-            resp = litellm.completion(
+            resp = litellm_completion_compat(
                 model=settings.llm_model,
                 messages=[
                     {"role": "system", "content": "You extract the core question from text. Return only the question."},
@@ -577,7 +590,7 @@ class TelemetryExtractionService(AdapterSDK):
                 f"Text:\n{raw_completion}\n\n"
                 "Return ONLY the final answer, nothing else."
             )
-            resp = litellm.completion(
+            resp = litellm_completion_compat(
                 model=settings.llm_model,
                 messages=[
                     {"role": "system", "content": "You extract the final answer from text. Return only the answer."},
@@ -625,7 +638,7 @@ class TelemetryExtractionService(AdapterSDK):
                     f"Span context:\n{json.dumps(context_snippet, indent=2)}\n\n"
                     "Return ONLY the relationship label, nothing else."
                 )
-                resp = litellm.completion(
+                resp = litellm_completion_compat(
                     model=settings.llm_model,
                     messages=[
                         {"role": "system", "content": "Return only a single UPPER_SNAKE_CASE relationship label."},
@@ -701,7 +714,7 @@ class TelemetryExtractionService(AdapterSDK):
                 f"Context from traces:\n{json.dumps(context_snippets, indent=2)}\n\n"
                 f"Generate a description that explains what this {concept_type} does in the system."
             )
-            resp = litellm.completion(
+            resp = litellm_completion_compat(
                 model=settings.llm_model,
                 messages=[
                     {"role": "system", "content": "You are an expert in analyzing distributed system traces."},
@@ -739,7 +752,7 @@ class TelemetryExtractionService(AdapterSDK):
                 f"Context:\n{json.dumps(relevant_fields, indent=2)}\n\n"
                 "Provide a brief summary of what happened in this interaction."
             )
-            resp = litellm.completion(
+            resp = litellm_completion_compat(
                 model=settings.llm_model,
                 messages=[
                     {"role": "system", "content": "You are an expert in analyzing distributed system interactions."},
@@ -818,7 +831,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         },
     }
 
-    def _llm_extract_concepts(
+    async def _llm_extract_concepts(
         self,
         compact_payload: List[Dict[str, Any]],
         system_prompt: str,
@@ -829,7 +842,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
             tuple: (concepts, token_metadata)
         """
         start_time = time.time()
-        resp = litellm.completion(
+        resp = await litellm_acompletion_compat(
             model=self._llm_model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -865,7 +878,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
     # Step 3b – Ask LLM to extract relationships given concepts + payload
     # ------------------------------------------------------------------
 
-    def _llm_extract_relationships(
+    async def _llm_extract_relationships(
         self,
         concepts: List[Dict[str, Any]],
         compact_payload: List[Dict[str, Any]],
@@ -878,7 +891,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         """
         start_time = time.time()
         user_msg = json.dumps({"concepts": concepts, "records": compact_payload}, indent=2)
-        resp = litellm.completion(
+        resp = await litellm_acompletion_compat(
             model=self._llm_model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -914,7 +927,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
     # Public entry point
     # ------------------------------------------------------------------
 
-    def extract_concepts_and_relationships(
+    async def extract_concepts_and_relationships(
         self,
         compact_payload: List[Dict[str, Any]],
         request_id: Optional[str] = None,
@@ -962,11 +975,18 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         elif not self._has_llm():
             raise RuntimeError("LLM is not configured. Set LLM_API_KEY or LLM_BASE_URL, or enable mock_mode=True.")
         else:
-            raw_concepts, concept_tokens = self._llm_extract_concepts(compact_payload, concept_prompt)
+            raw_concepts, concept_tokens = await self._llm_extract_concepts(
+                compact_payload, concept_prompt
+            )
             logger.info("LLM concept extraction returned %d concepts", len(raw_concepts))
 
-            raw_relationships, relationship_tokens = self._llm_extract_relationships(raw_concepts, compact_payload, relationship_prompt)
-            logger.info("LLM relationship extraction returned %d relationships", len(raw_relationships))
+            raw_relationships, relationship_tokens = await self._llm_extract_relationships(
+                raw_concepts, compact_payload, relationship_prompt
+            )
+            logger.info(
+                "LLM relationship extraction returned %d relationships",
+                len(raw_relationships),
+            )
 
             # Aggregate token metadata from both LLM calls
             if concept_tokens and relationship_tokens:

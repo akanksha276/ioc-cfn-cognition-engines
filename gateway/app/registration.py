@@ -51,10 +51,18 @@ async def register_cognition_engines() -> None:
         for engine_name in engine_names:
             await _register_cognition_engine(mgmt_url, workspace_id, engine_name, ce_url)
 
+    except httpx.ConnectError:
+        logger.warning(
+            "Management plane not reachable at %s — skipping cognition engine "
+            "registration (start mgmt on :9000 or unset MGMT_PLANE_URL for local dev)",
+            mgmt_url,
+        )
     except Exception as e:
-        logger.error(f"Failed to register cognition engines: {e}", exc_info=True)
-        # Don't crash the server if registration fails
-        logger.warning("Server will continue without cognition engine registration")
+        logger.warning(
+            "Failed to register cognition engines with %s: %s — continuing without registration",
+            mgmt_url,
+            e,
+        )
 
 
 async def _get_workspace_id(mgmt_url: str) -> str:

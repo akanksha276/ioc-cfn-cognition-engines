@@ -589,10 +589,12 @@ def _parse_judge_json(text: str) -> Dict[str, Any]:
 
 
 def _call_judge(prompt: str, judge_model: str) -> Dict[str, Any]:
+    from app.config.utils import litellm_completion_compat
+
     kwargs = _litellm_kwargs(judge_model)
     kwargs["messages"] = [{"role": "user", "content": prompt}]
     try:
-        resp = litellm.completion(**kwargs)
+        resp = litellm_completion_compat(**kwargs)
         text = resp.choices[0].message.content or ""
         return _parse_judge_json(text)
     except Exception as exc:  # noqa: BLE001
