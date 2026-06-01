@@ -88,6 +88,7 @@ from .knowledge import KnowledgeMessage
 from .memory_delta import MemoryDeltaMessage
 from .negotiate import (
     NEGOTIATE_MESSAGE_JSON_EXCLUDE,
+    NegotiateAgentReplyPayload,
     NegotiateSemanticContext,
     SSTPNegotiateMessage,
     dump_negotiate_message_json,
@@ -158,6 +159,7 @@ __all__ = [
     "MemoryDeltaMessage",
     "EvidenceBundleMessage",
     "NEGOTIATE_MESSAGE_JSON_EXCLUDE",
+    "NegotiateAgentReplyPayload",
     "NegotiateSemanticContext",
     "SSTPNegotiateMessage",
     "dump_negotiate_message_json",

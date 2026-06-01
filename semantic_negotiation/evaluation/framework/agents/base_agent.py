@@ -16,6 +16,9 @@ from the incoming ``SSTPNegotiateMessage.semantic_context`` so agents have
 **no prior knowledge** of the space — they discover it live, exactly as in
 ``test_callback_agents.py``.
 
+Replies built by :meth:`handle_message` always include ``payload.reason`` (see
+:meth:`_default_reason` or LLM-generated text in :class:`LLMAgent`).
+
 The optional :meth:`BaseAgent.handle_message` entry-point is the high-level
 hook used by :func:`~evaluation.framework.agents.agent_server.make_decide_app`.
 The default implementation delegates to ``decide_propose`` / ``decide_respond``
@@ -46,6 +49,11 @@ from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
 from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
 
+_sn_root = str(Path(__file__).resolve().parents[3])
+if _sn_root not in sys.path:
+    sys.path.insert(0, _sn_root)
+from app.agent.reply_payload_utils import attach_reason  # noqa: E402
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SSTP reply helper (shared by all agents)
@@ -72,7 +80,8 @@ def build_sstp_reply(
     Args:
         session_id: Current negotiation session identifier.
         agent_name: Agent's display name — slugified to form ``origin.actor_id``.
-        reply_payload: Inner payload dict (``{"action": ..., "offer": ...}``).
+        reply_payload: Inner payload dict.  Should include ``reason`` on every
+            action (accept / reject / counter_offer); see :func:`attach_reason`.
         sao_response: Structured SAO decision for the server to parse.
         sao_state: Reflected ``SAOState`` echoed back from the inbound message.
 
@@ -130,6 +139,25 @@ class BaseAgent(ABC):
     def __init__(self, agent_id: str, prefer_low: bool = True) -> None:
         self.agent_id = agent_id
         self.prefer_low = prefer_low
+
+    def _default_reason(
+        self,
+        action: str,
+        *,
+        decision: str | None = None,
+    ) -> str:
+        """Rule-based fallback ``reason`` when the agent does not supply one.
+
+        Used by :meth:`handle_message` so every SSTP reply includes ``reason``
+        even for non-LLM agents.  LLM agents should prefer model-generated text.
+        """
+        if action == "propose" or decision == "counter_offer":
+            return (
+                f"{self.agent_id}: counter-offer aligned with stated preferences."
+            )
+        if decision == "accept":
+            return f"{self.agent_id}: current offer is acceptable."
+        return f"{self.agent_id}: current offer is not acceptable."
 
     # ------------------------------------------------------------------
     # Abstract decision interface
@@ -217,13 +245,16 @@ class BaseAgent(ABC):
                 f"  [{self.agent_id}] propose  round={round_num}{asp_str}  offer={offer}",
                 flush=True,
             )
-            reply_payload: Dict[str, Any] = {
-                "action": "counter_offer",
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-                "offer": offer,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": "counter_offer",
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                    "offer": offer,
+                },
+                self._default_reason("propose", decision="counter_offer"),
+            )
             sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER, outcome=offer)
 
         else:  # respond (or unknown action)
@@ -235,12 +266,15 @@ class BaseAgent(ABC):
                 f"  [{self.agent_id}] respond  round={round_num}  → {decision}",
                 flush=True,
             )
-            reply_payload = {
-                "action": decision,
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": decision,
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                },
+                self._default_reason("respond", decision=decision),
+            )
             sao_resp = SAOResponse(
                 response=(
                     ResponseType.ACCEPT_OFFER

@@ -182,9 +182,15 @@ def _wrap_bare_agent_reply(
     participants: List[Any],
     last_server_offer: Dict[str, str],
 ) -> Dict[str, Any]:
+    """Wrap a CFN bare ``AgentReply`` dict in a full SSTP envelope for validation.
+
+    Preserves ``reason`` (and ``offer``) from the bare dict in ``payload`` so
+    alignment judges see the same fields as on the live wire.
+    """
     participant_id = str(bare.get("participant_id") or "")
     agent_name = _participant_name(participants, participant_id)
     action = str(bare.get("action") or "").lower()
+    # Copy action, offer, reason, round, etc. — only participant_id is re-slotted.
     inner = {k: v for k, v in bare.items() if k != "participant_id"}
     inner["participant_id"] = participant_id
     sao = _sao_response_for_bare_action(action, bare, last_server_offer)

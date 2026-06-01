@@ -25,10 +25,10 @@ Round semantics
 **Rounds 2 … N (alternating SAO):**
   - **Proposer** (rotates, starting from the server's random pick):
     receives ``action=propose``.  Returns a new offer via
-    ``{ "action": "counter_offer", "offer": {...} }``.
+    ``{ "action": "counter_offer", "offer": {...}, "reason": "..." }``.
   - **Responders** (all others): receive ``action=respond`` with
     ``current_offer`` = the standing offer from the previous round.
-    Return ``{ "action": "accept" | "reject" }``.
+    Return ``{ "action": "accept" | "reject", "reason": "..." }``.
   Every message represents a real decision (no shadow / seeding flag on wire).
 
 Evaluation after each call
@@ -37,6 +37,13 @@ Evaluation after each call
 2. Rounds 2+: if any responder accepts the standing offer → agreement.
 3. If the proposer returns no valid offer → ``broken``.
 4. If all rounds exhaust without agreement → ``timedout``.
+
+Agent reply ``reason`` field
+----------------------------
+Every agent reply may include ``payload.reason`` (accept, reject, or
+counter_offer).  The server copies it into ``round_decisions`` and the
+``sstp_message_trace`` via :mod:`reply_payload_utils`; it does not affect
+offer validation or agreement detection.
 """
 
 from __future__ import annotations
@@ -72,6 +79,8 @@ from .negotiation_model import (  # noqa: E402  (same package)
     NegotiationResult,
 )
 from .offer_validation import validate_and_snap_offer  # noqa: E402
+# Persist action/offer/reason on each participant decision (reason is metadata only).
+from .reply_payload_utils import round_decision_from_reply  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -570,15 +579,9 @@ class BatchCallbackRunner:
             all_replies = [
                 replies_by_pid.get(p.id, {"action": "reject"}) for p in participants
             ]
-            round_decs: list[dict[str, Any]] = []
-            for p, r in zip(participants, all_replies):
-                dec: dict[str, Any] = {
-                    "participant_id": p.id,
-                    "action": r.get("action", "reject"),
-                }
-                if r.get("action") == "counter_offer" and "offer" in r:
-                    dec["offer"] = r["offer"]
-                round_decs.append(dec)
+            round_decs = [
+                round_decision_from_reply(p.id, r) for p, r in zip(participants, all_replies)
+            ]
             round_decisions[round_num] = round_decs
             round_next_proposer[round_num] = (
                 None  # updated below if negotiation continues
@@ -872,15 +875,9 @@ class BatchCallbackRunner:
             all_replies = [
                 replies_by_pid.get(p.id, {"action": "reject"}) for p in participants
             ]
-            decs: list[dict[str, Any]] = []
-            for p, r in zip(participants, all_replies):
-                dec: dict[str, Any] = {
-                    "participant_id": p.id,
-                    "action": r.get("action", "reject"),
-                }
-                if r.get("action") == "counter_offer" and "offer" in r:
-                    dec["offer"] = r["offer"]
-                decs.append(dec)
+            decs = [
+                round_decision_from_reply(p.id, r) for p, r in zip(participants, all_replies)
+            ]
             sess.round_decisions[round_num] = decs
             # Mark this as the final round (no next proposer) until proven otherwise.
             sess.round_next_proposer[round_num] = None

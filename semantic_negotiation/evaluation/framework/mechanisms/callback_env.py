@@ -90,6 +90,11 @@ from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
 from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
 
+_sn_root = str(Path(__file__).resolve().parents[3])
+if _sn_root not in sys.path:
+    sys.path.insert(0, _sn_root)
+from app.agent.reply_payload_utils import attach_reason  # noqa: E402
+
 from semantic_negotiation.evaluation.framework.config import (  # noqa: E402
     AgentConfig,
     EvaluationConfig,
@@ -298,13 +303,16 @@ def _make_agent_app(registry: Dict[str, _CallbackAgent]) -> FastAPI:
                     f"  asp={asp:.3f}  offer={offer}",
                     flush=True,
                 )
-                reply_payload = {
-                    "action": "counter_offer",
-                    "round": round_num,
-                    "issues": issues,
-                    "options_per_issue": options_per_issue,
-                    "offer": offer,
-                }
+                reply_payload = attach_reason(
+                    {
+                        "action": "counter_offer",
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                        "offer": offer,
+                    },
+                    f"{agent.name}: counter-offer from utility curve.",
+                )
                 sao_resp = SAOResponse(
                     response=ResponseType.REJECT_OFFER, outcome=offer
                 )
@@ -319,12 +327,19 @@ def _make_agent_app(registry: Dict[str, _CallbackAgent]) -> FastAPI:
                     f"  utility={u:.3f}  → {decision}",
                     flush=True,
                 )
-                reply_payload = {
-                    "action": decision,
-                    "round": round_num,
-                    "issues": issues,
-                    "options_per_issue": options_per_issue,
-                }
+                reply_payload = attach_reason(
+                    {
+                        "action": decision,
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                    },
+                    (
+                        f"{agent.name}: accepting the offer."
+                        if decision == "accept"
+                        else f"{agent.name}: rejecting the offer."
+                    ),
+                )
                 sao_resp = SAOResponse(
                     response=(
                         ResponseType.ACCEPT_OFFER

@@ -167,9 +167,15 @@ def _extract_agent_reply(sstp_reply: dict[str, Any]) -> dict[str, Any]:
     The agent server returns full SSTPNegotiateMessage dicts.  The CFN
     ``/decide`` endpoint expects::
 
-        {"participant_id": "...", "action": "accept"|"reject"|"counter_offer", "offer": {...}}
+        {
+          "participant_id": "...",
+          "action": "accept"|"reject"|"counter_offer",
+          "offer": {...},          # counter_offer only
+          "reason": "..."           # recommended on every action
+        }
 
-    We extract ``participant_id`` and ``action`` from the reply payload.
+    We extract ``participant_id``, ``action``, ``offer``, and ``reason`` from
+    the reply payload.
     """
     payload = sstp_reply.get("payload", {})
     reply: dict[str, Any] = {
@@ -178,6 +184,8 @@ def _extract_agent_reply(sstp_reply: dict[str, Any]) -> dict[str, Any]:
     }
     if payload.get("offer"):
         reply["offer"] = payload["offer"]
+    if payload.get("reason"):
+        reply["reason"] = payload["reason"]
     return reply
 
 

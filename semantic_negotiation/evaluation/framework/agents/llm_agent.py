@@ -33,6 +33,10 @@ External config (YAML)
 
 Fallback behaviour
 ------------------
+LLM JSON replies must include a ``reason`` string (1–3 sentences) alongside
+``response`` and ``outcome``.  The server stores ``reason`` for all actions;
+it does not change SAO outcomes.
+
 When the LLM call fails or returns unparseable JSON the agent falls back to
 a rule-based decision:
 
@@ -52,10 +56,11 @@ from protocol.sstp.negmas_sao import ResponseType, SAOResponse  # noqa
 
 from .base_agent import BaseAgent, build_sstp_reply, _slug
 
-# ── sys.path: ensure semantic_negotiation/app is importable ─────────────────
-_sn_app = str(Path(__file__).resolve().parents[4] / "semantic_negotiation" / "app")
-if _sn_app not in sys.path:
-    sys.path.insert(0, _sn_app)
+# ── sys.path: ensure semantic_negotiation package is importable ─────────────
+_sn_root = str(Path(__file__).resolve().parents[3])
+if _sn_root not in sys.path:
+    sys.path.insert(0, _sn_root)
+from app.agent.reply_payload_utils import attach_reason, sanitize_reason  # noqa: E402
 
 
 def _get_llm() -> Callable[[str], str]:
@@ -184,7 +189,12 @@ class LLMAgent(BaseAgent):
     ) -> str:
         return (
             f"{self.persona}\n\n"
-            f"```json\n{json.dumps(body, indent=2)}\n```"
+            f"```json\n{json.dumps(body, indent=2)}\n```\n\n"
+            f"Reply ONLY with JSON (no markdown): "
+            f'{{"response": 0|1, "outcome": <offer dict or null>, '
+            f'"reason": "<1-3 sentences explaining your decision>"}}\n'
+            f"ResponseType: 0 = ACCEPT_OFFER, 1 = REJECT_OFFER. "
+            f"If counter-offering, set response=1 and outcome to your proposed offer."
         )
 
     # ------------------------------------------------------------------
@@ -230,12 +240,15 @@ class LLMAgent(BaseAgent):
 
         # Skip LLM for empty respond calls (no offer on table)
         if action == "respond" and not current_offer:
-            reply_payload = {
-                "action": "reject",
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": "reject",
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                },
+                "No current offer on the table.",
+            )
             sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER, outcome=None)
             return build_sstp_reply(
                 session_id,
@@ -257,36 +270,46 @@ class LLMAgent(BaseAgent):
             sc,
         )
 
-        action_str, outcome, sao_resp = self._call_llm(
+        action_str, outcome, sao_resp, reason = self._call_llm(
             prompt, action, round_num, current_offer, options_per_issue
         )
 
         if action_str == "counter_offer":
-            reply_payload = {
-                "action": "counter_offer",
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-                "offer": outcome,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": "counter_offer",
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                    "offer": outcome,
+                },
+                reason,
+            )
         elif action_str == "accept":
-            reply_payload = {
-                "action": "accept",
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": "accept",
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                },
+                reason,
+            )
         else:
-            reply_payload = {
-                "action": "reject",
-                "round": round_num,
-                "issues": issues,
-                "options_per_issue": options_per_issue,
-            }
+            reply_payload = attach_reason(
+                {
+                    "action": "reject",
+                    "round": round_num,
+                    "issues": issues,
+                    "options_per_issue": options_per_issue,
+                },
+                reason,
+            )
 
         print(
             f"  [{self.agent_id}] {action}  round={round_num}"
-            f"  → {action_str}" + (f"  offer={outcome}" if outcome else ""),
+            f"  → {action_str}" + (f"  offer={outcome}" if outcome else "")
+            + f"  reason={reason[:80]!r}",
             flush=True,
         )
 
@@ -305,11 +328,11 @@ class LLMAgent(BaseAgent):
         round_num: int,
         current_offer: Dict[str, str],
         options_per_issue: Dict[str, List[str]],
-    ) -> Tuple[str, Optional[Dict[str, str]], SAOResponse]:
+    ) -> Tuple[str, Optional[Dict[str, str]], SAOResponse, str]:
         """Call the LLM and parse its response.  Falls back on any error.
 
         Returns:
-            ``(action_str, outcome_or_None, sao_response)``
+            ``(action_str, outcome_or_None, sao_response, reason)``
             where ``action_str`` is ``"counter_offer"`` | ``"accept"`` | ``"reject"``.
         """
         try:
@@ -318,15 +341,21 @@ class LLMAgent(BaseAgent):
             data = self._extract_json(raw)
             resp_int = int(data.get("response", 1))
             outcome_raw = data.get("outcome")
+            # Required in prompts; fallback to _default_reason if missing/invalid.
+            reason_raw = sanitize_reason(data.get("reason"))
 
             if resp_int == int(ResponseType.ACCEPT_OFFER):
                 outcome = current_offer or (
                     outcome_raw if isinstance(outcome_raw, dict) else {}
                 )
+                reason = reason_raw or self._default_reason(
+                    "respond", decision="accept"
+                )
                 return (
                     "accept",
                     outcome,
                     SAOResponse(response=ResponseType.ACCEPT_OFFER, outcome=outcome),
+                    reason,
                 )
             else:  # REJECT_OFFER
                 if outcome_raw and isinstance(outcome_raw, dict) and options_per_issue:
@@ -339,17 +368,25 @@ class LLMAgent(BaseAgent):
                         )
                         for issue, opts in options_per_issue.items()
                     }
+                    reason = reason_raw or self._default_reason(
+                        "propose", decision="counter_offer"
+                    )
                     return (
                         "counter_offer",
                         validated,
                         SAOResponse(
                             response=ResponseType.REJECT_OFFER, outcome=validated
                         ),
+                        reason,
                     )
+                reason = reason_raw or self._default_reason(
+                    "respond", decision="reject"
+                )
                 return (
                     "reject",
                     None,
                     SAOResponse(response=ResponseType.REJECT_OFFER, outcome=None),
+                    reason,
                 )
 
         except Exception as exc:  # noqa: BLE001
@@ -360,11 +397,13 @@ class LLMAgent(BaseAgent):
                     "counter_offer",
                     fallback,
                     SAOResponse(response=ResponseType.REJECT_OFFER, outcome=fallback),
+                    self._default_reason("propose", decision="counter_offer"),
                 )
             return (
                 "reject",
                 None,
                 SAOResponse(response=ResponseType.REJECT_OFFER, outcome=None),
+                self._default_reason("respond", decision="reject"),
             )
 
     # ------------------------------------------------------------------

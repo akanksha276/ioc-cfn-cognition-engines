@@ -144,8 +144,9 @@ def _summarise_paragraph(raw: str, creds: dict, model: str) -> str:
         Summarised paragraph, or *raw* unchanged if the call fails.
     """
     try:
-        import litellm
-        response = litellm.completion(
+        from app.config.utils import litellm_completion_compat
+
+        response = litellm_completion_compat(
             model=model,
             messages=[
                 {"role": "system", "content": _SUMMARISE_SYSTEM},

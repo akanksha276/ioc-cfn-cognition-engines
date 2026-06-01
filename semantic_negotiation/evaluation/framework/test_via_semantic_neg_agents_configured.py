@@ -94,6 +94,11 @@ from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
 from config.utils import get_llm_provider  # noqa: E402
 
+_sn_pkg_root = str(Path(__file__).resolve().parent.parent.parent)
+if _sn_pkg_root not in sys.path:
+    sys.path.insert(0, _sn_pkg_root)
+from app.agent.reply_payload_utils import attach_reason, sanitize_reason  # noqa: E402
+
 try:
     import litellm as _litellm  # noqa: E402
 except ImportError:
@@ -197,8 +202,8 @@ def _build_sstp_reply(
     """Wrap an agent's reply payload in a full SSTPNegotiateMessage envelope.
 
     The ``reply_payload`` becomes ``payload`` inside the message.  For a
-    propose turn it should be ``{"action": "counter_offer", "offer": {...}}``;
-    for a respond turn ``{"action": "accept" | "reject"}``.
+    propose turn it should be ``{"action": "counter_offer", "offer": {...}, "reason": "..."}``;
+    for a respond turn ``{"action": "accept" | "reject", "reason": "..."}``.
     ``sao_response`` encodes the agent's SAO-level decision so the server can
     read the accept/reject/counter from the structured field without parsing
     the raw payload.
@@ -554,8 +559,8 @@ class LLMNegotiationAgent(LocalAgent):
     def decide_from_sstp_message(
         self,
         body: dict[str, Any],
-    ) -> tuple[str, dict[str, str] | None, SAOResponse]:
-        """Read a full SSTPNegotiateMessage and return (action_str, outcome, sao_response).
+    ) -> tuple[str, dict[str, str] | None, SAOResponse, str]:
+        """Read a full SSTPNegotiateMessage and return (action_str, outcome, sao_response, reason).
 
         The LLM reads ``semantic_context`` (sao_state, issues, options_per_issue)
         and ``payload`` (action, current_offer, round, n_steps) and fills
@@ -565,6 +570,7 @@ class LLMNegotiationAgent(LocalAgent):
             action_str: ``"counter_offer"`` | ``"accept"`` | ``"reject"``
             outcome: offer dict for counter_offer/accept, ``None`` for reject
             sao_response: filled :class:`SAOResponse` Pydantic object
+            reason: short explanation of the decision
         """
         payload: dict[str, Any] = body.get("payload", {})
         semantic_ctx: dict[str, Any] = body.get("semantic_context") or {}
@@ -596,8 +602,9 @@ class LLMNegotiationAgent(LocalAgent):
             task_and_format = (
                 "Task: You must PROPOSE a counter-offer for this round.\n"
                 "Set response=1 (REJECT_OFFER) and outcome = your proposed offer dict.\n\n"
-                "Reply ONLY with this JSON (no explanation, no markdown):\n"
-                '{"response": 1, "outcome": {"<issue>": "<chosen_option>", ...}}'
+                "Reply ONLY with this JSON (no markdown):\n"
+                '{"response": 1, "outcome": {"<issue>": "<chosen_option>", ...}, '
+                '"reason": "<1-3 sentences>"}'
             )
         else:
             if is_next_proposer:
@@ -608,9 +615,11 @@ class LLMNegotiationAgent(LocalAgent):
                     "If you reject       → response=1, outcome = null.\n"
                     "If you counter-offer → response=1, outcome = your proposed offer dict.\n"
                     "The closer to the deadline (t→1), the more you should be willing to accept.\n\n"
-                    "Reply ONLY with this JSON (no explanation, no markdown):\n"
-                    '{"response": 0, "outcome": {...}}  OR  {"response": 1, "outcome": null}  OR\n'
-                    '{"response": 1, "outcome": {"<issue>": "<chosen_option>", ...}}'
+                    "Reply ONLY with this JSON (no markdown):\n"
+                    '{"response": 0, "outcome": {...}, "reason": "..."}  OR  '
+                    '{"response": 1, "outcome": null, "reason": "..."}  OR\n'
+                    '{"response": 1, "outcome": {"<issue>": "<chosen_option>", ...}, '
+                    '"reason": "..."}'
                 )
             else:
                 task_and_format = (
@@ -618,8 +627,9 @@ class LLMNegotiationAgent(LocalAgent):
                     "If you accept → response=0, outcome = the offer dict.\n"
                     "If you reject → response=1, outcome = null.\n"
                     "The closer to the deadline (t→1), the more you should be willing to accept.\n\n"
-                    "Reply ONLY with this JSON (no explanation, no markdown):\n"
-                    '{"response": 0, "outcome": {...}} or {"response": 1, "outcome": null}'
+                    "Reply ONLY with this JSON (no markdown):\n"
+                    '{"response": 0, "outcome": {...}, "reason": "..."} or '
+                    '{"response": 1, "outcome": null, "reason": "..."}'
                 )
 
         if self.prompt_mode == "english":
@@ -687,6 +697,7 @@ class LLMNegotiationAgent(LocalAgent):
             data = self._extract_json(raw)
             resp_int = int(data.get("response", 1))
             outcome_raw = data.get("outcome")
+            reason_raw = sanitize_reason(data.get("reason"))
 
             if resp_int == int(ResponseType.ACCEPT_OFFER):
                 outcome = current_offer or (
@@ -695,12 +706,13 @@ class LLMNegotiationAgent(LocalAgent):
                 sao_resp = SAOResponse(
                     response=ResponseType.ACCEPT_OFFER, outcome=outcome
                 )
+                reason = reason_raw or f"{self.name}: accepting the current offer."
                 print(
                     f"  [{self.name}] {action}  round={round_num}"
                     f"  sao_response=ACCEPT_OFFER",
                     flush=True,
                 )
-                return "accept", outcome, sao_resp
+                return "accept", outcome, sao_resp, reason
 
             else:  # REJECT_OFFER
                 if outcome_raw and isinstance(outcome_raw, dict) and options_per_issue:
@@ -716,22 +728,24 @@ class LLMNegotiationAgent(LocalAgent):
                     sao_resp = SAOResponse(
                         response=ResponseType.REJECT_OFFER, outcome=validated
                     )
+                    reason = reason_raw or f"{self.name}: proposing a counter-offer."
                     print(
                         f"  [{self.name}] {action}  round={round_num}"
                         f"  sao_response=REJECT_OFFER+counter  offer={validated}",
                         flush=True,
                     )
-                    return "counter_offer", validated, sao_resp
+                    return "counter_offer", validated, sao_resp, reason
                 else:
                     sao_resp = SAOResponse(
                         response=ResponseType.REJECT_OFFER, outcome=None
                     )
+                    reason = reason_raw or f"{self.name}: rejecting the current offer."
                     print(
                         f"  [{self.name}] {action}  round={round_num}"
                         f"  sao_response=REJECT_OFFER",
                         flush=True,
                     )
-                    return "reject", None, sao_resp
+                    return "reject", None, sao_resp, reason
 
         except Exception as exc:
             print(
@@ -747,11 +761,13 @@ class LLMNegotiationAgent(LocalAgent):
                     "counter_offer",
                     fallback,
                     SAOResponse(response=ResponseType.REJECT_OFFER, outcome=fallback),
+                    f"{self.name}: fallback counter-offer.",
                 )
             return (
                 "reject",
                 None,
                 SAOResponse(response=ResponseType.REJECT_OFFER, outcome=None),
+                f"{self.name}: fallback reject.",
             )
 
     # ------------------------------------------------------------------
@@ -773,7 +789,7 @@ class LLMNegotiationAgent(LocalAgent):
                 "sao_state": {"step": round_num, "n_steps": n_steps},
             },
         }
-        _, offer, _ = self.decide_from_sstp_message(body)
+        _, offer, _, _ = self.decide_from_sstp_message(body)
         return offer or {}, None
 
     def decide_respond(
@@ -801,7 +817,7 @@ class LLMNegotiationAgent(LocalAgent):
                 },
             },
         }
-        action_str, _, _ = self.decide_from_sstp_message(body)
+        action_str, _, _, _ = self.decide_from_sstp_message(body)
         return "accept" if action_str == "accept" else "reject"
 
 
@@ -894,7 +910,9 @@ def make_agent_app(
 
             # ── LLM agents: read full SSTPNegotiateMessage, fill sao_response ──
             if isinstance(agent, LLMNegotiationAgent):
-                action_str, outcome, sao_resp = agent.decide_from_sstp_message(body)
+                action_str, outcome, sao_resp, reason = agent.decide_from_sstp_message(
+                    body
+                )
 
                 if action_str == "counter_offer":
                     offer = outcome or {}
@@ -909,13 +927,17 @@ def make_agent_app(
                             f"{k}: '{v}'" for k, v in offer.items()
                         )
                         trace_state["dialogue_log"].append(f"  OFFER    : {offer_str}")
-                    reply_payload: dict[str, Any] = {
-                        "action": "counter_offer",
-                        "round": round_num,
-                        "issues": issues,
-                        "options_per_issue": options_per_issue,
-                        "offer": offer,
-                    }
+                        trace_state["dialogue_log"].append(f"  REASON   : {reason}")
+                    reply_payload = attach_reason(
+                        {
+                            "action": "counter_offer",
+                            "round": round_num,
+                            "issues": issues,
+                            "options_per_issue": options_per_issue,
+                            "offer": offer,
+                        },
+                        reason,
+                    )
                 elif action_str == "accept":
                     if not is_shadow:
                         if round_num != trace_state["dialogue_last_round"]:
@@ -933,14 +955,17 @@ def make_agent_app(
                                 )
                             trace_state["dialogue_last_round"] = round_num
                         trace_state["dialogue_log"].append(
-                            f"  [{agent.name:<8}]  ACCEPT ✓"
+                            f"  [{agent.name:<8}]  ACCEPT ✓  ({reason})"
                         )
-                    reply_payload = {
-                        "action": "accept",
-                        "round": round_num,
-                        "issues": issues,
-                        "options_per_issue": options_per_issue,
-                    }
+                    reply_payload = attach_reason(
+                        {
+                            "action": "accept",
+                            "round": round_num,
+                            "issues": issues,
+                            "options_per_issue": options_per_issue,
+                        },
+                        reason,
+                    )
                 else:  # reject
                     if not is_shadow:
                         if round_num != trace_state["dialogue_last_round"]:
@@ -958,14 +983,17 @@ def make_agent_app(
                                 )
                             trace_state["dialogue_last_round"] = round_num
                         trace_state["dialogue_log"].append(
-                            f"  [{agent.name:<8}]  REJECT"
+                            f"  [{agent.name:<8}]  REJECT  ({reason})"
                         )
-                    reply_payload = {
-                        "action": "reject",
-                        "round": round_num,
-                        "issues": issues,
-                        "options_per_issue": options_per_issue,
-                    }
+                    reply_payload = attach_reason(
+                        {
+                            "action": "reject",
+                            "round": round_num,
+                            "issues": issues,
+                            "options_per_issue": options_per_issue,
+                        },
+                        reason,
+                    )
 
                 reply = _build_sstp_reply(
                     session_id,
@@ -1004,13 +1032,16 @@ def make_agent_app(
                             f"{k}: '{v}'" for k, v in offer.items()
                         )
                         trace_state["dialogue_log"].append(f"  OFFER    : {offer_str}")
-                    reply_payload = {
-                        "action": "counter_offer",
-                        "round": round_num,
-                        "issues": issues,
-                        "options_per_issue": options_per_issue,
-                        "offer": offer,
-                    }
+                    reply_payload = attach_reason(
+                        {
+                            "action": "counter_offer",
+                            "round": round_num,
+                            "issues": issues,
+                            "options_per_issue": options_per_issue,
+                            "offer": offer,
+                        },
+                        f"{agent.name}: counter-offer from utility curve.",
+                    )
                 else:
                     # Agent is responding (accept/reject) to an existing offer.
                     action_str = agent.decide_respond(
@@ -1038,6 +1069,7 @@ def make_agent_app(
                             trace_state["dialogue_log"].append(
                                 f"  [{agent.name:<8}]  ACCEPT ✓"
                             )
+                        lb_reason = f"{agent.name}: accepting the offer."
                     else:
                         sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER)
                         if not is_shadow:
@@ -1058,13 +1090,17 @@ def make_agent_app(
                                 f"  [{agent.name:<8}]  REJECT"
                             )
                         action_str = "reject"
+                        lb_reason = f"{agent.name}: rejecting the offer."
 
-                    reply_payload = {
-                        "action": action_str,
-                        "round": round_num,
-                        "issues": issues,
-                        "options_per_issue": options_per_issue,
-                    }
+                    reply_payload = attach_reason(
+                        {
+                            "action": action_str,
+                            "round": round_num,
+                            "issues": issues,
+                            "options_per_issue": options_per_issue,
+                        },
+                        lb_reason,
+                    )
 
                 reply = _build_sstp_reply(
                     session_id,
@@ -1074,9 +1110,12 @@ def make_agent_app(
                     sao_state=incoming_sao_state,
                 )
                 if not is_shadow:
-                    _save_json(round_dir / f"{action_str}__{slug}__reply.json", reply)
+                    _save_json(round_dir / f"{action}__{slug}__reply.json", reply)
                 return reply
-            reply_payload = {"action": "reject", "round": round_num}
+            reply_payload = attach_reason(
+                {"action": "reject", "round": round_num},
+                f"{agent.name}: unknown action; rejecting.",
+            )
             sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER)
             reply = _build_sstp_reply(
                 session_id,

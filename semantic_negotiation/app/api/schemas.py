@@ -141,7 +141,11 @@ class NegotiateResponse(BaseModel):
 
 
 class AgentDecision(BaseModel):
-    """One participant's decision within a SAO round."""
+    """One participant's decision within a SAO round.
+
+    Mirrors the per-agent entry in ``BatchCallbackRunner.round_decisions`` and
+    the agent reply ``payload`` on the SSTP wire (including optional ``reason``).
+    """
 
     participant_id: str = Field(
         ..., description="ID of the participant who made this decision"
@@ -150,6 +154,13 @@ class AgentDecision(BaseModel):
     offer: Optional[Dict[str, str]] = Field(
         None,
         description="Proposed offer when action='counter_offer'. Shape: {issue_id: option}",
+    )
+    reason: Optional[str] = Field(
+        None,
+        description=(
+            "Agent's explanation for this action (accept, reject, or counter_offer). "
+            "Pass-through metadata; not used by SAO outcome logic."
+        ),
     )
 
 

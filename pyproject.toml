@@ -70,6 +70,7 @@ langchain-text-splitters = ">=0.2"
 # Negotiation framework (semantic_negotiation)
 negmas = ">=0.10"
 rapidfuzz = ">=3.0"   # fast fuzzy string matching for offer validation (no transformers)
+bleach = ">=6.0.0"    # strip HTML from agent reason text (metadata sanitization)
 
 # ── Security pins (CVEs) ──────────────────────────────────────────────────────
 urllib3 = ">=2.6.3"   # CVE-2026-21441: decompression-bomb bypass on redirects

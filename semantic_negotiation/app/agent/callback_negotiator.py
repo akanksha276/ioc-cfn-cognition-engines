@@ -75,7 +75,11 @@ batching in future without changing the endpoint contract.
     [
       {
         "kind": "negotiate", "protocol": "SSTP", ...,
-        "payload": { "action": "counter_offer", "offer": { "budget": "low", ... } }
+        "payload": {
+          "action": "counter_offer",
+          "offer": { "budget": "low", ... },
+          "reason": "Why this counter-offer improves the deal for this agent."
+        }
       }
     ]
 
@@ -83,7 +87,10 @@ batching in future without changing the endpoint contract.
     [
       {
         "kind": "negotiate", "protocol": "SSTP", ...,
-        "payload": { "action": "accept" }   // or "reject"
+        "payload": {
+          "action": "accept",   // or "reject"
+          "reason": "Why this agent accepts or rejects the current offer."
+        }
       }
     ]
 
@@ -105,6 +112,10 @@ Key fields for agent decision-making
 * ``participant_id`` in the **respond** message is ``null`` (broadcast) — all
   registered agents are expected to reply, embedding their own
   ``participant_id`` in the response payload.
+
+The ``reason`` field on agent replies is stored in the negotiation trace when
+the runner records full envelopes; :meth:`propose` and :meth:`respond` ignore
+it when converting to NegMAS outcomes.
 
 If the agent returns HTTP 4xx/5xx, or the ``"offer"``/``"action"`` keys are
 missing, the negotiator falls back to a safe default:

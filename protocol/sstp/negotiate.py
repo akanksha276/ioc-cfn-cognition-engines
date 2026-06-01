@@ -78,6 +78,33 @@ class NegotiateSemanticContext(BaseModel):
     """
 
 
+class NegotiateAgentReplyPayload(BaseModel):
+    """Agent reply body inside ``SSTPNegotiateMessage.payload`` (decide / callback).
+
+    Documented shape for agent → server messages.  The live wire format remains
+    a plain dict on :class:`SSTPNegotiateMessage`; this model is for validation,
+    OpenAPI-style docs, and agent implementers.
+
+    ``reason`` is recommended on **every** reply (accept, reject, counter_offer).
+    The server records it in traces but does not use it to drive NegMAS outcomes.
+    """
+
+    action: Literal["accept", "reject", "counter_offer"]
+    """SAO decision encoded for the batch runner."""
+
+    participant_id: str | None = None
+    """Agent id; required on replies so the server can match N responses per round."""
+
+    reason: str | None = None
+    """Human-readable rationale for this action (all action types)."""
+
+    offer: dict[str, str] | None = None
+    """Proposed option per issue; required when ``action`` is ``counter_offer``."""
+
+    round: int | None = None
+    """1-based round index echoed from the inbound server message (optional)."""
+
+
 class SSTPNegotiateMessage(_STBaseMessage):
     """
     A negotiation-round message backed by NegMAS SAO semantics.

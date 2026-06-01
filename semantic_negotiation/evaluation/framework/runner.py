@@ -68,6 +68,11 @@ from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
 from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
 
+_sn_root = str(Path(__file__).resolve().parents[2])
+if _sn_root not in sys.path:
+    sys.path.insert(0, _sn_root)
+from app.agent.reply_payload_utils import attach_reason  # noqa: E402
+
 from ...app.agent.batch_callback_runner import (
     BatchCallbackRunner,
     compute_n_steps,
@@ -319,13 +324,16 @@ def make_agent_app(agents_registry: Dict[str, GenericCallbackAgent]) -> FastAPI:
                 offer, _asp = agent.decide_propose(
                     round_num, n_steps, options_per_issue
                 )
-                reply_payload: Dict[str, Any] = {
-                    "action": "counter_offer",
-                    "round": round_num,
-                    "issues": issues,
-                    "options_per_issue": options_per_issue,
-                    "offer": offer,
-                }
+                reply_payload = attach_reason(
+                    {
+                        "action": "counter_offer",
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                        "offer": offer,
+                    },
+                    f"{agent.name}: counter-offer.",
+                )
                 sao_resp = SAOResponse(
                     response=ResponseType.REJECT_OFFER, outcome=offer
                 )
@@ -342,12 +350,19 @@ def make_agent_app(agents_registry: Dict[str, GenericCallbackAgent]) -> FastAPI:
                 decision = agent.decide_respond(
                     current_offer, round_num, n_steps, options_per_issue
                 )
-                reply_payload = {
-                    "action": decision,
-                    "round": round_num,
-                    "issues": issues,
-                    "options_per_issue": options_per_issue,
-                }
+                reply_payload = attach_reason(
+                    {
+                        "action": decision,
+                        "round": round_num,
+                        "issues": issues,
+                        "options_per_issue": options_per_issue,
+                    },
+                    (
+                        f"{agent.name}: accepting the offer."
+                        if decision == "accept"
+                        else f"{agent.name}: rejecting the offer."
+                    ),
+                )
                 sao_resp = SAOResponse(
                     response=(
                         ResponseType.ACCEPT_OFFER
@@ -365,7 +380,10 @@ def make_agent_app(agents_registry: Dict[str, GenericCallbackAgent]) -> FastAPI:
                 )
 
             else:
-                reply_payload = {"action": "reject", "round": round_num}
+                reply_payload = attach_reason(
+                    {"action": "reject", "round": round_num},
+                    f"{agent.name}: unknown action; rejecting.",
+                )
                 sao_resp = SAOResponse(response=ResponseType.REJECT_OFFER)
                 return _build_sstp_reply(
                     session_id,

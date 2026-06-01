@@ -752,11 +752,13 @@ class SemanticNegotiationPipeline:
                 # (sao_step + 1 would be 0 for the server's initial row, but
                 # those decisions are stored at key 1, not 0.)
                 raw_decs = decisions_map.get(idx + 1, [])
+                # Include per-agent reason when present (explainability; not used by SAO).
                 decisions = [
                     AgentDecision(
                         participant_id=d["participant_id"],
                         action=d["action"],
                         offer=d.get("offer"),
+                        reason=d.get("reason"),
                     )
                     for d in raw_decs
                 ]
