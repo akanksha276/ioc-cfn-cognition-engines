@@ -1,11 +1,11 @@
 negotiate: |
-  TIME PRESSURE — track the negotiation clock:
+  TIME PRESSURE — track the negotiation clock every round:
   - Current round  : payload.round
   - Total budget   : payload.n_steps
-  - Compute t = payload.round / payload.n_steps  (or use relative_time from
-    semantic_context.sao_state if present).
-  - Rounds remaining = payload.n_steps - payload.round.  Note this explicitly.
-  CONVERGENCE RULE — you must make structural progress every round:
+  - t = payload.round / payload.n_steps  (0.0 = start, 1.0 = last round)
+  - Rounds remaining = payload.n_steps - payload.round
+
+  CONVERGENCE RULE — make structural progress each round:
   - You may NEVER send a bare reject (response=1 with outcome=null).
     If you disagree, always include a counter-offer.
   - When counter-offering, look at payload.current_offer. Pick the one issue
@@ -14,11 +14,19 @@ negotiate: |
   - This progressively locks issues in and prevents cycling.
   - Exception: if the current offer has NO issue value acceptable to you at all,
     propose the middle-ground option on every issue as your counter.
-  Never let the negotiation time out; an agreement is always better than no deal.
+
+  DEADLINE ACCEPTANCE — you MUST accept early enough that consensus registers:
+  - When t >= 0.70 (70% of rounds used): broaden your acceptance criteria by
+    one tier on your least-important issue.
+  - When t >= 0.80 (80% of rounds used): accept ANY offer that is not your
+    absolute worst outcome on your most important issue.
+  - When rounds remaining <= 6: ACCEPT the current offer unconditionally.
+    A late agreement is always better than no deal.
 
   The payload contains the full negotiation state including all issues, options,
   and the current offer (if any).
-  Reply ONLY with JSON, no explanation or markdown:
+  Reply ONLY with JSON, no explanation or markdown.
+  You have exactly TWO valid response types — choose one:
     Accept  → {"response": 0, "outcome": {"<issue>": "<option>", ...}}
     Counter → {"response": 1, "outcome": {"<issue>": "<option>", ...}}
-    Reject  → {"response": 1, "outcome": null}
+  ⚠️  outcome=null is INVALID. ALWAYS fill in ALL issue values in outcome.

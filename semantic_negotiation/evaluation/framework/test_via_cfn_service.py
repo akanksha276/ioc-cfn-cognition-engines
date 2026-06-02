@@ -385,11 +385,19 @@ async def run(
         _save_json(mission_trace_dir / "00_start_request.json", start_body)
 
         print(f"POST {api_base}/start …")
-        resp = httpx.post(
-            f"{api_base}/start",
-            json=start_body,
-            timeout=600.0,
-        )
+        for _attempt in range(3):
+            try:
+                resp = httpx.post(
+                    f"{api_base}/start",
+                    json=start_body,
+                    timeout=600.0,
+                )
+                break
+            except (httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                if _attempt < 2:
+                    print(f"  /start error ({type(exc).__name__}), retrying… (attempt {_attempt + 2}/3)")
+                    continue
+                raise
         resp.raise_for_status()
         start_data = resp.json()
 
@@ -487,7 +495,7 @@ async def run(
 
             # POST /decide
             print(f"  POST {api_base}/decide  ({len(agent_replies)} replies)")
-            for _attempt in range(2):
+            for _attempt in range(3):
                 try:
                     decide_resp = httpx.post(
                         f"{api_base}/decide",
@@ -495,9 +503,9 @@ async def run(
                         timeout=600.0,
                     )
                     break
-                except httpx.ReadTimeout:
-                    if _attempt == 0:
-                        print("  /decide timed out, retrying…")
+                except (httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                    if _attempt < 2:
+                        print(f"  /decide error ({type(exc).__name__}), retrying… (attempt {_attempt + 2}/3)")
                         continue
                     raise
             decide_resp.raise_for_status()

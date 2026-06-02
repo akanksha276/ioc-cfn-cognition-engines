@@ -11,7 +11,6 @@ import logging
 import os
 import traceback
 import uuid
-from pathlib import Path
 from typing import Any, Dict, List
 from urllib.parse import quote
 
@@ -19,17 +18,10 @@ import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
-from ..dependencies import (
-    get_extraction_service,
-    get_ingest_data_service,
-    get_knowledge_processor,
-    get_data_repository,
-)
-from ..agent.ingest_data import IngestDataService
-from ..agent.service import TelemetryExtractionService
+from ..dependencies import get_ingestion_cognition_engine
+from ..agent.ingestion_ce import IngestionCognitionEngine, IngestionAction
 from ..agent.prompts import SUPPORTED_FORMATS
 from ..config.settings import settings
-from ..data.mock_repo import MockDataRepository
 from .schemas import ExtractionRequest, ExtractionResponseModel, ExtractionError
 
 logger = logging.getLogger(__name__)
@@ -48,7 +40,7 @@ extraction_router = APIRouter(prefix="/api/knowledge-mgmt", tags=["knowledge-mgm
 )
 async def knowledge_extraction(
     body: ExtractionRequest,
-    ingest_service: IngestDataService = Depends(get_ingest_data_service),
+    engine: IngestionCognitionEngine = Depends(get_ingestion_cognition_engine),
 ):
     """
     Unified knowledge extraction endpoint.
@@ -99,14 +91,14 @@ async def knowledge_extraction(
         return JSONResponse(status_code=400, content=error_resp.model_dump())
 
     try:
-        result = await ingest_service.ingest(
-            payload_data,
-            request_id=response_id,
-            format_descriptor=data_format,
+        result = await engine.run(
+            IngestionAction.INGEST,
+            {
+                "records": payload_data,
+                "request_id": response_id,
+                "format": data_format,
+            },
         )
-
-        processor = get_knowledge_processor()
-        result = processor.process(result)
 
         try:
             similarity_hits = await _fetch_similar_concepts(
@@ -282,22 +274,10 @@ async def _fetch_similar_concepts(
 
 @router.get("/metrics")
 async def get_metrics(
-    service: TelemetryExtractionService = Depends(get_extraction_service),
+    engine: IngestionCognitionEngine = Depends(get_ingestion_cognition_engine),
 ):
     """Get operational metrics."""
-    metrics = service.get_operational_metrics()
-    return {
-        "records_processed": metrics.records_processed,
-        "records_sent": metrics.records_sent,
-        "records_failed": metrics.records_failed,
-        "last_run_timestamp": (
-            metrics.last_run_timestamp.isoformat()
-            if metrics.last_run_timestamp
-            else None
-        ),
-        "last_run_duration_seconds": metrics.last_run_duration_seconds,
-        "recent_errors": metrics.errors[-10:],
-    }
+    return await engine.run(IngestionAction.METRICS, {})
 
 
 # ============== File-based Endpoints (kept for dev/testing) ==============
@@ -307,28 +287,17 @@ async def get_metrics(
 async def extract_entities_and_relations_from_file(
     file_path: str,
     save_output: bool = False,
-    service: TelemetryExtractionService = Depends(get_extraction_service),
-    repository: MockDataRepository = Depends(get_data_repository),
+    engine: IngestionCognitionEngine = Depends(get_ingestion_cognition_engine),
 ):
     """
     Load OTEL data from a JSON file, extract entities and relations,
     generate embeddings, and optionally perform semantic deduplication.
     """
     try:
-        path = Path(file_path)
-        otel_data = repository.load_from_file(path)
-
-        result = service.extract_entities_and_relations(otel_data)
-
-        processor = get_knowledge_processor()
-        result = processor.process(result)
-
-        if save_output:
-            output_filename = f"extracted_entities_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
-            repository.save_output(result, output_filename)
-
-        return result
-
+        return await engine.run(
+            IngestionAction.EXTRACT_FROM_FILE,
+            {"file_path": file_path, "save_output": save_output},
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -342,27 +311,16 @@ async def extract_entities_and_relations_from_file(
 async def extract_concepts_and_relationships_from_file(
     file_path: str,
     save_output: bool = False,
-    ingest_service: IngestDataService = Depends(get_ingest_data_service),
-    repository: MockDataRepository = Depends(get_data_repository),
+    engine: IngestionCognitionEngine = Depends(get_ingestion_cognition_engine),
 ):
     """
     Load OTEL data from a JSON file and extract high-level concepts and relationships.
     """
     try:
-        path = Path(file_path)
-        otel_data = repository.load_from_file(path)
-
-        result = await ingest_service.ingest(otel_data)
-
-        processor = get_knowledge_processor()
-        result = processor.process(result)
-
-        if save_output:
-            output_filename = f"concept_relationships_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
-            repository.save_output(result, output_filename)
-
-        return result
-
+        return await engine.run(
+            IngestionAction.INGEST_FROM_FILE,
+            {"file_path": file_path, "save_output": save_output},
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:

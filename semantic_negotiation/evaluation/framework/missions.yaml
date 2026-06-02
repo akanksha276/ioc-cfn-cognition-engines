@@ -21,7 +21,7 @@ missions:
     content_text: >
       Two parties need to agree on price and delivery speed
       for an urgent supply order.
-    n_steps: 30 
+    n_steps: 40
 
   - name: "Cloud Platform"
     content_text: >

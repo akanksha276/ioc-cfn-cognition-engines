@@ -49,3 +49,23 @@ def get_repository(request: Request):
     HttpDataRepository uses legacy /api/graph/... (no workspace/mas in path).
     """
     return _repository(request, None, None, None)
+
+
+def get_evidence_cognition_engine(request: Request) -> "EvidenceCognitionEngine":
+    """
+    Per-request factory for :class:`~app.agent.evidence_ce.EvidenceCognitionEngine`.
+
+    Creates the engine with an unscoped repository by default (for graph/* routes).
+    The ``/reasoning/evidence`` route overrides ``engine._repo`` with the
+    workspace/MAS-scoped repository after injection.
+    """
+    from common.cognition_engine import ModelConfig
+    from .agent.evidence_ce import EvidenceCognitionEngine
+
+    cfg = ModelConfig(
+        llm_model=settings.LLM_MODEL,
+        llm_api_key=settings.LLM_API_KEY,
+        llm_base_url=settings.LLM_BASE_URL,
+    )
+    repo = _repository(request, None, None, None)
+    return EvidenceCognitionEngine(repo_adapter=repo, model_config=cfg)

@@ -7,9 +7,9 @@
 #   poetry run python evaluation/framework/test_via_cfn_service.py --config evaluation/framework/cfn_service_config.yaml
 
 # ── CFN service connection ─────────────────────────────────────────────────────
-cfn_url: http://localhost:9002
-workspace_id: ws1
-mas_id: mas1
+cfn_url: http://localhost:9004
+workspace_id: 398afb6e-8032-4e25-9e94-38febcfbb50a
+mas_id: ea3fc50e-061b-4fd2-ba6a-c90bf9678732
 
 # ── Agent callback server ──────────────────────────────────────────────────────
 # Port for the local FastAPI server that the CFN calls back on each round.

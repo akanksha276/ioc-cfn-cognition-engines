@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from .schemas import (
     ReasonerCognitionRequest,
     ReasonerCognitionResponse,
@@ -14,10 +14,10 @@ from .schemas import (
     Concept,
 )
 from ..dependencies import (
-    get_repository,
     get_repository_for_reasoning,
+    get_evidence_cognition_engine,
 )
-from ..agent.evidence import process_evidence
+from ..agent.evidence_ce import EvidenceAction, EvidenceCognitionEngine
 
 router = APIRouter()
 
@@ -29,46 +29,51 @@ router = APIRouter()
 )
 async def reasoning_evidence(
     req: ReasonerCognitionRequest,
-    repo=Depends(get_repository_for_reasoning),
+    request: Request,
+    engine: EvidenceCognitionEngine = Depends(get_evidence_cognition_engine),
 ):
-    return await process_evidence(
-        req,
-        repo_adapter=repo,
-    )
+    # Scope the engine's repo to the request's workspace/MAS for correct CFN path resolution.
+    engine._repo = get_repository_for_reasoning(request, req)
+    return await engine.run(EvidenceAction.REASON, req.model_dump(mode="json"))
 
 
-# ---- Placeholder DB-facing endpoints (wired to repository) ----
+# ---- DB-facing endpoints routed through EvidenceCognitionEngine ----
 
 @router.post("/graph/paths", response_model=GraphPathsResponse)
-async def graph_paths(req: GraphPathsRequest, repo=Depends(get_repository)):
-    result = await repo.find_paths(
-        source_id=req.source_id,
-        target_id=req.target_id,
-        max_depth=req.max_depth,
-        limit=req.limit,
-        relations=req.relations,
+async def graph_paths(
+    req: GraphPathsRequest,
+    engine: EvidenceCognitionEngine = Depends(get_evidence_cognition_engine),
+):
+    result = await engine.run(EvidenceAction.GRAPH_PATHS, req.model_dump(mode="json"))
+    return GraphPathsResponse(
+        status=result.get("status", "success"),
+        paths=result.get("paths", []),
     )
-    # Assume repo returns keys compatible with GraphPathsResponse
-    return GraphPathsResponse(status=result.get("status", "success"), paths=result.get("paths", []))
 
 
 @router.get("/graph/neighbors/{concept_id}", response_model=NeighborsResponse)
-async def graph_neighbors(concept_id: str, repo=Depends(get_repository)):
-    result = await repo.neighbors(concept_id)
+async def graph_neighbors(
+    concept_id: str,
+    engine: EvidenceCognitionEngine = Depends(get_evidence_cognition_engine),
+):
+    result = await engine.run(EvidenceAction.NEIGHBORS, {"node_id": concept_id})
     return NeighborsResponse(records=result.get("records", []))
 
 
 @router.post("/graph/concepts/by_ids", response_model=ConceptsByIdsResponse)
-async def graph_concepts_by_ids(req: ConceptsByIdsRequest, repo=Depends(get_repository)):
-    rows = await repo.get_concepts_by_ids(req.ids)
+async def graph_concepts_by_ids(
+    req: ConceptsByIdsRequest,
+    engine: EvidenceCognitionEngine = Depends(get_evidence_cognition_engine),
+):
+    result = await engine.run(EvidenceAction.CONCEPTS_BY_IDS, req.model_dump(mode="json"))
     concepts = [
         Concept(
-            id=str(row.get("id", "")),
-            name=str(row.get("name", "")),
-            type=str(row.get("type", "")),
-            description=str(row.get("description", "")),
+            id=str(c.get("id", "")),
+            name=str(c.get("name", "")),
+            type=str(c.get("type", "")),
+            description=str(c.get("description", "")),
         )
-        for row in (rows or [])
+        for c in result.get("concepts", [])
     ]
     return ConceptsByIdsResponse(concepts=concepts)
 

@@ -13,6 +13,8 @@ from functools import lru_cache
 
 from .agent.semantic_negotiation import SemanticNegotiationPipeline
 from .config.settings import settings
+from common.cognition_engine import ModelConfig
+from .agent.semantic_neg_ce import NegotiationCognitionEngine
 
 logger = logging.getLogger(__name__)
 
@@ -39,4 +41,18 @@ def get_pipeline() -> SemanticNegotiationPipeline:
     return SemanticNegotiationPipeline(
         n_steps=settings.negotiation_n_steps,
         enable_local_trace=settings.enable_local_trace,
+    )
+
+
+@lru_cache()
+def get_negotiation_cognition_engine() -> NegotiationCognitionEngine:
+    """Singleton :class:`NegotiationCognitionEngine` wired to the live pipeline."""
+    cfg = ModelConfig(
+        llm_model=settings.llm_model,
+        llm_api_key=settings.llm_api_key,
+        llm_base_url=settings.llm_base_url,
+    )
+    return NegotiationCognitionEngine(
+        pipeline=get_pipeline(),
+        model_config=cfg,
     )

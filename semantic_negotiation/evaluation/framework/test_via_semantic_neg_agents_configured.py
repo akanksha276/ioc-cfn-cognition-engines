@@ -736,16 +736,35 @@ class LLMNegotiationAgent(LocalAgent):
                     )
                     return "counter_offer", validated, sao_resp, reason
                 else:
-                    sao_resp = SAOResponse(
-                        response=ResponseType.REJECT_OFFER, outcome=None
-                    )
-                    reason = reason_raw or f"{self.name}: rejecting the current offer."
-                    print(
-                        f"  [{self.name}] {action}  round={round_num}"
-                        f"  sao_response=REJECT_OFFER",
-                        flush=True,
-                    )
-                    return "reject", None, sao_resp, reason
+                    # LLM sent a bare reject (outcome=null).  Auto-generate a
+                    # counter-offer from the agent's preferred end of each option
+                    # list so CFN's proposer rotation can proceed.  A bare reject
+                    # prevents the designated next-proposer from advancing the SAO
+                    # and the session never reaches consensus.
+                    if options_per_issue:
+                        auto_offer = {
+                            issue: (opts[0] if self.prefer_low else opts[-1])
+                            for issue, opts in options_per_issue.items()
+                        }
+                        sao_resp = SAOResponse(
+                            response=ResponseType.REJECT_OFFER, outcome=auto_offer
+                        )
+                        print(
+                            f"  [{self.name}] {action}  round={round_num}"
+                            f"  sao_response=REJECT_OFFER+auto_counter  offer={auto_offer}",
+                            flush=True,
+                        )
+                        return "counter_offer", auto_offer, sao_resp
+                    else:
+                        sao_resp = SAOResponse(
+                            response=ResponseType.REJECT_OFFER, outcome=None
+                        )
+                        print(
+                            f"  [{self.name}] {action}  round={round_num}"
+                            f"  sao_response=REJECT_OFFER",
+                            flush=True,
+                        )
+                        return "reject", None, sao_resp
 
         except Exception as exc:
             print(

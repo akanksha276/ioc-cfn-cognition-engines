@@ -17,7 +17,9 @@ from .config.settings import settings
 from .agent.ingest_data import IngestDataService
 from .agent.service import TelemetryExtractionService, ConceptRelationshipExtractionService
 from .agent.knowledge_processor import KnowledgeProcessor, EmbeddingManager
+from .agent.ingestion_ce import IngestionCognitionEngine
 from .data.mock_repo import MockDataRepository
+from common.cognition_engine import ModelConfig
 
 @lru_cache()
 def get_data_repository() -> MockDataRepository:
@@ -69,5 +71,22 @@ def get_knowledge_processor() -> KnowledgeProcessor:
         enable_dedup=settings.enable_dedup,
         similarity_threshold=settings.similarity_threshold,
         embedding_manager=get_embedding_manager(),
+    )
+
+
+@lru_cache()
+def get_ingestion_cognition_engine() -> IngestionCognitionEngine:
+    """Singleton :class:`IngestionCognitionEngine` wired to all ingestion services."""
+    cfg = ModelConfig(
+        llm_model=getattr(settings, "llm_model", None),
+        llm_api_key=getattr(settings, "llm_api_key", None),
+        llm_base_url=getattr(settings, "llm_base_url", None),
+    )
+    return IngestionCognitionEngine(
+        ingest_service=get_ingest_data_service(),
+        extraction_service=get_extraction_service(),
+        model_config=cfg,
+        knowledge_processor=get_knowledge_processor(),
+        data_repository=get_data_repository(),
     )
 

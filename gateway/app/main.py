@@ -40,6 +40,7 @@ from fastapi.responses import JSONResponse
 from common.diagnostics.router import make_diagnostics_router
 
 from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
+from semantic_negotiation.app.api.cfn_compat import router as cfn_compat_router
 
 
 
@@ -121,6 +122,9 @@ app.include_router(
 )
 
 app.include_router(semantic_negotiation_api_router, prefix="/api/semantic-negotiation")
+# CFN-compatible routes: mirrors the Go cfn-svc binary's API so evaluation scripts
+# can point to this gateway instead of the Go binary.
+app.include_router(cfn_compat_router, prefix="/api")
 
 
 @app.get("/health")

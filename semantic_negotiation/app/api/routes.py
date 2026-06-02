@@ -8,7 +8,6 @@ API routes for the Semantic Negotiation Agent.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -36,9 +35,9 @@ from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from ..dependencies import get_pipeline
+from ..dependencies import get_negotiation_cognition_engine
+from ..agent.semantic_neg_ce import NegotiationAction, NegotiationCognitionEngine
 from ..agent.semantic_negotiation import (
-    SemanticNegotiationPipeline,
     SemanticNegotiationInputError,
     SemanticNegotiationSessionNotFoundError,
 )
@@ -225,8 +224,8 @@ def _wrap_sstp_response(
 )
 async def negotiate_initiate(
     body: SSTPNegotiateMessage,
-    pipeline: SemanticNegotiationPipeline = Depends(get_pipeline),
-) -> JSONResponse:
+    engine: NegotiationCognitionEngine = Depends(get_negotiation_cognition_engine),
+) -> SSTPNegotiateMessage:
     """Run Components 1+2, seed round 1, return first-round messages."""
     session_id = body.semantic_context.session_id
     request_id = body.message_id
@@ -252,19 +251,19 @@ async def negotiate_initiate(
             n_steps,
         )
         agent_names = [a["name"] for a in agents_raw if isinstance(a, dict) and a.get("name")]
-        result = await asyncio.to_thread(
-            pipeline.execute,
-            session_id,
-            n_steps=n_steps,
-            content_text=content_text,
-            agents_raw=agents_raw,
-            initiate_message=dump_negotiate_message_json(body),
-            workspace_id=workspace_id,
-            mas_id=mas_id,
-            fabric_node_base_url=settings.cfn_url,
-            agent_names=agent_names,
-        )
-    except SemanticNegotiationInputError as exc:
+        initiate_payload = {
+            "session_id": session_id,
+            "n_steps": n_steps,
+            "content_text": content_text,
+            "agents": agents_raw,
+            "initiate_message": dump_negotiate_message_json(body),
+            "workspace_id": workspace_id,
+            "mas_id": mas_id,
+            "fabric_node_base_url": settings.cfn_url,
+            "agent_names": agent_names,
+        }
+        result = await engine.run(NegotiationAction.INITIATE, initiate_payload)
+    except (SemanticNegotiationInputError, ValueError) as exc:
         logger.warning(
             "initiate validation failed session_id=%s reason=%s",
             session_id,
@@ -354,15 +353,23 @@ async def negotiate_initiate(
 )
 async def negotiate_decide(
     body: SSTPNegotiateMessage,
-    pipeline: SemanticNegotiationPipeline = Depends(get_pipeline),
+    engine: NegotiationCognitionEngine = Depends(get_negotiation_cognition_engine),
 ) -> JSONResponse:
     """Apply agent replies and advance the SAO by one step."""
     payload = body.payload
     workspace_id = body.origin.tenant_id
     mas_id = body.origin.actor_id
     session_id: str = payload.get("session_id") or body.semantic_context.session_id
-    agent_replies: List[Dict[str, Any]] = payload.get("agent_replies", [])
     request_id = body.message_id
+    agent_replies = payload.get("agent_replies", [])
+
+    decide_payload = {
+        "session_id": session_id,
+        "agent_replies": agent_replies,
+        "commit_message_id": request_id,
+        "workspace_id": workspace_id,
+        "mas_id": mas_id,
+    }
 
     try:
         _validate_request_scope(workspace_id, mas_id)
@@ -372,14 +379,7 @@ async def negotiate_decide(
             session_id,
             len(agent_replies),
         )
-        exec_result = await asyncio.to_thread(
-            pipeline.execute,
-            session_id,
-            agent_replies=agent_replies,
-            commit_message_id=request_id,
-            workspace_id=workspace_id,
-            mas_id=mas_id,
-        )
+        exec_result = await engine.run(NegotiationAction.DECIDE, decide_payload)
     except SemanticNegotiationInputError as exc:
         logger.warning(
             "decide validation failed session_id=%s reason=%s",
