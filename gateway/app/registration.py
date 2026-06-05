@@ -85,7 +85,7 @@ async def register_cognition_engines() -> None:
                 "enable_dedup": True,
             },
             mas_config=None,
-            mas_auto_associate=False,
+            mas_auto_associate=True,
         ),
         CERegistrationRequest(
             name=CE_SEMANTIC_NEG_NAME,
