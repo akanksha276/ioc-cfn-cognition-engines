@@ -63,9 +63,9 @@ import yaml
 # Import everything reusable from the existing configured-agents test script.
 # Both files live in the same directory.
 from test_via_semantic_neg_agents_configured import (
-    MISSIONS,
     _AGENT_CONFIGS_FILE,
     _MISSIONS_FILE,
+    MISSIONS,
     LocalAgent,
     NegMASConcessionAgent,
     _build_agents_for_mission,
@@ -330,7 +330,7 @@ async def run(
 
     # ── verify CFN service is reachable ────────────────────────────────────
     _cfn_health_check(cfn_url)
-    print(f"CFN service is healthy.\n")
+    print("CFN service is healthy.\n")
 
     # ── register litellm usage callback (once per process) ──────────────
     if _litellm and _llm_usage_callback not in (_litellm.success_callback or []):
@@ -660,8 +660,8 @@ if __name__ == "__main__":
         default=None,
         metavar="PATH",
         help=(
-            f"Path to a YAML config file (default: cfn_service_config.yaml next to "
-            f"this script). CLI flags override values from the config file."
+            "Path to a YAML config file (default: cfn_service_config.yaml next to "
+            "this script). CLI flags override values from the config file."
         ),
     )
     parser.add_argument(

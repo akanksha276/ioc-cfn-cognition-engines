@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pydantic import BaseModel, model_validator
-from typing import List, Optional, Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from . import RecordType, Concept, Relation, Path
+from pydantic import BaseModel, model_validator
+
+from . import Concept, RecordType, Relation
 
 if TYPE_CHECKING:
     from .cfn_memory import CFNKnowledgeRecord
@@ -139,7 +140,6 @@ class ReasonerCognitionResponse(BaseModel):
 
 # Rebuild the model after CFNKnowledgeRecord is defined
 def _rebuild_models():
-    from .cfn_memory import CFNKnowledgeRecord
 
     ReasonerCognitionResponse.model_rebuild()
 

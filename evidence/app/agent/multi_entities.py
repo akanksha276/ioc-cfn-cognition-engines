@@ -2,20 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Dict, Any, Optional, Tuple, Set
 import asyncio
 import logging
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from ..api.schemas import ReasonerCognitionRequest, KnowledgeRecord
-
+from ..api.schemas import KnowledgeRecord, ReasonerCognitionRequest
 from .embeddings import EmbeddingManager
 from .llm_clients import EvidenceJudge, EvidenceRanker, ResponseGenerator, get_llm_call_count
-from .utiles import mmr_select_indices, coerce_graph_node_ids
+from .utiles import coerce_graph_node_ids, mmr_select_indices
 
 
 def _name_for(meta: Dict[str, Any]) -> str:

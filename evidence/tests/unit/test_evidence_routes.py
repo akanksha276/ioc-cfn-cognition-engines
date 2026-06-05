@@ -4,14 +4,13 @@
 
 """Unit tests for evidence routes.py — all endpoints routed through EvidenceCognitionEngine."""
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 
-from evidence.app.main import app
-from evidence.app.dependencies import get_evidence_cognition_engine
-from evidence.app.agent.evidence_ce import EvidenceCognitionEngine
+from fastapi.testclient import TestClient
 
+from evidence.app.agent.evidence_ce import EvidenceCognitionEngine
+from evidence.app.dependencies import get_evidence_cognition_engine
+from evidence.app.main import app
 
 # ---------------------------------------------------------------------------
 # Helpers

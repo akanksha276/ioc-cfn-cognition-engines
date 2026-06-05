@@ -30,23 +30,21 @@ import argparse
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
 
 from pydantic import TypeAdapter
 
 from protocol.sstp import (
-    SSTPCommitMessage,
     DelegationMessage,
     EvidenceBundleMessage,
     IntentMessage,
     KnowledgeMessage,
     MemoryDeltaMessage,
     QueryMessage,
+    SSTPCommitMessage,
     SSTPNegotiateMessage,
     STPMessage,
     __version__,
 )
-from protocol.sstp.negotiate import NegotiateSemanticContext
 
 _KINDS: dict[str, type] = {
     "intent": IntentMessage,

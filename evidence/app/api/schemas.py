@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import uuid
 from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 # ============== Request Models ==============
@@ -66,11 +66,12 @@ class TokenUsage(BaseModel):
 
 
 class TokenUsageMeta(BaseModel):
-    """Metadata including token usage, latency, and cost."""
+    """Metadata including token usage, latency, cost, and CE attribution."""
     tokens: TokenUsage = Field(..., description="Token usage information")
     latency_ms: float = Field(..., description="LLM call latency in milliseconds")
     cost_usd: Optional[float] = Field(None, description="Estimated cost in USD")
     timestamp: str = Field(..., description="ISO 8601 timestamp of the LLM call")
+    ce_id: Optional[str] = Field(None, description="CE that performed the operation (for CFN metrics attribution)")
 
 
 class KnowledgeRecord(BaseModel):

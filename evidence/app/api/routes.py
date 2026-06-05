@@ -3,21 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from fastapi import APIRouter, Depends, Request
+
+from ..agent.evidence_ce import EvidenceAction, EvidenceCognitionEngine
+from ..dependencies import (
+    get_evidence_cognition_engine,
+    get_repository_for_reasoning,
+)
 from .schemas import (
-    ReasonerCognitionRequest,
-    ReasonerCognitionResponse,
+    Concept,
+    ConceptsByIdsRequest,
+    ConceptsByIdsResponse,
     GraphPathsRequest,
     GraphPathsResponse,
     NeighborsResponse,
-    ConceptsByIdsRequest,
-    ConceptsByIdsResponse,
-    Concept,
+    ReasonerCognitionRequest,
+    ReasonerCognitionResponse,
 )
-from ..dependencies import (
-    get_repository_for_reasoning,
-    get_evidence_cognition_engine,
-)
-from ..agent.evidence_ce import EvidenceAction, EvidenceCognitionEngine
 
 router = APIRouter()
 

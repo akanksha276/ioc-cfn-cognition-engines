@@ -54,7 +54,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse  # noqa
 
-from .base_agent import BaseAgent, build_sstp_reply, _slug
+from .base_agent import BaseAgent, build_sstp_reply
 
 # ── sys.path: ensure semantic_negotiation package is importable ─────────────
 _sn_root = str(Path(__file__).resolve().parents[3])

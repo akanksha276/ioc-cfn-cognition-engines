@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, TypedDict
-
 from datetime import date
+from typing import Any, Dict, List, TypedDict
 
 try:
     from flatten_dict import flatten

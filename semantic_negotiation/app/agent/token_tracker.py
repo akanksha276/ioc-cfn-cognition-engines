@@ -6,10 +6,9 @@
 Token tracking utility for aggregating LLM token usage across multiple calls.
 """
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 
 
 @dataclass

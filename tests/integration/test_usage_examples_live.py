@@ -7,16 +7,16 @@ Integration tests using real Azure OpenAI credentials from .env file.
 These tests verify the full flow with actual LLM calls.
 """
 import asyncio
-import pytest
 
-from ingestion.app.agent.service import ConceptRelationshipExtractionService
-from ingestion.app.agent.knowledge_processor import KnowledgeProcessor
-from ingestion.app.config.settings import Settings  # used in skipif condition
-from evidence.app.agent.evidence import process_evidence
-from evidence.app.api.schemas import ReasonerCognitionRequest, Header, RequestPayload
-from evidence.app.data.mock_repo import MockDataRepository
+import pytest
 from caching.app.agent.caching_layer import CachingLayer
 
+from evidence.app.agent.evidence import process_evidence
+from evidence.app.api.schemas import Header, ReasonerCognitionRequest, RequestPayload
+from evidence.app.data.mock_repo import MockDataRepository
+from ingestion.app.agent.knowledge_processor import KnowledgeProcessor
+from ingestion.app.agent.service import ConceptRelationshipExtractionService
+from ingestion.app.config.settings import Settings  # used in skipif condition
 
 # Sample OTel data in the format expected by ConceptRelationshipExtractionService
 SAMPLE_OTEL_PAYLOAD = [
@@ -141,8 +141,9 @@ class TestUsageExamplesLive:
 
         # Create a simple cache layer with a basic embedding function
         def simple_embed(text: str):
-            import numpy as np
             import hashlib
+
+            import numpy as np
             hash_val = int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
             np.random.seed(hash_val % (2**32))
             return np.random.rand(384).astype(np.float32)

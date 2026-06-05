@@ -8,14 +8,14 @@ Mock data repository implementation.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class MockDataRepository:
     """Mock implementation of the data repository."""
-    
+
     def load_from_file(self, file_path: Path) -> List[Dict[str, Any]]:
         """
         Load OTEL data from a JSON or JSONL file.
@@ -31,13 +31,13 @@ class MockDataRepository:
             ValueError: If file format is invalid
         """
         path = Path(file_path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
-        
+
         if path.suffix not in ['.json', '.jsonl']:
             raise ValueError("File must be a JSON or JSONL file")
-        
+
         with open(path, 'r') as f:
             if path.suffix == '.jsonl':
                 # JSONL: each line is a separate JSON object
@@ -46,7 +46,7 @@ class MockDataRepository:
                 # Regular JSON
                 data = json.load(f)
                 return data if isinstance(data, list) else [data]
-    
+
     def parse_body(self, body: bytes) -> List[Dict[str, Any]]:
         """
         Parse OTEL data from request body (JSON array or NDJSON).
@@ -61,7 +61,7 @@ class MockDataRepository:
             ValueError: If no valid records found
         """
         body_str = body.decode('utf-8').strip()
-        
+
         otel_data = []
         if body_str.startswith('['):
             otel_data = json.loads(body_str)
@@ -70,12 +70,12 @@ class MockDataRepository:
             for line in body_str.split('\n'):
                 if line.strip():
                     otel_data.append(json.loads(line.strip()))
-        
+
         if not otel_data:
             raise ValueError("No valid OTEL records found in request body")
-        
+
         return otel_data
-    
+
     def save_output(self, data: Dict[str, Any], filename: str) -> bool:
         """
         Save extraction output to a JSON file.

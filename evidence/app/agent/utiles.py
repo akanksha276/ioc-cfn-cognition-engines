@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Optional, Tuple, Any, Set
 import json
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import numpy as np
 
 

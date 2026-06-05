@@ -67,11 +67,11 @@ if _workspace_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
+from protocol.sstp.negmas_sao import SAOState  # noqa: E402
 from protocol.sstp.negotiate import (  # noqa: E402
     NegotiateSemanticContext,
     dump_negotiate_message_json,
 )
-from protocol.sstp.negmas_sao import SAOState  # noqa: E402
 
 from .negotiation_model import (  # noqa: E402  (same package)
     NegotiationOutcome,
@@ -79,6 +79,7 @@ from .negotiation_model import (  # noqa: E402  (same package)
     NegotiationResult,
 )
 from .offer_validation import validate_and_snap_offer  # noqa: E402
+
 # Persist action/offer/reason on each participant decision (reason is metadata only).
 from .reply_payload_utils import round_decision_from_reply  # noqa: E402
 

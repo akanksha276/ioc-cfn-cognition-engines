@@ -42,7 +42,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import httpx
 import uvicorn
@@ -60,8 +60,8 @@ if _agent_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 
 _sn_root = str(Path(__file__).resolve().parents[2])
 if _sn_root not in sys.path:
@@ -70,12 +70,11 @@ from app.agent.reply_payload_utils import attach_reason  # noqa: E402
 
 from ...app.agent.batch_callback_runner import store_decisions  # noqa: E402
 from ..casino.loader import (  # noqa: E402
-    AgentData,
     ISSUES,
     PRIORITY_WEIGHTS,
     TOTAL_PACKAGES,
+    AgentData,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

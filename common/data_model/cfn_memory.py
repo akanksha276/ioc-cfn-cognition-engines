@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pydantic import BaseModel, Field, model_validator
-from typing import List, Optional, Dict, Any, Union
 from enum import Enum
-from . import RecordType, Concept, Relation, Path, EmbeddingRecord
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field, model_validator
+
+from . import EmbeddingRecord, RecordType
 
 
 class MemoryType(Enum):

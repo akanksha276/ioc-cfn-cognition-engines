@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..config.utils import get_llm_provider
 from .acse import (
     GoalSpecExtractor,
     InteractionSignalExtractor,
@@ -19,7 +20,6 @@ from .acse import (
     TraceStateBuilder,
     ValidationConfig,
 )
-from ..config.utils import get_llm_provider
 
 logger = logging.getLogger(__name__)
 

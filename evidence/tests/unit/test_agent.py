@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Unit tests for the evidence-gathering agent."""
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from evidence.app.agent.evidence import process_evidence
 from evidence.app.api.schemas import ReasonerCognitionRequest

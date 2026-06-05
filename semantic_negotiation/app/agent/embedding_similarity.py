@@ -121,7 +121,7 @@ def cosine_similarity(a: str, b: str) -> float:
     try:
         sess, tok = _load()
     except Exception:  # noqa: BLE001
-        # Model unavailable — already logged once at WARNING in _load(); 
+        # Model unavailable — already logged once at WARNING in _load();
         # return sentinel so tier 5 is silently skipped.
         return -1.0
 

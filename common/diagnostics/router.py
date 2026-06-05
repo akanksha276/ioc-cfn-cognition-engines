@@ -39,7 +39,7 @@ import time
 from enum import Enum
 from typing import Callable, NamedTuple
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 

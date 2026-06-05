@@ -87,8 +87,8 @@ if _sn_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 
 _sn_root = str(Path(__file__).resolve().parents[3])
 if _sn_root not in sys.path:
@@ -100,7 +100,6 @@ from semantic_negotiation.evaluation.framework.config import (  # noqa: E402
     EvaluationConfig,
     MissionEntry,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Agent decision engine (Boulware / linear concession — issues discovered live)

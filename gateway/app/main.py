@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import logging
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
@@ -27,21 +27,19 @@ if str(_gateway_root) not in sys.path:
 
 
 # Import sub-apps once (used in lifespan and for mount)
-from ingestion.app.main import app as _ingestion_app
-from evidence.app.main import app as _evidence_app
-from semantic_negotiation.app.main import app as _semantic_negotiation_app
-# Routers for Confluence paths (no /ingestion or /evidence prefix)
-from ingestion.app.api.routes import extraction_router as ingestion_extraction_router
-from evidence.app.api.routes import router as evidence_api_router
-
 import httpx
 from fastapi.responses import JSONResponse
 
 from common.diagnostics.router import make_diagnostics_router
+from evidence.app.api.routes import router as evidence_api_router
+from evidence.app.main import app as _evidence_app
 
-from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
+# Routers for Confluence paths (no /ingestion or /evidence prefix)
+from ingestion.app.api.routes import extraction_router as ingestion_extraction_router
+from ingestion.app.main import app as _ingestion_app
 from semantic_negotiation.app.api.cfn_compat import router as cfn_compat_router
-
+from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
+from semantic_negotiation.app.main import app as _semantic_negotiation_app
 
 
 @asynccontextmanager
@@ -49,11 +47,13 @@ async def lifespan(app: FastAPI):
     """Unified app lifespan: register cognition engines on startup."""
     logger.info("Unified app startup")
 
-    from .registration import register_cognition_engines
+    from .registration import register_cognition_engines, shutdown_lifecycle_clients
     await register_cognition_engines()
 
     yield
 
+    # Shutdown: stop heartbeats and close HTTP clients
+    await shutdown_lifecycle_clients()
     logger.info("Unified app shutdown")
 
 

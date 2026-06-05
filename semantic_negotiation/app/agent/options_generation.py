@@ -38,24 +38,22 @@ _semantic_negotiation_root = Path(__file__).resolve().parents[2]
 if str(_semantic_negotiation_root) not in sys.path:
     sys.path.insert(0, str(_semantic_negotiation_root))
 
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
-import time
-
-from ..config.utils import litellm_completion_compat
-
-from ..config.settings import settings
-from .token_tracker import TokenAccumulator
 
 from app.agent.http_repo import (
-    SharedMemoryQueryError,
     SharedMemoryNotFoundError,
+    SharedMemoryQueryError,
     gather_shared_memories_queries,
     issue_labels_from_negotiable_entities,
     run_coro_in_own_loop,
     shared_memories_query_path,
 )
-from app.config.utils import get_llm_provider
+
+from ..config.settings import settings
+from ..config.utils import litellm_completion_compat
+from .token_tracker import TokenAccumulator
 
 logger = logging.getLogger(__name__)
 
@@ -668,7 +666,7 @@ def test_option_generator() -> None:
     workspace_id = "123"
     mas_id = "456"
 
-    print(f"Strategy 0 : Memory + LLM with fallback to LLM-only")
+    print("Strategy 0 : Memory + LLM with fallback to LLM-only")
     out0 = gen.generate_options(negotiable_entities, sentence, context, agent_names=agent_names, fabric_node_base_url=fabric_node_base_url, workspace_id=workspace_id, mas_id=mas_id)
     print(out0.options_per_issue, out0.memory_blob is not None)
 

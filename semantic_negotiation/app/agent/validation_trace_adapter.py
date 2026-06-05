@@ -25,8 +25,8 @@ from typing import Any, Dict, List, Optional
 
 from protocol.sstp import SSTPNegotiateMessage
 from protocol.sstp._base import Origin, PolicyLabels, Provenance
-from protocol.sstp.negotiate import NegotiateSemanticContext, dump_negotiate_message_json
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse
+from protocol.sstp.negotiate import NegotiateSemanticContext, dump_negotiate_message_json
 
 logger = logging.getLogger(__name__)
 

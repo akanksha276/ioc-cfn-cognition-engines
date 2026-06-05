@@ -4,11 +4,11 @@
 
 """Unit tests for EvidenceCognitionEngine (evidence_ce.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from evidence.app.agent.evidence_ce import EvidenceAction, EvidenceCognitionEngine
+import pytest
 
+from evidence.app.agent.evidence_ce import EvidenceAction, EvidenceCognitionEngine
 
 # ---------------------------------------------------------------------------
 # Fixtures

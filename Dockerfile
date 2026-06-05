@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir onnxruntime onnx
+RUN pip install --no-cache-dir onnxruntime onnx sympy
 
 # Download, quantize, and clean up — separate RUN steps are fine here since
 # model-builder is intermediate; its layers never reach the final image

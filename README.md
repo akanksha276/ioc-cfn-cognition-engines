@@ -154,10 +154,10 @@ This single file is used by local development, Docker Compose, and CI/CD workflo
 | `LLM_BASE_URL` | Yes | LLM endpoint URL (e.g. LiteLLM proxy). |
 | `LLM_API_KEY` | Yes | LLM API key. |
 | `LLM_MODEL` | Yes | Model name (e.g. `openai/azure/gpt-4o`). |
-| `CFN_URL` | Yes | URL of the CFN service (e.g. `http://localhost:9002`). |
-| `MGMT_PLANE_URL` | No | Management plane URL for auto-registration on startup. |
-| `COGNITION_ENGINE_HOST` | No | Advertised host for this service (used during registration). |
-| `COGNITION_ENGINE_PORT` | No | Advertised port for this service (default: `9004`). |
+| `CFN_URL` | Yes | URL of the CFN service (e.g. `http://localhost:9002`). CEs auto-register if set. |
+| `CE_HEARTBEAT_INTERVAL_SEC` | No | Heartbeat interval in seconds (default: `30`). |
+| `COGNITION_ENGINE_HOST` | No | Advertised host for this CE (used during registration, default: `localhost`). |
+| `COGNITION_ENGINE_PORT` | No | Advertised port for this CE (default: `9004`). |
 | `EMBEDDING_MODEL_PATH` | No | Path to local `bge-small-en-v1.5` folder. Uses Hugging Face download if unset. |
 | `ENABLE_EMBEDDINGS` | No | Enable embedding generation (default: `true`). |
 | `ENABLE_DEDUP` | No | Enable semantic deduplication (default: `true`). |
@@ -207,8 +207,108 @@ LLM_MODEL=openai/azure/gpt-4o
 # Point at the local CFN service
 CFN_URL=http://localhost:9002
 
-# Auto-register with management plane on startup
-MGMT_PLANE_URL=http://localhost:9000
+# CE Registration & Heartbeat (auto-registers with Management Plane)
+CE_REGISTRATION_ENABLED=true
+CE_VERSION=1.2.3
+COGNITION_ENGINE_HOST=localhost
+COGNITION_ENGINE_PORT=9004
+```
+
+**3. Run the Cognition Engine**
+
+```bash
+# From repo root — gateway serves ingestion + evidence + semantic negotiation on port 9004
+PYTHONPATH=. poetry run uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004 --reload
+```
+
+On startup, the gateway will automatically:
+1. Register 2 Cognition Engines with the Management Plane (via CFN):
+   - Knowledge Management CE
+   - Semantic Negotiation CE
+2. Start heartbeat background tasks (every 30s) to maintain "online" status
+
+**Expected startup logs:**
+```
+INFO - Starting CE registration with cfn_url=http://localhost:9002
+INFO - CE 'Knowledge Management CE' created: ce_id=abc-123, status=offline
+INFO - Heartbeat task started for 'Knowledge Management CE'
+INFO - CE 'Semantic Negotiation CE' created: ce_id=def-456, status=offline
+INFO - Heartbeat task started for 'Semantic Negotiation CE'
+INFO - Application startup complete
+```
+
+Verify connectivity:
+
+```bash
+curl http://localhost:9004/api/internal/diagnostics/health
+```
+
+### Cognition Engine Registration
+
+The gateway automatically registers itself with the Management Plane on startup using the new CE lifecycle API. This enables:
+
+- **Automatic discovery**: Management Plane knows about all running CEs
+- **Health monitoring**: Heartbeats every 30s keep CEs marked as "online"
+- **Lifecycle management**: CEs can be enabled/disabled via Management Plane
+- **Metrics tracking**: CE operations are tracked and associated with ce_id
+
+**Configuration:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CE_REGISTRATION_ENABLED` | `true` | Enable/disable auto-registration |
+| `CE_VERSION` | `1.2.3` | CE version for registration |
+| `CE_HEARTBEAT_INTERVAL_SEC` | `30` | Heartbeat interval (seconds) |
+| `COGNITION_ENGINE_HOST` | `localhost` | Advertised host |
+| `COGNITION_ENGINE_PORT` | `9004` | Advertised port |
+
+**Registration Flow:**
+
+```
+1. Gateway starts
+2. Calls: POST http://cfn:9002/api/cognition-engines
+3. CFN injects cfn_id and forwards to Management Plane
+4. Management Plane generates ce_id and returns response
+5. Gateway stores ce_id and starts heartbeat background task
+6. Heartbeat: PUT http://cfn:9002/api/cognition-engines/{ce_id}/heartbeat (every 30s)
+7. Management Plane transitions CE status: offline → online
+```
+
+**Graceful Degradation:**
+
+If CFN/Management Plane is unavailable:
+- Gateway logs warning and continues startup (doesn't crash)
+- CEs operate normally but without Management Plane visibility
+- No heartbeats sent
+
+**Verification:**
+
+Check registered CEs in Management Plane database:
+```sql
+SELECT ce_id, name, version, status, last_seen
+FROM cognition_engine
+WHERE cfn_id = 'your-cfn-id';
+```
+
+For detailed testing instructions, see [docs/MANUAL_TESTING_GUIDE.md](docs/MANUAL_TESTING_GUIDE.md).
+
+---
+
+**Original configuration instructions continued:**
+
+Set these variables to point at the running CFN stack:
+
+```bash
+# LLM credentials
+LLM_BASE_URL=https://your-litellm-endpoint
+LLM_API_KEY=sk-your-api-key
+LLM_MODEL=openai/azure/gpt-4o
+
+# Point at the local CFN service (CEs auto-register if CFN_URL is set)
+CFN_URL=http://localhost:9002
+
+# CE registration settings (optional, defaults shown)
+CE_HEARTBEAT_INTERVAL_SEC=30
 COGNITION_ENGINE_HOST=localhost
 COGNITION_ENGINE_PORT=9004
 ```

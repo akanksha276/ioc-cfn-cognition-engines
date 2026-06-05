@@ -65,8 +65,8 @@ if _agent_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 
 _sn_root = str(Path(__file__).resolve().parents[2])
 if _sn_root not in sys.path:
@@ -81,7 +81,6 @@ from ...app.agent.negotiation_model import (
     NegotiationParticipant,
     NegotiationResult,
 )  # noqa: E402
-
 from .config import AgentConfig, EvaluationConfig, MissionEntry  # noqa: E402
 
 logger = logging.getLogger(__name__)

@@ -10,9 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from common.diagnostics.router import HealthCheck, HealthState, make_diagnostics_router
-
-
+from common.diagnostics.router import HealthCheck, make_diagnostics_router
 
 
 def _make_app(health_checks=None) -> FastAPI:

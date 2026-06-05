@@ -4,14 +4,13 @@
 
 """Unit tests for semantic_negotiation routes.py — all endpoints routed through NegotiationCognitionEngine."""
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 
-from semantic_negotiation.app.main import app
-from semantic_negotiation.app.dependencies import get_negotiation_cognition_engine
-from semantic_negotiation.app.agent.semantic_neg_ce import NegotiationCognitionEngine
+from fastapi.testclient import TestClient
 
+from semantic_negotiation.app.agent.semantic_neg_ce import NegotiationCognitionEngine
+from semantic_negotiation.app.dependencies import get_negotiation_cognition_engine
+from semantic_negotiation.app.main import app
 
 # ---------------------------------------------------------------------------
 # Helpers

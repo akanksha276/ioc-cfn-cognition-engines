@@ -23,9 +23,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+import negmas.sao.negotiators as _sao_negotiators
 from negmas import SAOMechanism, make_issue
 from negmas.preferences import LinearAdditiveUtilityFunction as UFun
-import negmas.sao.negotiators as _sao_negotiators
 
 _STRATEGY_MODULES = [
     "negmas.sao.negotiators",

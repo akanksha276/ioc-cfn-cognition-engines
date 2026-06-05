@@ -23,30 +23,32 @@ _workspace_root = str(Path(__file__).resolve().parents[3])
 if _workspace_root not in sys.path:
     sys.path.insert(0, _workspace_root)
 
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
-from protocol.sstp.negotiate import dump_negotiate_message_json  # noqa: E402
 from protocol.sstp._base import (
     Origin,
     PolicyLabels,
     Provenance,
 )  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
+from protocol.sstp.negotiate import (
+    NegotiateSemanticContext,  # noqa: E402
+    dump_negotiate_message_json,  # noqa: E402
+)
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
-
-from ..dependencies import get_negotiation_cognition_engine
 from ..agent.semantic_neg_ce import NegotiationAction, NegotiationCognitionEngine
 from ..agent.semantic_negotiation import (
     SemanticNegotiationInputError,
     SemanticNegotiationSessionNotFoundError,
 )
 from ..config.settings import settings
+from ..dependencies import get_negotiation_cognition_engine
 from .schemas import (
+    InitiateResponse,
     NegotiationError,
     NegotiationHeader,
     NegotiationTrace,
-    InitiateResponse,
     RoundOffer,
 )
 
@@ -313,6 +315,7 @@ async def negotiate_initiate(
     logger.info(f"Token metadata extracted: {token_metadata is not None}")
     if token_metadata:
         from .schemas import TokenUsage, TokenUsageMeta
+        from gateway.app.registration import CE_SEMANTIC_NEG_NAME, get_ce_id
         # Construct meta field
         result_meta = TokenUsageMeta(
             tokens=TokenUsage(
@@ -324,13 +327,14 @@ async def negotiate_initiate(
             latency_ms=token_metadata.latency_ms,
             cost_usd=token_metadata.cost_usd,
             timestamp=token_metadata.timestamp,
+            ce_id=get_ce_id(CE_SEMANTIC_NEG_NAME),
         )
         logger.info(f"Token meta constructed: prompt={result_meta.tokens.prompt} completion={result_meta.tokens.completion}")
         # Add to result payload
         if "payload" not in result:
             result["payload"] = {}
         result["payload"]["meta"] = result_meta.model_dump()
-        logger.info(f"Token meta added to result.payload")
+        logger.info("Token meta added to result.payload")
 
     envelope = _wrap_sstp_response(session_id, request_id, result)
     return JSONResponse(content=dump_negotiate_message_json(envelope))

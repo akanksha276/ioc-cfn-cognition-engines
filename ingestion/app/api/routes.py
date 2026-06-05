@@ -15,14 +15,14 @@ from typing import Any, Dict, List
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from ..dependencies import get_ingestion_cognition_engine
-from ..agent.ingestion_ce import IngestionCognitionEngine, IngestionAction
+from ..agent.ingestion_ce import IngestionAction, IngestionCognitionEngine
 from ..agent.prompts import SUPPORTED_FORMATS
 from ..config.settings import settings
-from .schemas import ExtractionRequest, ExtractionResponseModel, ExtractionError
+from ..dependencies import get_ingestion_cognition_engine
+from .schemas import ExtractionError, ExtractionRequest, ExtractionResponseModel
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,7 @@ async def knowledge_extraction(
         tm = result.pop("token_meta", None)
         if tm is not None:
             from .schemas import TokenUsage, TokenUsageMeta
+            from gateway.app.registration import CE_KNOWLEDGE_NAME, get_ce_id
 
             if hasattr(tm, "to_dict"):
                 td = tm.to_dict()
@@ -131,6 +132,7 @@ async def knowledge_extraction(
                     latency_ms=td["latency_ms"],
                     cost_usd=td.get("cost_usd"),
                     timestamp=td["timestamp"],
+                    ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
                 )
             else:
                 token_meta = TokenUsageMeta(
@@ -143,6 +145,7 @@ async def knowledge_extraction(
                     latency_ms=tm.latency_ms,
                     cost_usd=tm.cost_usd,
                     timestamp=tm.timestamp,
+                    ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
                 )
 
         return ExtractionResponseModel(

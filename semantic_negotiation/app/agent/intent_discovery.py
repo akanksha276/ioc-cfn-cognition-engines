@@ -13,9 +13,10 @@ Run from project root with your venv activated:  python src/intent_discovery_age
 """
 
 from __future__ import annotations
-from pathlib import Path
+
 import json
 import sys
+from pathlib import Path
 
 # ``.../semantic_negotiation/app/agent/this_file.py`` → parent of package ``app``
 _semantic_negotiation_root = Path(__file__).resolve().parents[2]
@@ -35,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 
 import httpx
+
 from ..config.utils import litellm_completion_compat
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,7 @@ from app.agent.http_repo import (
     post_shared_memories_query,
     shared_memories_query_path,
 )
+
 from ..config.settings import settings
 from .token_tracker import TokenAccumulator
 

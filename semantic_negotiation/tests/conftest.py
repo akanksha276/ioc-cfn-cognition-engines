@@ -4,7 +4,6 @@
 
 """Shared pytest fixtures for the semantic negotiation agent."""
 import pytest
-
 from app.agent.negotiation_model import NegotiationModel, NegotiationParticipant
 
 

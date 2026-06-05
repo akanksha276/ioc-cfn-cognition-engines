@@ -4,15 +4,15 @@
 
 """Unit tests for ingestion routes.py — all endpoints routed through IngestionCognitionEngine."""
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 
-from ingestion.app.main import app
+from fastapi.testclient import TestClient
+
+from ingestion.app.agent.ingestion_ce import IngestionCognitionEngine
 from ingestion.app.dependencies import (
     get_ingestion_cognition_engine,
 )
-from ingestion.app.agent.ingestion_ce import IngestionCognitionEngine
+from ingestion.app.main import app
 
 # ---------------------------------------------------------------------------
 # Shared stub results

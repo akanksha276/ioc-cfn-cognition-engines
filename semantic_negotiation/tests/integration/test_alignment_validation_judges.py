@@ -27,20 +27,18 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import os
-
 import openai
 import pytest
-
 from app.agent.semantic_alignment_validation_pipeline import (
-    ValidationResult,
     SemanticAlignmentValidationPipeline,
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -238,7 +236,7 @@ def _fmt_gold(gold_entry: Optional[Dict]) -> str:
     for issue in gold_issues:
         opts = gold_options.get(issue, [])
         lines.append(f"\nIssue: '{issue}'")
-        lines.append(f"  Valid resolutions:")
+        lines.append("  Valid resolutions:")
         for i, opt in enumerate(opts, 1):
             lines.append(f"    {i}. {opt}")
     return "\n".join(lines) if lines else "  (no gold options found)"

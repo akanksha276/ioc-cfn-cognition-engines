@@ -27,15 +27,15 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-from .base import AdapterSDK
-from .prompts import get_concept_prompt, get_relationship_prompt, SUPPORTED_FORMATS
 from ..api.schemas import LLMConceptsResult, LLMRelationshipsResult
 from ..config.settings import settings
 from ..config.utils import litellm_acompletion_compat, litellm_completion_compat
+from .base import AdapterSDK
+from .prompts import SUPPORTED_FORMATS, get_concept_prompt, get_relationship_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -86,16 +86,16 @@ class TelemetryExtractionService(AdapterSDK):
     def _has_llm(self) -> bool:
         """Return True if LLM is configured (API key or custom base URL present)."""
         return bool(settings.llm_api_key or settings.llm_base_url)
-    
+
     def _load_impl(self) -> Dict[str, Any]:
         """Load implementation - can be overridden for custom data sources."""
         return {"status": "not_implemented", "message": "Use extract_entities_and_relations directly"}
-    
+
     @staticmethod
     def _generate_id(text: str) -> str:
         """Generate deterministic ID from text using MD5 hash."""
         return hashlib.md5(text.encode()).hexdigest()
-    
+
     def extract_entities_and_relations(
         self,
         otel_records: List[Dict[str, Any]],
@@ -120,7 +120,7 @@ class TelemetryExtractionService(AdapterSDK):
         """
         llm_available = self._has_llm()
         descriptor = format_descriptor or "telemetry knowledge extraction"
-        
+
         # Step 0: Filter to Client/Server SpanKinds; records with no SpanKind are kept as-is
         required_span_kinds = {"Client", "Server"}
         otel_records = [
@@ -144,24 +144,24 @@ class TelemetryExtractionService(AdapterSDK):
                     "relations_extracted": 0
                 }
             }
-        
+
         # Step 1: Build span lookup and identify root spans
         concepts_map = {}  # name -> concept data
         span_lookup = {}   # span_id -> span data
         all_span_ids = set()
-        
+
         for record in otel_records:
             span_id = record.get("SpanId", "")
             span_lookup[span_id] = record
             all_span_ids.add(span_id)
-        
+
         # Root spans: those whose ParentSpanId is empty or not in the current record set
         root_span_ids = set()
         for record in otel_records:
             parent = record.get("ParentSpanId", "")
             if not parent or parent not in all_span_ids:
                 root_span_ids.add(record.get("SpanId", ""))
-        
+
         # Step 1a: Extract the main user query only from root spans
         query_concept_name = None
         token_metadata = None
@@ -182,13 +182,13 @@ class TelemetryExtractionService(AdapterSDK):
                     "description": distilled_query
                 }
                 break
-        
+
         # Step 1b: Extract other concepts deterministically
         func_name_pattern = re.compile(r"^llm\.request\.functions\.(\d+)\.name$")
-        
+
         for record in otel_records:
             span_attrs = record.get("SpanAttributes", {})
-            
+
             # Extract agent
             agent_id = span_attrs.get("agent_id")
             if agent_id and agent_id not in concepts_map:
@@ -198,7 +198,7 @@ class TelemetryExtractionService(AdapterSDK):
                     "attributes": {},
                     "context": []
                 }
-            
+
             # Extract service name as potential agent/system
             service_name = record.get("ServiceName")
             if service_name and service_name not in concepts_map:
@@ -208,7 +208,7 @@ class TelemetryExtractionService(AdapterSDK):
                     "attributes": {},
                     "context": []
                 }
-            
+
             # Extract LLM model
             model_name = span_attrs.get("gen_ai.request.model") or span_attrs.get("gen_ai.response.model")
             if model_name and model_name not in concepts_map:
@@ -218,7 +218,7 @@ class TelemetryExtractionService(AdapterSDK):
                     "attributes": {},
                     "context": []
                 }
-            
+
             # Extract tools from tool calls
             for key in span_attrs:
                 if "tool_calls" in key and "name" in key:
@@ -231,7 +231,7 @@ class TelemetryExtractionService(AdapterSDK):
                             "context": [],
                             "description": ""
                         }
-            
+
             # Extract functions from llm.request.functions.{N}.name and their descriptions
             for key in span_attrs:
                 match = func_name_pattern.match(key)
@@ -240,7 +240,7 @@ class TelemetryExtractionService(AdapterSDK):
                     func_name = span_attrs[key]
                     desc_key = f"llm.request.functions.{func_index}.description"
                     func_description = span_attrs.get(desc_key, "")
-                    
+
                     if func_name:
                         if func_name not in concepts_map:
                             concepts_map[func_name] = {
@@ -252,7 +252,7 @@ class TelemetryExtractionService(AdapterSDK):
                             }
                         elif func_description and not concepts_map[func_name].get("description"):
                             concepts_map[func_name]["description"] = func_description
-            
+
             # Extract users from message authors
             for key in span_attrs:
                 if "author" in key.lower():
@@ -264,13 +264,13 @@ class TelemetryExtractionService(AdapterSDK):
                             "attributes": {},
                             "context": []
                         }
-        
+
         # Step 1c: Extract the final system output from the last span with completion content
         output_concept_name = None
         if query_concept_name:
             # Reuse the same hash suffix from the query name
             query_hash_suffix = query_concept_name[len("query_"):]
-            
+
             # Sort spans by timestamp descending to find the last completion
             sorted_records = sorted(
                 otel_records,
@@ -293,11 +293,11 @@ class TelemetryExtractionService(AdapterSDK):
                         "description": distilled_output
                     }
                     break
-        
+
         # Step 2: Build relations from span hierarchy and attributes
         relations = []
         relation_set = set()  # source||target dedup key
-        
+
         def _add_relation(src: str, tgt: str, ctx: Dict[str, Any]) -> None:
             """Add a relation if both concepts exist and the pair is new."""
             if not src or not tgt or src == tgt:
@@ -317,7 +317,7 @@ class TelemetryExtractionService(AdapterSDK):
                 "relationship": relationship,
                 "context": ctx
             })
-        
+
         # 2a: Query -> first agent/service (from the root span that produced the query)
         if query_concept_name:
             for record in otel_records:
@@ -332,7 +332,7 @@ class TelemetryExtractionService(AdapterSDK):
                 if service_name and service_name in concepts_map:
                     _add_relation(query_concept_name, service_name, span_attrs)
                     break
-        
+
         # 2a-output: Producing agent -> Output, and Output -> Query (answers)
         if output_concept_name and output_concept_name in concepts_map:
             producing_agent = concepts_map[output_concept_name]["attributes"].get("produced_by", "")
@@ -345,31 +345,31 @@ class TelemetryExtractionService(AdapterSDK):
                         break
             if query_concept_name:
                 _add_relation(output_concept_name, query_concept_name, {})
-        
+
         for record in otel_records:
             span_attrs = record.get("SpanAttributes", {})
             parent_span_id = record.get("ParentSpanId")
-            
+
             agent_id = span_attrs.get("agent_id")
             service_name = record.get("ServiceName")
             model_name = span_attrs.get("gen_ai.request.model") or span_attrs.get("gen_ai.response.model")
-            
+
             # 2b: Service -> Agent (service hosts the agent)
             if service_name and agent_id and service_name != agent_id:
                 _add_relation(service_name, agent_id, span_attrs)
-            
+
             # 2c: Agent/Service -> LLM
             source_name = agent_id or service_name
             if source_name and model_name:
                 _add_relation(source_name, model_name, span_attrs)
-            
+
             # 2d: LLM -> Tool (from tool_calls in completions)
             for key in span_attrs:
                 if "tool_calls" in key and "name" in key:
                     tool_name = span_attrs.get(key)
                     if tool_name and model_name:
                         _add_relation(model_name, tool_name, span_attrs)
-            
+
             # 2e: Agent -> Function (from llm.request.functions registered on the span)
             for key in span_attrs:
                 if func_name_pattern.match(key):
@@ -379,19 +379,19 @@ class TelemetryExtractionService(AdapterSDK):
                             _add_relation(agent_id, func_name, span_attrs)
                         elif model_name:
                             _add_relation(model_name, func_name, span_attrs)
-            
+
             # 2f: Parent-child span relations (delegation / orchestration)
             if parent_span_id and parent_span_id in span_lookup:
                 parent_record = span_lookup[parent_span_id]
                 parent_attrs = parent_record.get("SpanAttributes", {})
                 parent_agent = parent_attrs.get("agent_id")
                 parent_service = parent_record.get("ServiceName")
-                
+
                 parent_name = parent_agent or parent_service
-                
+
                 if parent_name and source_name and parent_name != source_name:
                     _add_relation(parent_name, source_name, span_attrs)
-        
+
         # Step 3: Use LLM to generate descriptions and summarize contexts
         # Concepts that already have a telemetry-sourced description are kept as-is.
         if llm_available:
@@ -415,7 +415,7 @@ class TelemetryExtractionService(AdapterSDK):
 
             for relation in relations:
                 relation["summarized_context"] = f"{relation['relationship']} interaction"
-        
+
         # Step 4: Format output
         concepts = []
         for name, concept in concepts_map.items():
@@ -428,12 +428,12 @@ class TelemetryExtractionService(AdapterSDK):
                 "type": "concept",
                 "attributes": attributes
             })
-        
+
         formatted_relations = []
         for relation in relations:
             source_id = self._generate_id(relation["source_name"])
             target_id = self._generate_id(relation["target_name"])
-            
+
             formatted_relations.append({
                 "id": self._generate_id(f"{source_id}_{target_id}_{relation['relationship']}"),
                 "node_ids": [source_id, target_id],
@@ -444,7 +444,7 @@ class TelemetryExtractionService(AdapterSDK):
                     "summarized_context": relation.get("summarized_context", "")
                 }
             })
-        
+
         rid = request_id or self._generate_id(f"{datetime.now().isoformat()}_{len(otel_records)}")
 
         result = {
@@ -464,7 +464,7 @@ class TelemetryExtractionService(AdapterSDK):
             result["token_meta"] = token_metadata
 
         return result
-    
+
     @staticmethod
     def _extract_raw_user_prompt(span_attrs: Dict[str, Any]) -> Optional[str]:
         """
@@ -479,14 +479,14 @@ class TelemetryExtractionService(AdapterSDK):
             match = prompt_role_pattern.match(key)
             if match:
                 indexed_roles[match.group(1)] = span_attrs[key]
-        
+
         for idx in sorted(indexed_roles.keys(), key=int):
             if indexed_roles[idx].lower() == "user":
                 content = span_attrs.get(f"gen_ai.prompt.{idx}.content", "")
                 if content and content.strip():
                     return content.strip()
         return None
-    
+
     def _distill_user_query(self, raw_prompt: str) -> tuple[str, Optional[LLMTokenMetadata]]:
         """
         Distill the core question or query from a raw user prompt using the LLM.
@@ -539,7 +539,7 @@ class TelemetryExtractionService(AdapterSDK):
         except Exception as e:
             logger.warning("LLM query distillation failed, using raw prompt: %s", e)
         return raw_prompt[:200].strip(), None
-    
+
     @staticmethod
     def _extract_completion_content(span_attrs: Dict[str, Any]) -> Optional[str]:
         """
@@ -559,22 +559,22 @@ class TelemetryExtractionService(AdapterSDK):
                 content = span_attrs[key]
                 if content and isinstance(content, str) and content.strip():
                     candidates[idx] = content.strip()
-        
+
         if not candidates:
             return None
-        
+
         # Prefer completions with role "assistant"
         for idx in sorted(candidates.keys(), key=int):
             role_key = f"gen_ai.completion.{idx}.role"
             role = span_attrs.get(role_key, "").lower()
             if role == "assistant" and candidates[idx]:
                 return candidates[idx]
-        
+
         # Fallback: return the first non-empty completion content
         for idx in sorted(candidates.keys(), key=int):
             return candidates[idx]
         return None
-    
+
     def _distill_system_output(self, raw_completion: str) -> str:
         """
         Distill the final answer from raw completion content using the LLM.
@@ -605,7 +605,7 @@ class TelemetryExtractionService(AdapterSDK):
         except Exception as e:
             logger.warning("LLM output distillation failed, using raw completion: %s", e)
         return raw_completion.strip()
-    
+
     def _generate_relationship_label(
         self,
         source_name: str,
@@ -654,7 +654,7 @@ class TelemetryExtractionService(AdapterSDK):
                 logger.warning("LLM relationship labelling failed, using heuristic: %s", e)
 
         return self._heuristic_relationship_label(source_type, target_type)
-    
+
     @staticmethod
     def _heuristic_relationship_label(source_type: str, target_type: str) -> str:
         """Derive a descriptive relationship label from concept types."""
@@ -678,7 +678,7 @@ class TelemetryExtractionService(AdapterSDK):
             ("output", "query"): "ANSWERS",
         }
         return heuristics.get(pair, "INTERACTS_WITH")
-    
+
     def _generate_concept_description(
         self,
         name: str,
@@ -727,7 +727,7 @@ class TelemetryExtractionService(AdapterSDK):
         except Exception as e:
             logger.error("Failed to generate description for %s: %s", name, e)
             return f"{concept_type.title()}: {name}"
-    
+
     def _summarize_relation_context(
         self,
         source_name: str,

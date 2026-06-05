@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from .knowledge_processor import EmbeddingManager
 
 _DEFAULT_CONFIG = Path(__file__).resolve().parent / "rag_config.json"

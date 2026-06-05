@@ -13,6 +13,8 @@ Components:
 """
 
 from .config import ValidationConfig
+from .evaluator import SemanticAlignmentEvaluator
+from .goal_spec import GoalSpecExtractor
 from .models import (
     AlignmentEvaluation,
     GoalSpec,
@@ -23,9 +25,7 @@ from .models import (
     Severity,
     TraceState,
 )
-from .goal_spec import GoalSpecExtractor
 from .trace_state import InteractionSignalExtractor, TraceStateBuilder
-from .evaluator import SemanticAlignmentEvaluator
 
 __all__ = [
     "AlignmentEvaluation",

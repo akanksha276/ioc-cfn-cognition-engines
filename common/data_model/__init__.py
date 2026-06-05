@@ -13,10 +13,12 @@ __version__ = "0.1.0"
 __author__ = "Cisco ETI"
 __email__ = "eti-team@cisco.com"
 
-from enum import Enum
-from pydantic import BaseModel, Field, model_validator
-from typing import List, Optional, Dict, Any
 import uuid
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, model_validator
+
 from .config import Config
 
 
@@ -85,15 +87,15 @@ from .cfn_cognitive_agents import (
     ReasonerCognitionResponse,
 )
 from .cfn_memory import (
-    MemoryType,
-    CFNKnowledgeRecord,
     CFNEvidenceRecord,
-    ReasoningRequest,
-    ReasoningResponse,
-    EmbeddingRecord,
-    EntityRecord,
+    CFNKnowledgeRecord,
     CFNQueryRequest,
     CFNQueryResponse,
+    EmbeddingRecord,
+    EntityRecord,
+    MemoryType,
+    ReasoningRequest,
+    ReasoningResponse,
 )
 
 __all__ = [

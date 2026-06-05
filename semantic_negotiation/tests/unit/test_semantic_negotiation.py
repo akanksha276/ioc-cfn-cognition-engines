@@ -5,12 +5,11 @@
 """Tests for the NegotiationModel (component 3 of the semantic negotiation pipeline)
 and SemanticNegotiationPipeline Step 4 (semantic alignment validation).
 """
-import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
+import pytest
 from app.agent.negotiation_model import (
     NegotiationModel,
-    NegotiationOutcome,
     NegotiationParticipant,
     NegotiationResult,
 )

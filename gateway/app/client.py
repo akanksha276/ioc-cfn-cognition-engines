@@ -9,6 +9,7 @@ Use these functions when deploying cognition-engine as a service to register
 with the IOC management plane.
 """
 import logging
+
 import httpx
 
 logger = logging.getLogger(__name__)

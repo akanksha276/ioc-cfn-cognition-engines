@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -13,14 +13,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from common.data_model import (
     CAKnowledgeRecord,
+    CFNEvidenceRecord,
+    CFNKnowledgeRecord,
+    CFNQueryRequest,
+    Concept,
+    EntityRecord,
     KnowledgeCognitionRequest,
     RecordType,
-    Concept,
     Relation,
-    CFNKnowledgeRecord,
-    CFNEvidenceRecord,
-    CFNQueryRequest,
-    EntityRecord,
 )
 
 

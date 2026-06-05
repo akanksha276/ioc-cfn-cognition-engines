@@ -9,7 +9,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -17,8 +17,28 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class MetricDataPoint:
+    """
+    Single metric datapoint matching CFN API structure.
+
+    Corresponds to CFN's MetricDataPoint:
+    {
+        "timestamp": "2026-05-27T10:00:00Z",  # optional, defaults to now
+        "name": "llm.token.input",
+        "value": 150.0,
+        "attributes": {"model": "gpt-4o"}
+    }
+    """
+
+    name: str
+    value: float
+    attributes: Optional[Dict[str, Any]] = None
+    timestamp: Optional[datetime] = None
+
+
+@dataclass
 class TokenMetric:
-    """Token usage metric to post to CFN."""
+    """Token usage metric to post to CFN (legacy wrapper for convenience)."""
 
     workspace_id: str
     mas_id: str
@@ -35,7 +55,11 @@ class TokenMetric:
 
 class CFNMetricsClient:
     """
-    Fire-and-forget metrics client for CFN.
+    Fire-and-forget metrics client for posting CE infrastructure metrics to CFN.
+
+    IMPORTANT: This client is ONLY for CE infrastructure metrics. MAS operation
+    metrics (tokens, latency, cost) are automatically stored by CFN when CE
+    returns responses with token metadata - DO NOT post them via this client.
 
     Features:
     - Non-blocking (uses asyncio.create_task)
@@ -44,24 +68,46 @@ class CFNMetricsClient:
     - Retry with exponential backoff
 
     Usage:
-        client = CFNMetricsClient("http://localhost:9002")
+        from common.metrics import CFNMetricsClient, MetricDataPoint
+        from datetime import datetime, timezone
+        import os
 
-        # Fire-and-forget (doesn't block response)
-        await client.post_token_metric(
-            workspace_id="ws-123",
-            mas_id="mas-456",
-            agent_id="agent-789",
-            model="gpt-4",
-            prompt_tokens=150,
-            completion_tokens=200,
-            total_tokens=350,
-            latency_ms=1234.5
+        # Initialize with CE ID (identifies this CE instance)
+        ce_id = os.getenv("CE_ID", "550e8400-e29b-41d4-a716-446655440000")
+        client = CFNMetricsClient(
+            cfn_base_url="http://localhost:9002",
+            ce_id=ce_id
         )
+
+        # Create metrics with any names (CFN doesn't enforce naming)
+        metrics = [
+            MetricDataPoint(
+                name="ce.queue.depth",
+                value=12.0,
+                attributes={"hostname": "ce-prod-01"},
+                timestamp=datetime.now(timezone.utc),
+            ),
+            MetricDataPoint(
+                name="ce.memory.usage_pct",
+                value=67.5,
+                attributes={"hostname": "ce-prod-01"},
+            ),
+        ]
+
+        # Post batch (fire-and-forget, doesn't block response)
+        await client.post_metrics_batch(
+            metrics=metrics,
+            attributes={"region": "us-west-2"},
+        )
+
+    Endpoint: POST /api/cognition-engines/{ceId}/metrics
+    Payload: {"attributes": {...}, "metrics": [...]}
     """
 
     def __init__(
         self,
         cfn_base_url: str,
+        ce_id: Optional[str] = None,
         enabled: bool = True,
         timeout: float = 5.0,
         max_retries: int = 2,
@@ -71,21 +117,27 @@ class CFNMetricsClient:
 
         Args:
             cfn_base_url: Base URL of CFN service (e.g. "http://localhost:9002")
+            ce_id: Cognition Engine UUID (identifies this CE instance). If None, metrics will be disabled.
             enabled: Enable/disable metrics posting (for feature flag)
             timeout: HTTP timeout in seconds
             max_retries: Number of retries on failure
         """
         self.cfn_base_url = cfn_base_url.rstrip("/")
-        self.endpoint = f"{self.cfn_base_url}/api/internal/cognition-engine/metrics"
-        self.enabled = enabled
+        self.ce_id = ce_id
+        self.endpoint = f"{self.cfn_base_url}/api/cognition-engines/{ce_id}/metrics" if ce_id else None
+        self.enabled = enabled and ce_id is not None  # Disable if ce_id not provided
         self.timeout = timeout
         self.max_retries = max_retries
         self._client: Optional[httpx.AsyncClient] = None
+        self._client_lock = asyncio.Lock()
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create async HTTP client."""
+        """Get or create async HTTP client (asyncio-safe)."""
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=self.timeout)
+            async with self._client_lock:
+                # Double-check after acquiring lock
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
 
     async def close(self):
@@ -108,86 +160,62 @@ class CFNMetricsClient:
         operation: str = "unknown",
     ) -> None:
         """
-        Post token metric to CFN (fire-and-forget).
+        DEPRECATED: This method is no longer needed.
 
-        This is non-blocking - it creates an async task and returns immediately.
-        Errors are logged but never raised.
+        MAS operation metrics (tokens, latency, cost) are automatically stored by CFN
+        when CE returns responses with token metadata. The CE should NOT post these
+        metrics directly.
+
+        This method is kept for backward compatibility but does nothing.
+        """
+        logger.warning(
+            "post_token_metric() is deprecated - MAS metrics are stored automatically by CFN. "
+            "Remove this call from your code."
+        )
+        return
+
+    async def post_metrics_batch(
+        self,
+        metrics: List[MetricDataPoint],
+        attributes: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Post batch of CE infrastructure metrics to CFN (fire-and-forget).
+
+        This endpoint is for CE infrastructure metrics only (queue depth, memory, CPU).
+        MAS operation metrics (tokens, latency) are stored automatically by CFN
+        when CE returns responses with token metadata.
+
+        Args:
+            metrics: List of MetricDataPoint objects
+            attributes: Optional batch-level attributes (merged with metric attributes)
         """
         if not self.enabled:
             return
 
-        metric = TokenMetric(
-            workspace_id=workspace_id,
-            mas_id=mas_id,
-            agent_id=agent_id,
-            timestamp=datetime.now(timezone.utc),
-            model=model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=total_tokens,
-            latency_ms=latency_ms,
-            cost_usd=cost_usd,
-            operation=operation,
-        )
+        payload = {
+            "attributes": attributes or {},
+            "metrics": [
+                {
+                    "timestamp": m.timestamp.isoformat() if m.timestamp else None,
+                    "name": m.name,
+                    "value": m.value,
+                    "attributes": m.attributes or {},
+                }
+                for m in metrics
+            ],
+        }
 
         # Fire-and-forget (non-blocking)
-        asyncio.create_task(self._post_metric_internal(metric))
+        asyncio.create_task(self._post_payload_internal(payload))
 
-    async def _post_metric_internal(
+    async def _post_payload_internal(
         self,
-        metric: TokenMetric,
+        payload: Dict[str, Any],
         retry_count: int = 0,
     ) -> None:
-        """Internal method to post metric with retry logic."""
+        """Internal method to post payload with retry logic."""
         try:
-            # Build payload
-            payload = {
-                "workspace_id": metric.workspace_id,
-                "mas_id": metric.mas_id,
-                "agent_id": metric.agent_id,
-                "attributes": {
-                    "service": "cognitive_agent",
-                    "operation": metric.operation,
-                },
-                "metrics": [
-                    {
-                        "timestamp": metric.timestamp.isoformat(),
-                        "name": "llm.tokens.prompt",
-                        "value": metric.prompt_tokens,
-                        "attributes": {"model": metric.model},
-                    },
-                    {
-                        "timestamp": metric.timestamp.isoformat(),
-                        "name": "llm.tokens.completion",
-                        "value": metric.completion_tokens,
-                        "attributes": {"model": metric.model},
-                    },
-                    {
-                        "timestamp": metric.timestamp.isoformat(),
-                        "name": "llm.tokens.total",
-                        "value": metric.total_tokens,
-                        "attributes": {"model": metric.model},
-                    },
-                    {
-                        "timestamp": metric.timestamp.isoformat(),
-                        "name": "llm.latency_ms",
-                        "value": metric.latency_ms,
-                        "attributes": {"model": metric.model},
-                    },
-                ],
-            }
-
-            # Add cost if available
-            if metric.cost_usd is not None:
-                payload["metrics"].append(
-                    {
-                        "timestamp": metric.timestamp.isoformat(),
-                        "name": "llm.cost_usd",
-                        "value": metric.cost_usd,
-                        "attributes": {"model": metric.model},
-                    }
-                )
-
             # Post to CFN
             client = await self._get_client()
             response = await client.post(
@@ -197,14 +225,15 @@ class CFNMetricsClient:
             )
 
             if response.status_code == 202:
-                logger.debug(f"Posted token metrics to CFN: {metric.total_tokens} tokens")
+                num_metrics = len(payload.get("metrics", []))
+                logger.debug(f"Posted {num_metrics} metrics to CFN")
             elif response.status_code >= 500 and retry_count < self.max_retries:
                 # Retry on server errors
                 logger.warning(
                     f"CFN metrics API returned {response.status_code}, retrying... (attempt {retry_count + 1})"
                 )
                 await self._backoff(retry_count)
-                await self._post_metric_internal(metric, retry_count + 1)
+                await self._post_payload_internal(payload, retry_count + 1)
             else:
                 logger.error(
                     f"CFN metrics API failed: {response.status_code} - {response.text[:200]}"
@@ -216,7 +245,7 @@ class CFNMetricsClient:
                     f"CFN metrics API timeout, retrying... (attempt {retry_count + 1})"
                 )
                 await self._backoff(retry_count)
-                await self._post_metric_internal(metric, retry_count + 1)
+                await self._post_payload_internal(payload, retry_count + 1)
             else:
                 logger.error("CFN metrics API timeout after all retries")
 
@@ -233,14 +262,26 @@ class CFNMetricsClient:
 _metrics_client: Optional[CFNMetricsClient] = None
 
 
-def init_metrics_client(cfn_base_url: str, enabled: bool = True) -> CFNMetricsClient:
+def init_metrics_client(
+    cfn_base_url: str,
+    ce_id: Optional[str] = None,
+    enabled: bool = True,
+) -> CFNMetricsClient:
     """
     Initialize global metrics client.
     Call once during app startup.
+
+    Args:
+        cfn_base_url: Base URL of CFN service (e.g. "http://localhost:9002")
+        ce_id: Cognition Engine UUID (identifies this CE instance). If None, metrics will be disabled.
+        enabled: Enable/disable metrics posting
     """
     global _metrics_client
-    _metrics_client = CFNMetricsClient(cfn_base_url, enabled=enabled)
-    logger.info(f"Metrics client initialized: {cfn_base_url} (enabled={enabled})")
+    _metrics_client = CFNMetricsClient(cfn_base_url, ce_id=ce_id, enabled=enabled)
+    if ce_id:
+        logger.info(f"Metrics client initialized: {cfn_base_url}/api/cognition-engines/{ce_id}/metrics (enabled={enabled})")
+    else:
+        logger.warning("Metrics client initialized without ce_id - metrics disabled")
     return _metrics_client
 
 

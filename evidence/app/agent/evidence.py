@@ -5,35 +5,37 @@
 # app/evidence/evidence.py
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from ..config.settings import settings
-from .embeddings import EmbeddingManager
-from .rag_retrieval import retrieve_rag_top_k
 from ..api.schemas import (
+    Header,
+    KnowledgeRecord,
     ReasonerCognitionRequest,
     ReasonerCognitionResponse,
-    KnowledgeRecord,
-    Header,
 )
-from .single_entity import (
-    SingleEntityEvidenceEngine,
-    SingleEntityConfig,
-    ConceptRepository,
+from ..config.settings import settings
+from .embeddings import EmbeddingManager
+from .llm_clients import (
+    EntityExtractor as LLMEntityExtractor,
 )
-from .multi_entities import MultiEntityEvidenceEngine, MultiEntityConfig
-from .utiles import PathFormatter
 from .llm_clients import (
     EvidenceJudge,
     EvidenceRanker,
-    ResponseGenerator,
     QueryDecomposer,
-    EntityExtractor as LLMEntityExtractor,
+    ResponseGenerator,
 )
+from .multi_entities import MultiEntityConfig, MultiEntityEvidenceEngine
+from .rag_retrieval import retrieve_rag_top_k
+from .single_entity import (
+    ConceptRepository,
+    SingleEntityConfig,
+    SingleEntityEvidenceEngine,
+)
+from .utiles import PathFormatter
 
 embedding_manager = EmbeddingManager()
 
@@ -363,6 +365,7 @@ async def process_evidence(
         response_meta = None
         if token_meta:
             from ..api.schemas import TokenUsage, TokenUsageMeta
+            from gateway.app.registration import CE_KNOWLEDGE_NAME, get_ce_id
             response_meta = TokenUsageMeta(
                 tokens=TokenUsage(
                     prompt=token_meta.prompt_tokens,
@@ -373,6 +376,7 @@ async def process_evidence(
                 latency_ms=token_meta.latency_ms,
                 cost_usd=token_meta.cost_usd,
                 timestamp=token_meta.timestamp,
+                ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
             )
 
         return ReasonerCognitionResponse(
@@ -419,6 +423,7 @@ async def process_evidence(
         response_meta_final = None
         if use_unified_rag_final and last_token_meta:
             from ..api.schemas import TokenUsage, TokenUsageMeta
+            from gateway.app.registration import CE_KNOWLEDGE_NAME, get_ce_id
             response_meta_final = TokenUsageMeta(
                 tokens=TokenUsage(
                     prompt=last_token_meta.prompt_tokens,
@@ -429,6 +434,7 @@ async def process_evidence(
                 latency_ms=last_token_meta.latency_ms,
                 cost_usd=last_token_meta.cost_usd,
                 timestamp=last_token_meta.timestamp,
+                ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
             )
 
     return ReasonerCognitionResponse(

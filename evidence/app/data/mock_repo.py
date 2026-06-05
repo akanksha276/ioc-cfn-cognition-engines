@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any, List, Optional
-from .base import DataRepository
+from typing import Any, Dict, List, Optional
 
 
 class MockDataRepository:

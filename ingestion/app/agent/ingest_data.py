@@ -6,16 +6,16 @@
 
 from __future__ import annotations
 
-import logging
 import hashlib
+import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .adapters import ExtractionAdapter, ExtractionAdapterRAG
 from .prompts import SUPPORTED_FORMATS
 
 if TYPE_CHECKING:
-    from .rag import RagPipeline
+    pass
 
 logger = logging.getLogger(__name__)
 

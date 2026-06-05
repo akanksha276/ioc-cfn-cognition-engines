@@ -15,13 +15,13 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+
+from common.diagnostics.router import HealthCheck, make_diagnostics_router
+from common.metrics import get_metrics_client, init_metrics_client
 
 from .api.routes import router as api_router
 from .api.schemas import HealthResponse
 from .config.settings import settings
-from common.diagnostics.router import make_diagnostics_router, HealthCheck
-from common.metrics import init_metrics_client, get_metrics_client
 
 # Configure logging
 logging.basicConfig(

@@ -16,7 +16,6 @@ Notes on threshold sentinel values used in tests:
 - ``threshold=101.0``        → disables tier 4 rapidfuzz
 """
 
-import pytest
 from unittest.mock import patch
 
 import app.agent.offer_validation as _ov
@@ -25,7 +24,6 @@ from app.agent.offer_validation import (
     snap_option,
     validate_and_snap_offer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

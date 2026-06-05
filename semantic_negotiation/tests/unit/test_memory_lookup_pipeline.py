@@ -26,10 +26,8 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from app.agent.intent_discovery import fetch_shared_memory_for_intent_discovery
 from app.agent.semantic_negotiation import SemanticNegotiationPipeline
-
 
 _MISSION = (
     "We need to align on budget and timeline for the Q2 release before Friday."

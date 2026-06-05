@@ -3,8 +3,9 @@ common/metrics/models.py
 
 Shared response models with token usage.
 """
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class TokenUsage(BaseModel):
@@ -17,9 +18,10 @@ class TokenUsage(BaseModel):
 
 
 class TokenUsageMeta(BaseModel):
-    """Metadata including token usage, latency, and cost."""
+    """Metadata including token usage, latency, cost, and CE attribution."""
 
     tokens: TokenUsage
     latency_ms: float
     cost_usd: Optional[float] = None
     timestamp: str
+    ce_id: Optional[str] = None  # CE that performed the operation (for CFN metrics attribution)

@@ -4,12 +4,12 @@
 
 """Unit tests for IngestionCognitionEngine (ingestion_ce.py)."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
 
 from ingestion.app.agent.ingestion_ce import IngestionAction, IngestionCognitionEngine
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

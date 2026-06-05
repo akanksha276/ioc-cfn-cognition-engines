@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import uuid
 
 from fastapi.testclient import TestClient
 
-from evidence.app.api.schemas import ReasonerCognitionRequest
 from evidence.app.main import app
 
 client = TestClient(app)

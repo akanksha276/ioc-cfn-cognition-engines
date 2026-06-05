@@ -14,7 +14,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from ..casino.loader import ISSUES, PRIORITY_SCORES, TOTAL_PACKAGES
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 1 — Intent Discovery metrics
 # ─────────────────────────────────────────────────────────────────────────────

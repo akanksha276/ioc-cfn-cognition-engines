@@ -17,11 +17,10 @@ from typing import Any, Dict, List
 from unittest.mock import patch
 
 import pytest
-
 from app.agent.semantic_alignment_validation_pipeline import (
-    ValidationResult,
     SemanticAlignmentValidationPipeline,
     ValidationInputError,
+    ValidationResult,
 )
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
@@ -280,7 +279,7 @@ class TestRunHeuristic:
 
     def test_escalate_recommendation_when_high_severity(self):
         """Patch ACSE evaluator to return high severity and check recommendation."""
-        from app.agent.acse.models import AlignmentEvaluation, IssueEvaluation, Severity
+        from app.agent.acse.models import AlignmentEvaluation, Severity
 
         bad_eval = AlignmentEvaluation(
             aligned=False,

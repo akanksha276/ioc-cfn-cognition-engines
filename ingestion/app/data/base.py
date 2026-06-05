@@ -5,13 +5,13 @@
 """
 Data repository protocol/interface for data access abstraction.
 """
-from typing import Protocol, Dict, Any, List
 from pathlib import Path
+from typing import Any, Dict, List, Protocol
 
 
 class DataRepository(Protocol):
     """Protocol for data repository implementations."""
-    
+
     def load_from_file(self, file_path: Path) -> List[Dict[str, Any]]:
         """
         Load OTEL data from a file.
@@ -23,7 +23,7 @@ class DataRepository(Protocol):
             List of OTEL records
         """
         ...
-    
+
     def parse_body(self, body: bytes) -> List[Dict[str, Any]]:
         """
         Parse OTEL data from request body.
@@ -35,7 +35,7 @@ class DataRepository(Protocol):
             List of OTEL records
         """
         ...
-    
+
     def save_output(self, data: Dict[str, Any], filename: str) -> bool:
         """
         Save extraction output to a file.

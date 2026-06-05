@@ -6,9 +6,9 @@
 Environment configuration using Pydantic Settings.
 """
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
 
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve .env relative to the project root (semantic_negotiation/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

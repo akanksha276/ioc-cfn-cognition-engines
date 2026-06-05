@@ -49,7 +49,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer, field_validator
 
-
 # ---------------------------------------------------------------------------
 # Outcome type alias
 # NegMAS: negmas.outcomes.Outcome = tuple | dict | Mapping | None

@@ -10,11 +10,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
+
+from common.diagnostics.router import HealthCheck, make_diagnostics_router
+from common.metrics import get_metrics_client, init_metrics_client
+
 from .api.routes import router as api_router
 from .config.settings import settings
-from common.diagnostics.router import make_diagnostics_router, HealthCheck
-from common.metrics import init_metrics_client, get_metrics_client
-
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),

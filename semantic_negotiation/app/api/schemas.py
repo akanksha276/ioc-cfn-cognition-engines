@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ============== Token tracking ==============
 
 
@@ -23,11 +22,12 @@ class TokenUsage(BaseModel):
 
 
 class TokenUsageMeta(BaseModel):
-    """LLM call metadata including token usage."""
+    """LLM call metadata including token usage and CE attribution."""
     tokens: TokenUsage
     latency_ms: float = Field(..., description="Time taken for LLM call in milliseconds")
     cost_usd: Optional[float] = Field(None, description="Calculated cost in USD")
     timestamp: str = Field(..., description="ISO 8601 timestamp")
+    ce_id: Optional[str] = Field(None, description="CE that performed the operation (for CFN metrics attribution)")
 
 
 # ============== Shared header ==============

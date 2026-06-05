@@ -11,10 +11,11 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
+from common.cognition_engine import ModelConfig
+
+from .agent.semantic_neg_ce import NegotiationCognitionEngine
 from .agent.semantic_negotiation import SemanticNegotiationPipeline
 from .config.settings import settings
-from common.cognition_engine import ModelConfig
-from .agent.semantic_neg_ce import NegotiationCognitionEngine
 
 logger = logging.getLogger(__name__)
 

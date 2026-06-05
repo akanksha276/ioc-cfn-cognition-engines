@@ -146,7 +146,6 @@ Usage
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import logging
 import os
@@ -170,6 +169,7 @@ if _env_file.exists():
     load_dotenv(_env_file, override=True)
 
 import litellm  # noqa: E402
+
 litellm.drop_params = True  # allow model-specific unsupported params (e.g. temperature for gpt-5)
 
 from app.agent.intent_discovery import IntentDiscovery  # noqa: E402
@@ -1348,7 +1348,7 @@ def _print_negotiation_report(neg: Dict[str, Any]) -> None:
         print(f"    avg per mission                 : {neg['avg_llm_calls_per_mission']}")
     if neg.get("decide_total_tokens"):
         print()
-        print(f"  Token usage (decide-phase)")
+        print("  Token usage (decide-phase)")
         print(f"    prompt tokens      : {neg['decide_prompt_tokens']:,}")
         print(f"    completion tokens  : {neg['decide_completion_tokens']:,}")
         print(f"    total tokens       : {neg['decide_total_tokens']:,}")

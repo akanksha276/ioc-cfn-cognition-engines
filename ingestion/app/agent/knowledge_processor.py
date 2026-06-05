@@ -8,7 +8,7 @@ Knowledge Processor - Handles embeddings generation and deduplication for extrac
 
 import logging
 import os
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -23,8 +23,8 @@ def _register_granite_in_fastembed(model_name: str) -> None:
     so the real IBM Granite model name is accepted without using a proxy entry.
     The list mutation is process-scoped and does not touch any installed files.
     """
-    from fastembed.text.onnx_embedding import supported_onnx_models
     from fastembed.common.model_description import DenseModelDescription, ModelSource
+    from fastembed.text.onnx_embedding import supported_onnx_models
 
     if any(m.model == model_name for m in supported_onnx_models):
         return  # already registered

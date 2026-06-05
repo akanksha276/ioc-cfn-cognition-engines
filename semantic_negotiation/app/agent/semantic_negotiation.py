@@ -24,9 +24,9 @@ so the API uses ``run(..., after_options=...)`` rather than pre-filling
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
-import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,10 +36,11 @@ from .intent_discovery import IntentDiscovery
 from .negotiation_model import NegotiationParticipant, NegotiationResult
 from .options_generation import OptionsGeneration
 from .semantic_alignment_validation_pipeline import (
-    ValidationResult,
     SemanticAlignmentValidationPipeline,
+    ValidationResult,
 )
 from .token_tracker import TokenAccumulator
+
 # CFN-compatible traces: normalize a throwaway copy for Step 4 only (see module docstring).
 from .validation_trace_adapter import adapt_sstp_trace_for_alignment_validation
 

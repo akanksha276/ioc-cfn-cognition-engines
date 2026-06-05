@@ -2,28 +2,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Dict, Any, Optional, Tuple, Set
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 logger = logging.getLogger(__name__)
 
-from ..api.schemas import ReasonerCognitionRequest, KnowledgeRecord
-
+from ..api.schemas import KnowledgeRecord, ReasonerCognitionRequest
 from .embeddings import EmbeddingManager
 from .llm_clients import EvidenceJudge, EvidenceRanker, ResponseGenerator, get_llm_call_count
 from .utiles import (
-    select_by_relative_top,
-    PathFormatter,
     GraphSession,
-    mmr_select_indices,
+    PathFormatter,
     coerce_graph_node_ids,
+    mmr_select_indices,
+    select_by_relative_top,
 )
-
 
 load_dotenv(find_dotenv())
 
@@ -766,7 +764,7 @@ class SingleEntityEvidenceEngine:
             trace["llm_calls"] = 0
         # Print the trace to terminal for visibility
         try:
-            import json as _json
+            pass
 
         except Exception:
             pass

@@ -4,6 +4,7 @@
 
 import logging
 import os
+
 import numpy as np
 import yaml
 from fastembed import TextEmbedding
@@ -19,8 +20,8 @@ def _register_granite_in_fastembed(model_name: str, local_model_path: str) -> No
     so the real IBM Granite model name is accepted without using a proxy entry.
     The list mutation is process-scoped and does not touch any installed files.
     """
-    from fastembed.text.onnx_embedding import supported_onnx_models
     from fastembed.common.model_description import DenseModelDescription, ModelSource
+    from fastembed.text.onnx_embedding import supported_onnx_models
 
     if any(m.model == model_name for m in supported_onnx_models):
         return  # already registered

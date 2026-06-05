@@ -3,15 +3,15 @@ Modified LLM client that returns token usage metadata.
 This is a minimal example showing the hybrid approach.
 """
 import time
-from datetime import datetime, timezone
-from typing import Type, TypeVar, Tuple
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Tuple, Type, TypeVar
 
-from pydantic import BaseModel
 import litellm
+from pydantic import BaseModel
 
-from .llm_clients import _model_to_tool_schema, _llm_creds, _inc_llm_call_count
 from ..config.settings import settings
+from .llm_clients import _inc_llm_call_count, _llm_creds, _model_to_tool_schema
 
 _T = TypeVar("_T", bound=BaseModel)
 

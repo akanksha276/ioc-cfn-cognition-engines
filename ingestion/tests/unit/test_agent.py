@@ -11,14 +11,13 @@ import asyncio
 import pytest
 
 from ingestion.app.agent.ingest_data import IngestDataService
-from ingestion.app.agent.service import ConceptRelationshipExtractionService
 from ingestion.app.agent.knowledge_processor import (
-    KnowledgeProcessor,
-    EmbeddingManager,
-    cosine_similarity,
     FASTEMBED_AVAILABLE,
+    EmbeddingManager,
+    KnowledgeProcessor,
+    cosine_similarity,
 )
-
+from ingestion.app.agent.service import ConceptRelationshipExtractionService
 
 # ---------------------------------------------------------------------------
 # ConceptRelationshipExtractionService

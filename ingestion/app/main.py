@@ -16,16 +16,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-import uvicorn
 
-from .config.settings import settings
-from .api.routes import router as api_router, extraction_router
-from .dependencies import get_extraction_service
-from common.diagnostics.router import make_diagnostics_router, HealthCheck
+from common.diagnostics.router import HealthCheck, make_diagnostics_router
+
 from .agent.knowledge_processor import FASTEMBED_AVAILABLE
-
+from .api.routes import extraction_router
+from .api.routes import router as api_router
+from .config.settings import settings
+from .dependencies import get_extraction_service
 
 # Configure logging
 logging.basicConfig(

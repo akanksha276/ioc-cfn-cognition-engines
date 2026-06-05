@@ -7,9 +7,9 @@ from typing import Optional
 from fastapi import Request
 
 from .api.schemas import ReasonerCognitionRequest
-from .data.mock_repo import MockDataRepository
-from .data.http_repo import HttpDataRepository
 from .config.settings import settings
+from .data.http_repo import HttpDataRepository
+from .data.mock_repo import MockDataRepository
 
 
 def _repository(
@@ -60,6 +60,7 @@ def get_evidence_cognition_engine(request: Request) -> "EvidenceCognitionEngine"
     workspace/MAS-scoped repository after injection.
     """
     from common.cognition_engine import ModelConfig
+
     from .agent.evidence_ce import EvidenceCognitionEngine
 
     cfg = ModelConfig(

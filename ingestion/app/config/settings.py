@@ -5,11 +5,12 @@
 """
 Environment configuration using Pydantic Settings.
 """
+import os
 from pathlib import Path
 from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve .env from repo root (one level above ingestion/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent

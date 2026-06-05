@@ -32,12 +32,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import sys
 
 # ── sys.path: ensure repo root is importable ─────────────────────────────────
 _repo_root = str(Path(__file__).resolve().parents[4])  # ioc-cfn-cognitive-agents/
@@ -46,14 +46,13 @@ if _repo_root not in sys.path:
 
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 
 _sn_root = str(Path(__file__).resolve().parents[3])
 if _sn_root not in sys.path:
     sys.path.insert(0, _sn_root)
 from app.agent.reply_payload_utils import attach_reason  # noqa: E402
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SSTP reply helper (shared by all agents)

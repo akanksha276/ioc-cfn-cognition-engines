@@ -57,11 +57,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import hashlib
 import itertools
 import json
-import copy
-import random
 import re
 import sys
 import threading
@@ -72,8 +71,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import yaml
 import uvicorn
+import yaml
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -88,11 +87,12 @@ _sna_app_root = str(Path(__file__).resolve().parent.parent.parent / "app")
 if _sna_app_root not in sys.path:
     sys.path.insert(0, _sna_app_root)
 
+from config.utils import get_llm_provider  # noqa: E402
+
 from protocol.sstp import SSTPNegotiateMessage  # noqa: E402
 from protocol.sstp._base import Origin, PolicyLabels, Provenance  # noqa: E402
-from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 from protocol.sstp.negmas_sao import ResponseType, SAOResponse, SAOState  # noqa: E402
-from config.utils import get_llm_provider  # noqa: E402
+from protocol.sstp.negotiate import NegotiateSemanticContext  # noqa: E402
 
 _sn_pkg_root = str(Path(__file__).resolve().parent.parent.parent)
 if _sn_pkg_root not in sys.path:
@@ -1241,11 +1241,14 @@ def _build_decide_payload(
     agent_replies: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Wrap agent replies in an SSTPNegotiateMessage for POST /api/negotiate/decide."""
+    import hashlib
+    import json as _json
+    import uuid as _uuid
+    from datetime import datetime, timezone
+
     from protocol.sstp import SSTPNegotiateMessage
     from protocol.sstp._base import Origin, PolicyLabels, Provenance
     from protocol.sstp.negotiate import NegotiateSemanticContext
-    import hashlib, json as _json, uuid as _uuid
-    from datetime import datetime, timezone
 
     inner: dict[str, Any] = {
         "session_id": session_id,
@@ -1862,15 +1865,15 @@ if __name__ == "__main__":
         "--missions-file",
         default=None,
         metavar="PATH",
-        help=f"Path to a YAML missions file (default: missions.yaml next to this script)",
+        help="Path to a YAML missions file (default: missions.yaml next to this script)",
     )
     parser.add_argument(
         "--agent-configs",
         default=None,
         metavar="PATH",
         help=(
-            f"Path to agent_configs.yaml with per-mission LLM agent personas "
-            f"(default: agent_configs.yaml next to this script)"
+            "Path to agent_configs.yaml with per-mission LLM agent personas "
+            "(default: agent_configs.yaml next to this script)"
         ),
     )
     parser.add_argument(

@@ -22,11 +22,11 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 
+from ..agent.semantic_neg_ce import NegotiationAction, NegotiationCognitionEngine
 from ..agent.semantic_negotiation import (
     SemanticNegotiationInputError,
     SemanticNegotiationSessionNotFoundError,
 )
-from ..agent.semantic_neg_ce import NegotiationAction, NegotiationCognitionEngine
 from ..dependencies import get_negotiation_cognition_engine
 
 logger = logging.getLogger(__name__)

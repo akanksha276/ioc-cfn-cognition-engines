@@ -164,5 +164,5 @@ class HttpDataRepository:
         )
         r.raise_for_status()
         data = r.json()
-        
+
         return data.get("results", []) or []

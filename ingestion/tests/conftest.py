@@ -5,13 +5,13 @@
 """
 Shared pytest fixtures and test utilities.
 """
+from typing import Any, Dict, List
+
 import pytest
-from typing import List, Dict, Any
 
-from ingestion.app.agent.service import TelemetryExtractionService, ConceptRelationshipExtractionService
 from ingestion.app.agent.knowledge_processor import KnowledgeProcessor
+from ingestion.app.agent.service import ConceptRelationshipExtractionService, TelemetryExtractionService
 from ingestion.app.data.mock_repo import MockDataRepository
-
 
 SAMPLE_OTEL_RECORDS: List[Dict[str, Any]] = [
     {

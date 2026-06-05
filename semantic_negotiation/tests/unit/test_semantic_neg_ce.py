@@ -4,14 +4,14 @@
 
 """Unit tests for NegotiationCognitionEngine (semantic_neg_ce.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from semantic_negotiation.app.agent.semantic_neg_ce import (
     NegotiationAction,
     NegotiationCognitionEngine,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

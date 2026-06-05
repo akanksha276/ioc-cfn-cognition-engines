@@ -6,9 +6,9 @@
 Pydantic request/response models for API endpoints.
 """
 from enum import Enum
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel, Field
 
 # ============== Extraction API Request Models ==============
 
@@ -80,11 +80,12 @@ class TokenUsage(BaseModel):
 
 
 class TokenUsageMeta(BaseModel):
-    """LLM call metadata including token usage."""
+    """LLM call metadata including token usage and CE attribution."""
     tokens: TokenUsage
     latency_ms: float = Field(..., description="Time taken for LLM call in milliseconds")
     cost_usd: Optional[float] = Field(None, description="Calculated cost in USD")
     timestamp: str = Field(..., description="ISO 8601 timestamp")
+    ce_id: Optional[str] = Field(None, description="CE that performed the operation (for CFN metrics attribution)")
 
 
 class ExtractionResponseModel(BaseModel):
@@ -116,7 +117,7 @@ class OTelSpanAttributes(BaseModel):
     execution_success: Optional[str] = Field(None, alias="execution.success")
     gen_ai_request_model: Optional[str] = Field(None, alias="gen_ai.request.model")
     gen_ai_response_model: Optional[str] = Field(None, alias="gen_ai.response.model")
-    
+
     class Config:
         extra = "allow"
 
@@ -136,7 +137,7 @@ class OTelRecord(BaseModel):
     StatusCode: Optional[str] = None
     Events_Name: Optional[List[str]] = Field(None, alias="Events.Name")
     Events_Attributes: Optional[List[Dict[str, Any]]] = Field(None, alias="Events.Attributes")
-    
+
     class Config:
         extra = "allow"
         populate_by_name = True
@@ -191,7 +192,7 @@ class ConceptAttributes(BaseModel):
     """Attributes for a concept."""
     concept_type: str
     embedding: Optional[List[List[float]]] = None
-    
+
     class Config:
         extra = "allow"
 
@@ -210,7 +211,7 @@ class RelationAttributes(BaseModel):
     source_name: str
     target_name: str
     summarized_context: str
-    
+
     class Config:
         extra = "allow"
 
