@@ -41,8 +41,8 @@ Each CE:
 4. **Environment variables** set:
    ```bash
    export CFN_URL="http://localhost:9002"
-   export CE_HOST="localhost"
-   export CE_PORT="9004"  # Your CE's port
+   export COGNITION_ENGINE_HOST="localhost"
+   export COGNITION_ENGINE_PORT="9004"  # Your CE's port
    export CE_HEARTBEAT_INTERVAL_SEC="30"  # Optional, default is 30s
    ```
 
@@ -105,8 +105,8 @@ async def register_my_ce():
     global _ce_id, _lifecycle_client
 
     cfn_url = os.getenv("CFN_URL", "http://localhost:9002")
-    ce_host = os.getenv("CE_HOST", "localhost")
-    ce_port = int(os.getenv("CE_PORT", "9004"))
+    ce_host = os.getenv("COGNITION_ENGINE_HOST", "localhost")
+    ce_port = int(os.getenv("COGNITION_ENGINE_PORT", "9004"))
 
     # Create lifecycle client
     _lifecycle_client = CELifecycleClient(
@@ -375,8 +375,8 @@ make run
 ```bash
 cd my_ce
 export CFN_URL="http://localhost:9002"
-export CE_HOST="localhost"
-export CE_PORT="9004"
+export COGNITION_ENGINE_HOST="localhost"
+export COGNITION_ENGINE_PORT="9004"
 
 python -m my_ce.app.main
 ```
@@ -633,8 +633,8 @@ async def register_ce():
     global _ce_id, _lifecycle_client, _metrics_client
 
     cfn_url = os.getenv("CFN_URL", "http://localhost:9002")
-    ce_host = os.getenv("CE_HOST", "localhost")
-    ce_port = int(os.getenv("CE_PORT", "9004"))
+    ce_host = os.getenv("COGNITION_ENGINE_HOST", "localhost")
+    ce_port = int(os.getenv("COGNITION_ENGINE_PORT", "9004"))
 
     _lifecycle_client = CELifecycleClient(cfn_base_url=cfn_url, enabled=True)
 
