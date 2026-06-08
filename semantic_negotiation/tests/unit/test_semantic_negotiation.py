@@ -164,6 +164,7 @@ def _make_pipeline(n_steps: int = 1):
 def _stub_validation() -> ValidationResult:
     return ValidationResult(
         needs_intervention=False,
+        should_retry=False,
         severity="low",
         alignment_score=1.0,
         cognitive_alignment=1.0,
@@ -301,6 +302,7 @@ class TestAlignmentValidationStep4:
 
         stub = ValidationResult(
             needs_intervention=True,
+            should_retry=False,
             severity="high",
             alignment_score=0.2,
             cognitive_alignment=0.3,

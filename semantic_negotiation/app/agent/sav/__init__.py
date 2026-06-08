@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-acse — ACSE v2 Semantic Alignment Evaluator subpackage.
+sav — Semantic Alignment Validation subpackage.
 
 Components:
   models     — data models (GoalSpec, NegotiationTrace, AlignmentEvaluation, …)

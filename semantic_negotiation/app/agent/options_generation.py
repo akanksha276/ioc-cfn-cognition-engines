@@ -366,12 +366,23 @@ class OptionsGeneration:
             ))
         return term_options
 
+    @staticmethod
+    def _build_exclusion_section(
+        failure_context: Optional[str] = None,
+    ) -> str:
+        """Build a retry guidance appendix for LLM prompts."""
+        if failure_context:
+            return "\n\n" + f"The last negotiation was flagged by semantic alignment validation. Use the following error analysis to regenerate options that mitigate the issues identified below:\n{failure_context}"
+        return ""
+
     def generate_options_llm_only(
         self,
         negotiable_entities: list[Any],
         sentence: str,
         context: Optional[str] = None,
         token_accumulator: Optional[TokenAccumulator] = None,
+        *,
+        failure_context: Optional[str] = None,
     ) -> OptionsGenerationOutput:
         """
         Strategy 1: LLM proposes plausible meanings using its own judgment.
@@ -388,6 +399,13 @@ class OptionsGeneration:
         terms_blob = self._format_terms_for_prompt(negotiable_entities)
         context_str = context if context else "not specified"
         prompt = _LLM_ONLY_PROMPT.format(sentence=sentence, context=context_str, terms_blob=terms_blob)
+        exclusion = self._build_exclusion_section(failure_context)
+        if exclusion:
+            insert_at = prompt.find("\nOutput format—")
+            if insert_at >= 0:
+                prompt = prompt[:insert_at] + exclusion + prompt[insert_at:]
+            else:
+                prompt += exclusion
         term_options = self._call_llm_tool(prompt, negotiable_entities, source="llm", token_accumulator=token_accumulator)
         result = OptionsGenerationResult(
             sentence=sentence, context=context, term_options=term_options, strategy_used="llm_only",
@@ -412,6 +430,8 @@ class OptionsGeneration:
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
         token_accumulator: Optional[TokenAccumulator] = None,
+        *,
+        failure_context: Optional[str] = None,
     ) -> OptionsGenerationOutput:
         """
         Strategy 2: Resolve memory via *fabric_node_base_url* / *workspace_id* / *mas_id*,
@@ -434,7 +454,8 @@ class OptionsGeneration:
                 "falling back to LLM-only options."
             )
             return self.generate_options_llm_only(
-                negotiable_entities, sentence, context, token_accumulator=token_accumulator
+                negotiable_entities, sentence, context, token_accumulator=token_accumulator,
+                failure_context=failure_context,
             )
         issues = issue_labels_from_negotiable_entities(negotiable_entities)
         if not issues:
@@ -521,7 +542,8 @@ class OptionsGeneration:
                 exc,
             )
             return self.generate_options_llm_only(
-                negotiable_entities, sentence, context, token_accumulator=token_accumulator
+                negotiable_entities, sentence, context, token_accumulator=token_accumulator,
+                failure_context=failure_context,
             )
         #print(f"Memory data: {memory_data}")
         memory_blob = json.dumps(memory_data, indent=2)
@@ -530,6 +552,9 @@ class OptionsGeneration:
         prompt = _MEMORY_LLM_PROMPT.format(
             sentence=sentence, context=context_str, memory_blob=memory_blob, terms_blob=terms_blob,
         )
+        exclusion = self._build_exclusion_section(failure_context)
+        if exclusion:
+            prompt += exclusion
         term_options = self._call_llm_tool(prompt, negotiable_entities, source="memory_llm", token_accumulator=token_accumulator)
         result = OptionsGenerationResult(
             sentence=sentence, context=context, term_options=term_options, strategy_used="memory_llm",
@@ -601,6 +626,7 @@ class OptionsGeneration:
         workspace_id: Optional[str] = None,
         mas_id: Optional[str] = None,
         token_accumulator: Optional[TokenAccumulator] = None,
+        failure_context: Optional[str] = None,
     ) -> OptionsGenerationOutput:
         """
         Generate options for negotiable entities.
@@ -608,12 +634,16 @@ class OptionsGeneration:
         When *fabric_node_base_url*, *workspace_id*, and *mas_id* are all set,
         delegates to :meth:`generate_options_with_memory` (evidence / shared memory
         then LLM). Otherwise uses :meth:`generate_options_llm_only`.
+
+        *failure_context* is forwarded on retry attempts so the LLM avoids
+        re-proposing options that already failed.
         """
         use_memory = bool(fabric_node_base_url and workspace_id and mas_id)
         logger.info(
-            "generate_options entity_count=%d use_memory=%s",
+            "generate_options entity_count=%d use_memory=%s retry=%s",
             len(negotiable_entities),
             use_memory,
+            bool(failure_context),
         )
         if fabric_node_base_url and workspace_id and mas_id:
             return self.generate_options_with_memory(
@@ -625,8 +655,12 @@ class OptionsGeneration:
                 workspace_id=workspace_id,
                 mas_id=mas_id,
                 token_accumulator=token_accumulator,
+                failure_context=failure_context,
             )
-        return self.generate_options_llm_only(negotiable_entities, sentence, context, token_accumulator=token_accumulator)
+        return self.generate_options_llm_only(
+            negotiable_entities, sentence, context, token_accumulator=token_accumulator,
+            failure_context=failure_context,
+        )
 
     def _format_terms_for_prompt(self, negotiable_entities: list[Any]) -> str:
         lines = []

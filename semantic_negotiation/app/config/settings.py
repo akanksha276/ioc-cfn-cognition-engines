@@ -6,7 +6,7 @@
 Environment configuration using Pydantic Settings.
 """
 from pathlib import Path
-
+from typing import List
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -80,9 +80,10 @@ class Settings(BaseSettings):
     # ── Semantic alignment validation thresholds ──────────────────────────────
     validation_score_aligned: float = Field(default=0.75)
     validation_score_intervention: float = Field(default=0.6)
-    validation_cognitive_intervention: float = Field(default=0.5)
+    validation_cognitive_intervention: float = Field(default=0.4)
     validation_score_high_severity: float = Field(default=0.4)
-    validation_score_medium_severity: float = Field(default=0.75)
+    validation_score_medium_severity: float = Field(default=0.70)
+    validation_agreement_coherence_medium_threshold: float = Field(default=0.85)
     validation_constraint_fit_critical: float = Field(default=0.25)
     validation_critical_cap_single: float = Field(default=0.50)
     validation_critical_cap_multiple: float = Field(default=0.40)
@@ -95,6 +96,10 @@ class Settings(BaseSettings):
     validation_consistency_reversal_penalty: float = Field(default=0.35)
     validation_focus_drift_threshold: float = Field(default=0.25)
     validation_consistency_drift_threshold: float = Field(default=0.4)
+
+    # ── Retry ─────────────────────────────────────────────────────────────────
+    retry_max_attempts: int = Field(default=3)
+    retry_eligible_failure_modes: List[str] = Field(default=["SM-1", "SM-2", "SM-4"])
 
 
 # Singleton settings instance

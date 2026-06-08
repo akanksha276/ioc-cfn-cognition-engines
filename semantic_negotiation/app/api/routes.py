@@ -419,11 +419,9 @@ async def negotiate_decide(
     _status_str = exec_result["status"]
     total_rounds = exec_result["round"]
     final_envelope = exec_result["final_result"]
-    return JSONResponse(
-        content={
-            "session_id": session_id,
-            "status": _status_str,
-            "round": total_rounds,
-            "final_result": final_envelope.model_dump(mode="json"),
-        }
-    )
+    return JSONResponse(content={
+        "session_id": session_id,
+        "status": _status_str,
+        "round": total_rounds,
+        "final_result": final_envelope.model_dump(mode="json"),
+    })

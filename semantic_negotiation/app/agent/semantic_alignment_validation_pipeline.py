@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..config.utils import get_llm_provider
-from .acse import (
+from .sav import (
     GoalSpecExtractor,
     InteractionSignalExtractor,
     InteractionSignals,
@@ -17,6 +17,7 @@ from .acse import (
     NegotiationTrace,
     RoundRecord,
     SemanticAlignmentEvaluator,
+    Severity,
     TraceStateBuilder,
     ValidationConfig,
 )
@@ -68,6 +69,9 @@ class ValidationResult:
     timed_out: bool
     """True when the negotiation exhausted its step budget without agreement."""
 
+    should_retry: bool
+    """True when needs_intervention is True and at least one SM-1/SM-2 failure mode is present."""
+
     # ── Orchestration ─────────────────────────────────────────────────────────
     recommendation: str
     """Suggested next action: "accept", "request_justification", or "escalate"."""
@@ -118,8 +122,6 @@ class SemanticAlignmentValidationPipeline:
               (non-empty on at least one message)
             - ``sao_state`` (optional on wire) — when present, dict with
               ``current_offer`` (must be non-None)
-            - ``sao_response`` (optional on wire; typical on agent-reply messages)
-              — when present, dict with ``response`` and ``outcome`` as above
 
         Additionally:
 
@@ -129,8 +131,6 @@ class SemanticAlignmentValidationPipeline:
           ``options_per_issue`` in its ``semantic_context``.
         * Every message that carries a ``sao_state`` must have a non-None
           ``current_offer`` inside it.
-        * When the last message's ``semantic_context.sao_response.response`` is
-          ``"ACCEPT_OFFER"``, ``sao_response.outcome`` must be a non-empty dict.
 
         Raises:
             ValidationInputError: with a human-readable description of every
@@ -267,27 +267,13 @@ class SemanticAlignmentValidationPipeline:
                         f"trace[{i}]: server 'respond' message has empty or missing proposer_id"
                     )
 
-        # ── Last message / outcome checks ─────────────────────────────────────
-        last = trace[-1] if isinstance(trace[-1], dict) else {}
-        last_sc = last.get("semantic_context") if isinstance(last, dict) else {}
-        sao_response = last_sc.get("sao_response") if isinstance(last_sc, dict) else None
-        if isinstance(sao_response, dict):
-            response = sao_response.get("response")
-            if response == "ACCEPT_OFFER":
-                outcome = sao_response.get("outcome")
-                if not isinstance(outcome, dict) or not outcome:
-                    errors.append(
-                        "last message semantic_context.sao_response.outcome must be a "
-                        "non-empty dict when response is 'ACCEPT_OFFER'"
-                    )
-
         if errors:
             raise ValidationInputError(
                 "Invalid trace passed to SemanticAlignmentValidationPipeline:\n"
                 + "\n".join(f"  - {e}" for e in errors)
             )
 
-    def run(self, trace: Any) -> ValidationResult:
+    def run(self, trace: Any, agreed: bool = False) -> ValidationResult:
         """Validate a completed SSTP negotiation message trace.
 
         Args:
@@ -303,7 +289,7 @@ class SemanticAlignmentValidationPipeline:
         """
         self.validate_input(trace)
 
-        mission_goal, issues, options_per_issue, neg_trace = self._extract_from_sstp_trace(trace)
+        mission_goal, issues, options_per_issue, neg_trace = self._extract_from_sstp_trace(trace, agreed=agreed)
 
         logger.info(
             "SemanticAlignmentValidationPipeline.run: session=%s issues=%d rounds=%d status=%s",
@@ -330,10 +316,21 @@ class SemanticAlignmentValidationPipeline:
             interaction_signals=interaction_signals,
         )
 
-        recommendation = self._derive_recommendation(ae.needs_intervention, ae.severity.value)
+        # needs_intervention: severity=low → False; medium/high → True (including timed_out)
+        needs_intervention = ae.severity != Severity.LOW
+
+        # should_retry: only when needs_intervention and not timed_out and SM-1/SM-2/SM-4 present
+        retry_codes = set(self._config.retry_eligible_failure_modes)
+        should_retry = needs_intervention and not neg_trace.timedout and any(
+            any(fm.startswith(code) for code in retry_codes)
+            for fm in ae.failure_modes
+        )
+
+        recommendation = self._derive_recommendation(needs_intervention, ae.severity.value)
 
         return ValidationResult(
-            needs_intervention=ae.needs_intervention,
+            needs_intervention=needs_intervention,
+            should_retry=should_retry,
             severity=ae.severity.value,
             alignment_score=ae.alignment_score,
             cognitive_alignment=ae.cognitive_alignment,
@@ -351,8 +348,9 @@ class SemanticAlignmentValidationPipeline:
     # ── SSTP trace extraction ─────────────────────────────────────────────────
 
     def _extract_from_sstp_trace(
-        self, trace: List[Any]
+        self, trace: List[Any], agreed: bool = False
     ) -> Tuple[str, List[str], Dict[str, List[str]], NegotiationTrace]:
+        logger.debug("[SAV] _extract_from_sstp_trace input: trace_len=%d  agreed=%s", len(trace), agreed)
         """Extract mission_goal, issues, options_per_issue and a NegotiationTrace
         from the SSTP message list accepted by ``run()``.
 
@@ -401,14 +399,9 @@ class SemanticAlignmentValidationPipeline:
         ]
         total_rounds = len(records)
 
-        # Final agreement: last ACCEPT_OFFER with a non-empty outcome
         final_agreement: Dict[str, str] = {}
-        for msg in reversed(trace):
-            sc = msg.get("semantic_context") or {}
-            resp = sc.get("sao_response") or {}
-            if resp.get("response") == "ACCEPT_OFFER" and isinstance(resp.get("outcome"), dict) and resp["outcome"]:
-                final_agreement = {str(k): str(v) for k, v in resp["outcome"].items()}
-                break
+        if agreed and records:
+            final_agreement = {str(k): str(v) for k, v in records[-1][1].items()}
 
         timedout = bool(records) and not final_agreement
 
@@ -418,6 +411,13 @@ class SemanticAlignmentValidationPipeline:
             timedout=timedout,
             broken=False,
             total_rounds=total_rounds,
+        )
+        logger.debug(
+            "[SAV] _extract_from_sstp_trace output: mission_goal=%r  issues=%s  total_rounds=%d  final_agreement=%s",
+            mission_goal[:80] if mission_goal else "",
+            issues,
+            total_rounds,
+            final_agreement,
         )
         return mission_goal, issues, options_per_issue, neg_trace
 

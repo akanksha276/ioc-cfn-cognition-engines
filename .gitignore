@@ -1,3 +1,7 @@
+# Negotiation trace data (generated at runtime, not tracked)
+neg_trace/
+semantic_negotiation/neg_trace/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

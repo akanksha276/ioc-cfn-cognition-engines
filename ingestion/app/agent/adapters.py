@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 from typing import Any, Dict, List, TypedDict
+
+logger = logging.getLogger(__name__)
 
 try:
     from flatten_dict import flatten
@@ -221,6 +224,19 @@ class ExtractionAdapter:
                     sanitized["outcome"] = outcome
                 if rounds is not None:
                     sanitized["rounds"] = rounds
+                record_payload = record.get("payload") or {}
+                validation = record_payload.get("validation")
+                retry_history = record_payload.get("retry_history")
+                if validation is not None:
+                    sanitized["validation"] = validation
+                if retry_history is not None:
+                    sanitized["retry_history"] = retry_history
+                logger.debug(
+                    "[adapters] payload keys=%s  validation=%s  retry_history_len=%s",
+                    list(record_payload.keys()),
+                    validation,
+                    len(retry_history) if retry_history else 0,
+                )
                 if payload_no_trace:
                     sanitized["payload"] = payload_no_trace
                 messages.append(sanitized)
@@ -242,7 +258,9 @@ class ExtractionAdapter:
         - outcome        (from semantic_context.outcome)
         - confidence_score
         - kind
-        - rounds  (from trace.rounds, when present)
+        - rounds         (from trace.rounds, when present)
+        - validation     (SAV result, when present)
+        - retry_history  (list of prior attempt records, when retries occurred)
         """
         extracted: List[Dict[str, Any]] = []
         for message in ExtractionAdapter._iter_negotiation_messages(records):
@@ -273,6 +291,12 @@ class ExtractionAdapter:
             rounds = message.get("rounds")
             if rounds is not None:
                 entry["rounds"] = rounds
+            validation = message.get("validation")
+            if validation is not None:
+                entry["validation"] = validation
+            retry_history = message.get("retry_history")
+            if retry_history is not None:
+                entry["retry_history"] = retry_history
             extracted.append(entry)
 
         return extracted

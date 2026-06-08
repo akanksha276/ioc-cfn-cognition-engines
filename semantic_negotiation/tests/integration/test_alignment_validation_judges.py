@@ -375,7 +375,7 @@ def _fixture_params():
 
 @pytest.mark.integration
 @pytest.mark.parametrize("fixture_path", _fixture_params(), ids=lambda p: p.stem)
-def test_acse_agrees_with_judge_majority(fixture_path: Path):
+def test_sav_agrees_with_judge_majority(fixture_path: Path):
     """ACSE needs_intervention must match all 3 judges' independent verdict.
 
     Judges evaluate the trace independently — they do NOT see ACSE output.
@@ -474,8 +474,8 @@ def test_acse_agrees_with_judge_majority(fixture_path: Path):
     gold_changed = {jr.judge: jr.gold_changed_verdict for jr in judge_results if jr.supervised}
 
     logger.info(
-        "fixture=%s gold=%s stage=%s acse_ni=%s score=%.3f agree=%d/3 "
-        "acse_vs_judges=%s gold_changed=%s",
+        "fixture=%s gold=%s stage=%s sav_ni=%s score=%.3f agree=%d/3 "
+        "sav_vs_judges=%s gold_changed=%s",
         fixture_path.name, has_gold, stage_used,
         result.needs_intervention, result.alignment_score,
         agree_count, judge_verdicts, gold_changed,
@@ -485,7 +485,7 @@ def test_acse_agrees_with_judge_majority(fixture_path: Path):
     #   HIGH   → all 3 judges must agree (both alignment_score and cognitive_alignment < 0.5)
     #   MEDIUM → at least 1 judge agrees
     #   LOW    → no judge agreement required (ACSE confident it's fine)
-    from app.agent.acse.models import Severity
+    from app.agent.sav.models import Severity
     min_agree = {Severity.HIGH: 3, Severity.MEDIUM: 1, Severity.LOW: 0}[result.severity]
 
     assert agree_count >= min_agree, (

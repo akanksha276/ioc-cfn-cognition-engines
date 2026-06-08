@@ -43,6 +43,7 @@ from .token_tracker import TokenAccumulator
 
 # CFN-compatible traces: normalize a throwaway copy for Step 4 only (see module docstring).
 from .validation_trace_adapter import adapt_sstp_trace_for_alignment_validation
+from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ class SemanticNegotiationPipeline:
         self._intent_discovery = IntentDiscovery()
         self._options_generation = OptionsGeneration()
         self._alignment_validator = SemanticAlignmentValidationPipeline()
-        # (workspace_id, mas_id, session_id) → (runner, sess)
+        # (workspace_id, mas_id, session_id) → (runner, sess, retry_count)
         self._sessions: Dict[SessionStoreKey, tuple] = {}
         logger.info("SemanticNegotiationPipeline initialized n_steps=%d", n_steps)
 
@@ -136,6 +137,7 @@ class SemanticNegotiationPipeline:
     def run_alignment_validation(
         self,
         trace: List[Dict[str, Any]],
+        status: str = "",
     ) -> Optional[ValidationResult]:
         """Run Step 4 — semantic alignment validation on the completed negotiation trace.
 
@@ -153,7 +155,7 @@ class SemanticNegotiationPipeline:
         """
         logger.info("run_alignment_validation trace_len=%d", len(trace))
         try:
-            validation = self._alignment_validator.run(trace)
+            validation = self._alignment_validator.run(trace, agreed=(status == "agreed"))
             logger.info(
                 "run_alignment_validation done severity=%s score=%.2f "
                 "needs_intervention=%s recommendation=%s timed_out=%s",
@@ -265,6 +267,85 @@ class SemanticNegotiationPipeline:
             raise SemanticNegotiationExecutionError(
                 "Unexpected error stepping negotiation"
             ) from exc
+
+    def _should_retry(
+        self,
+        validation: Optional[ValidationResult],
+        retry_count: int,
+    ) -> bool:
+        """Return True when SAV recommends retry and budget remains."""
+        if validation is None:
+            return False
+        return validation.should_retry and retry_count < self._alignment_validator._config.retry_max_attempts
+
+    def _run_retry(
+        self,
+        session_key: SessionStoreKey,
+        sess: Any,
+        retry_count: int,
+        validation: ValidationResult,
+    ) -> list:
+        """Re-generate options with exclusion guidance and re-seed the SAO."""
+        history_parts = []
+        for i, rec in enumerate(sess.retry_history or [], start=1):
+            opts = rec.get("options_per_issue") or {}
+            opts_str = "; ".join(f"{iss}: [{', '.join(o for o in v)}]" for iss, v in opts.items())
+            reasoning = ((rec.get("validation") or {}).get("reasoning") or "").strip()
+            part = f"Attempt {i}:"
+            if opts_str:
+                part += f"\n  Options used: {opts_str}"
+            if reasoning:
+                part += f"\n  Failure: {reasoning}"
+            history_parts.append(part)
+        current_opts_str = "; ".join(f"{iss}: [{', '.join(v)}]" for iss, v in (sess.options_per_issue or {}).items())
+        current_reasoning = (validation.reasoning or "").strip()
+        current_part = f"Attempt {retry_count + 1}:"
+        if current_opts_str:
+            current_part += f"\n  Options used: {current_opts_str}"
+        if current_reasoning:
+            current_part += f"\n  Failure: {current_reasoning}"
+        history_parts.append(current_part)
+        failure_context = "\n\n".join(history_parts) or None
+
+        workspace_id, mas_id, _ = session_key
+        gen_out = self._options_generation.generate_options(
+            sess.issues,
+            sess.content_text or "",
+            agent_names=getattr(sess, "agent_names", None),
+            fabric_node_base_url=settings.cfn_url,
+            workspace_id=workspace_id,
+            mas_id=mas_id,
+
+            failure_context=failure_context,
+        )
+        new_options = gen_out.options_per_issue
+
+        runner, new_sess, messages = self.start_negotiation(
+            sess.issues,
+            new_options,
+            sess.participants,
+            sess.session_id,
+            n_steps=sess.n_steps,
+        )
+        new_sess.content_text = sess.content_text
+        new_sess.agents_negotiating = sess.agents_negotiating
+        new_sess.agent_names = getattr(sess, "agent_names", None)
+        new_sess.retry_history = sess.retry_history
+
+        self._sessions[session_key] = (runner, new_sess, retry_count + 1)
+        logger.warning(
+            "RETRY options_after session_id=%s attempt=%d %s",
+            sess.session_id,
+            retry_count + 1,
+            {iss: opts for iss, opts in new_options.items()},
+        )
+        logger.info(
+            "_run_retry complete session_id=%s attempt=%d issues=%d",
+            sess.session_id,
+            retry_count + 1,
+            len(new_options),
+        )
+        return messages
 
     def discover_and_generate(
         self,
@@ -518,7 +599,9 @@ class SemanticNegotiationPipeline:
                     sess.sstp_message_trace.insert(0, initiate_message)
                 sess.content_text = content_text
                 sess.agents_negotiating = [a["id"] for a in (agents_raw or [])]
-                self._sessions[session_key] = (runner, sess)
+                sess.agent_names = agent_names
+                sess.retry_history = []
+                self._sessions[session_key] = (runner, sess, 0)
                 logger.info(
                     "execute step3 negotiation_started session_id=%s n_steps=%d",
                     session_id,
@@ -547,7 +630,7 @@ class SemanticNegotiationPipeline:
                 len(agent_replies or []),
             )
             try:
-                runner, sess = self._sessions[session_key]
+                runner, sess, retry_count = self._sessions[session_key]
             except KeyError as exc:
                 raise SemanticNegotiationSessionNotFoundError(session_id) from exc
 
@@ -595,7 +678,6 @@ class SemanticNegotiationPipeline:
             session_id,
             status,
         )
-        del self._sessions[session_key]
         participant_id_by_name = {p.name: p.id for p in sess.participants}
 
         # ── Step 4: Semantic alignment validation ─────────────────────────
@@ -613,7 +695,8 @@ class SemanticNegotiationPipeline:
                 options_per_issue=sess.options_per_issue,
                 participants=sess.participants,
                 n_steps=sess.n_steps,
-            )
+            ),
+            status=status,
         )
         if validation is not None:
             logger.info(
@@ -632,6 +715,127 @@ class SemanticNegotiationPipeline:
                 "execute step4 alignment_validation skipped session_id=%s", session_id
             )
 
+        validation_dict = {
+            "needs_intervention": validation.needs_intervention,
+            "should_retry": validation.should_retry,
+            "severity": validation.severity,
+            "alignment_score": validation.alignment_score,
+            "cognitive_alignment": validation.cognitive_alignment,
+            "agreement_coherence": validation.agreement_coherence,
+            "failure_modes": validation.failure_modes,
+            "timed_out": validation.timed_out,
+            "cross_issue_conflicts": validation.cross_issue_conflicts,
+            "reasoning": validation.reasoning,
+            "recommendation": validation.recommendation,
+            "heuristic_scores": (
+                dataclasses.asdict(validation.heuristic_scores)
+                if validation.heuristic_scores is not None else None
+            ),
+        } if validation is not None else None
+
+        # ── Step 4b: Retry if SAV recommends it and budget remains ────────
+        if self._should_retry(validation, retry_count):
+            attempt_record = {
+                "attempt": retry_count + 1,
+                "options_per_issue": sess.options_per_issue,
+                "final_agreement": (
+                    [{"issue_id": o.issue_id, "chosen_option": o.chosen_option}
+                     for o in result.agreement]
+                    if result.agreement else None
+                ),
+                "validation": validation_dict,
+            }
+            sess.retry_history.append(attempt_record)
+            logger.warning(
+                "RETRY TRIGGERED session_id=%s attempt=%d/%d "
+                "severity=%s score=%.3f cognitive=%.3f coherence=%.3f "
+                "failure_modes=%s reasoning=%r",
+                session_id,
+                retry_count + 1,
+                self._alignment_validator._config.retry_max_attempts,
+                validation.severity if validation else "?",
+                validation.alignment_score if validation else 0.0,
+                validation.cognitive_alignment if validation else 0.0,
+                validation.agreement_coherence if validation else 0.0,
+                validation.failure_modes if validation else [],
+                (validation.reasoning or "")[:120] if validation else "",
+            )
+            logger.info(
+                "RETRY options_before session_id=%s %s",
+                session_id,
+                {iss: opts for iss, opts in (sess.options_per_issue or {}).items()},
+            )
+            messages = self._run_retry(session_key, sess, retry_count, validation)
+            return {
+                "status": "ongoing",
+                "session_id": session_id,
+                "round": 1,
+                "messages": messages,
+            }
+
+        # No more retries — commit and clean up.
+        if validation is not None and validation.should_retry and retry_count >= self._alignment_validator._config.retry_max_attempts:
+            logger.warning(
+                "RETRY BUDGET EXHAUSTED session_id=%s attempts_used=%d severity=%s score=%.3f cognitive=%.3f coherence=%.3f",
+                session_id,
+                retry_count,
+                validation.severity,
+                validation.alignment_score,
+                validation.cognitive_alignment,
+                validation.agreement_coherence,
+            )
+        elif validation is not None and not validation.should_retry:
+            logger.info(
+                "NO RETRY NEEDED session_id=%s severity=%s score=%.3f needs_intervention=%s",
+                session_id,
+                validation.severity,
+                validation.alignment_score,
+                validation.needs_intervention,
+            )
+
+        del self._sessions[session_key]
+        retry_history: list = getattr(sess, "retry_history", [])
+
+        # Log the full retry outcome once we have the final validation result.
+        # Shows whether the retry loop actually improved semantic alignment.
+        if retry_count > 0 and validation is not None and retry_history:
+            _SEV_RANK = {"high": 2, "medium": 1, "low": 0}
+            first_val = retry_history[0].get("validation") or {}
+            initial_sev = (first_val.get("severity") or "?").lower()
+            initial_score = first_val.get("alignment_score") or 0.0
+            final_sev = (validation.severity or "?").lower()
+            final_score = validation.alignment_score
+
+            rank_before = _SEV_RANK.get(initial_sev, -1)
+            rank_after  = _SEV_RANK.get(final_sev,   -1)
+            if rank_after < rank_before:
+                verdict = "SEVERITY_IMPROVED"
+            elif rank_after == rank_before and final_score > initial_score:
+                verdict = "SCORE_IMPROVED"
+            elif rank_after == rank_before:
+                verdict = "UNCHANGED"
+            else:
+                verdict = "WORSENED"
+
+            # Build progression string across all attempts + final
+            attempt_scores = [
+                f"{(att.get('validation') or {}).get('severity','?').upper()}"
+                f"/{(att.get('validation') or {}).get('alignment_score', 0.0):.3f}"
+                for att in retry_history
+            ]
+            progression = "  →  ".join(attempt_scores) + f"  →  {final_sev.upper()}/{final_score:.3f} [final]"
+
+            logger.warning(
+                "RETRY OUTCOME session_id=%s attempts=%d verdict=%s "
+                "initial=%s/%.3f  final=%s/%.3f  progression: %s",
+                session_id,
+                retry_count,
+                verdict,
+                initial_sev.upper(), initial_score,
+                final_sev.upper(), final_score,
+                progression,
+            )
+
         try:
             commit = self.build_commit_envelope(
                 result,
@@ -642,6 +846,8 @@ class SemanticNegotiationPipeline:
                 content_text=sess.content_text,
                 agents_negotiating=sess.agents_negotiating,
                 options_per_issue=sess.options_per_issue,
+                validation=validation_dict,
+                retry_history=retry_history,
             )
         except (KeyError, ValueError, TypeError) as exc:
             self._save_error_commit_to_disk(session_id, str(exc))
@@ -656,21 +862,8 @@ class SemanticNegotiationPipeline:
             "issues": sess.issues,
             "participant_id_by_name": participant_id_by_name,
             "final_result": commit,
-            "validation": {
-                "needs_intervention": validation.needs_intervention,
-                "severity": validation.severity,
-                "alignment_score": validation.alignment_score,
-                "cognitive_alignment": validation.cognitive_alignment,
-                "failure_modes": validation.failure_modes,
-                "timed_out": validation.timed_out,
-                "cross_issue_conflicts": validation.cross_issue_conflicts,
-                "reasoning": validation.reasoning,
-                "recommendation": validation.recommendation,
-                "heuristic_scores": (
-                    dataclasses.asdict(validation.heuristic_scores)
-                    if validation.heuristic_scores is not None else None
-                ),
-            } if validation is not None else None,
+            "validation": validation_dict,
+            "retry_history": retry_history,
         }
 
     def build_commit_envelope(
@@ -684,6 +877,8 @@ class SemanticNegotiationPipeline:
         content_text: str = "",
         agents_negotiating: List[str] | None = None,
         options_per_issue: Dict[str, List[str]] | None = None,
+        validation: dict | None = None,
+        retry_history: list | None = None,
     ) -> Any:
         """Build an ``SSTPCommitMessage`` from a terminal :class:`NegotiationResult`.
 
@@ -833,6 +1028,8 @@ class SemanticNegotiationPipeline:
                     "session_id": session_id,
                     "total_rounds": total_rounds,
                     "trace": trace.model_dump(mode="json", exclude={"final_agreement"}),
+                    **({"validation": validation, "retry_history": retry_history or []}
+                       if validation else {}),
                 },
                 state_object_id=session_id,
                 parent_ids=[message_id],

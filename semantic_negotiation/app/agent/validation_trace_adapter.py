@@ -66,25 +66,37 @@ def _is_wire_negotiate_message(msg: Any) -> bool:
     )
 
 
+def _is_cfn_minimal_envelope(msg: Any) -> bool:
+    """True for cfn-svc minimal SSTP envelopes: wire format but sao_response absent,
+    and action lives in payload rather than at the top level.
+    buildAgentReplyEnvelopes in cfn-svc produces these — crucially, it omits the
+    ``origin`` field entirely, which distinguishes them from server respond messages."""
+    if not _is_wire_negotiate_message(msg):
+        return False
+    # Server messages (respond, initiate) always carry a populated ``origin`` dict.
+    # cfn-svc buildAgentReplyEnvelopes never sets ``origin``.
+    if msg.get("origin"):
+        return False
+    sc = msg.get("semantic_context") or {}
+    if "sao_response" in sc:
+        return False
+    payload = msg.get("payload") or {}
+    return "action" in payload
+
+
 def _is_bare_cfn_agent_reply(msg: Any) -> bool:
-    """Flat agent dict from CFN ``/decide`` (``action`` at top level, no SSTP envelope)."""
-    return isinstance(msg, dict) and "action" in msg and not _is_wire_negotiate_message(msg)
+    """Flat agent dict from CFN ``/decide`` (action at top level) OR cfn-svc minimal
+    SSTP envelope (kind=negotiate but no sao_response; action inside payload)."""
+    if isinstance(msg, dict) and "action" in msg and not _is_wire_negotiate_message(msg):
+        return True
+    return _is_cfn_minimal_envelope(msg)
 
 
-def _last_server_standing_offer(messages: List[Dict[str, Any]], before_index: int) -> Dict[str, str]:
-    """Latest ``current_offer`` from a prior server ``respond`` message (for wrapped ``accept``)."""
-    for m in reversed(messages[:before_index]):
-        if not isinstance(m, dict):
-            continue
-        if (m.get("origin") or {}).get("actor_id") != "negotiation-server":
-            continue
-        payload = m.get("payload") or {}
-        if payload.get("action") != "respond":
-            continue
-        co = payload.get("current_offer")
-        if isinstance(co, dict) and co:
-            return {str(k): str(v) for k, v in co.items()}
-    return {}
+def _normalize_cfn_reply(msg: Dict[str, Any]) -> Dict[str, Any]:
+    """Flatten cfn-svc minimal envelopes so _wrap_bare_agent_reply sees a flat dict."""
+    if _is_cfn_minimal_envelope(msg):
+        return dict(msg.get("payload") or {})
+    return msg
 
 
 def _participant_name(participants: List[Any], participant_id: str) -> str:
@@ -161,26 +173,11 @@ def _synthetic_initiate_message(
     )
 
 
-def _sao_response_for_bare_action(
-    action: str, bare: Dict[str, Any], last_server_offer: Dict[str, str]
-) -> SAOResponse:
-    if action == "accept":
-        outcome = dict(last_server_offer) if last_server_offer else {}
-        return SAOResponse(response=ResponseType.ACCEPT_OFFER, outcome=outcome)
-    if action == "counter_offer":
-        offer = bare.get("offer")
-        outcome = offer if isinstance(offer, dict) else {}
-        # Same encoding as evaluation agents: proposed offer on REJECT_OFFER path.
-        return SAOResponse(response=ResponseType.REJECT_OFFER, outcome=outcome)
-    return SAOResponse(response=ResponseType.REJECT_OFFER, outcome=None)
-
-
 def _wrap_bare_agent_reply(
     bare: Dict[str, Any],
     *,
     session_id: str,
     participants: List[Any],
-    last_server_offer: Dict[str, str],
 ) -> Dict[str, Any]:
     """Wrap a CFN bare ``AgentReply`` dict in a full SSTP envelope for validation.
 
@@ -193,17 +190,15 @@ def _wrap_bare_agent_reply(
     # Copy action, offer, reason, round, etc. — only participant_id is re-slotted.
     inner = {k: v for k, v in bare.items() if k != "participant_id"}
     inner["participant_id"] = participant_id
-    sao = _sao_response_for_bare_action(action, bare, last_server_offer)
-    return _negotiate_wire_dict(
-        uuid_key_prefix=f"{session_id}:{participant_id}",
-        origin_actor_id=_slug(agent_name),
-        tenant_id=session_id,
-        semantic_context=NegotiateSemanticContext(
-            session_id=session_id,
-            sao_response=sao,
-        ),
-        payload=inner,
-    )
+    payload_str = json.dumps(inner, sort_keys=True)
+    message_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{session_id}:{participant_id}:{payload_str}"))
+    return {
+        "kind": "negotiate",
+        "message_id": message_id,
+        "origin": {"actor_id": _slug(agent_name), "tenant_id": session_id},
+        "semantic_context": {"session_id": session_id},
+        "payload": inner,
+    }
 
 
 def adapt_sstp_trace_for_alignment_validation(
@@ -255,10 +250,9 @@ def adapt_sstp_trace_for_alignment_validation(
             continue
         try:
             out[i] = _wrap_bare_agent_reply(
-                m,
+                _normalize_cfn_reply(m),
                 session_id=session_id,
                 participants=participants,
-                last_server_offer=_last_server_standing_offer(out, i),
             )
             adapted = True
         except Exception as exc:

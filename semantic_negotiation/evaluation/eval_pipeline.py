@@ -947,6 +947,12 @@ def _aggregate(samples: List[Dict[str, Any]], label: str = "overall") -> Dict[st
     )
 
     avg_pipeline_recall = round(sum(s["pipeline_recall"] for s in samples) / n, 4)
+    avg_pipeline_precision = round(sum(s["intent_precision"] for s in samples) / n, 4)
+    avg_pipeline_f1 = (
+        round(2 * avg_pipeline_precision * avg_pipeline_recall / (avg_pipeline_precision + avg_pipeline_recall), 4)
+        if (avg_pipeline_precision + avg_pipeline_recall) > 0
+        else 0.0
+    )
 
     # Full coverage: sample where ALL scored issues are fully covered
     full_coverage_rate = round(
@@ -969,6 +975,8 @@ def _aggregate(samples: List[Dict[str, Any]], label: str = "overall") -> Dict[st
         "n_samples": n,
         "n_scored_samples": n_scored_samples,
         "avg_pipeline_recall": avg_pipeline_recall,
+        "avg_pipeline_precision": avg_pipeline_precision,
+        "avg_pipeline_f1": avg_pipeline_f1,
         "micro_precision": micro_prec,
         "micro_recall": micro_rec,
         "micro_f1": micro_f1,

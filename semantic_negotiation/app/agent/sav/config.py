@@ -18,6 +18,16 @@ def _setting(name: str, default: float) -> float:
         return default
 
 
+def _setting_list(name: str, default: list) -> list:
+    """Read a list setting from Settings, fall back to *default*."""
+    try:
+        from app.config.settings import settings
+        val = getattr(settings, name, default)
+        return list(val) if val is not None else default
+    except Exception:
+        return default
+
+
 @dataclass
 class ValidationConfig:
     """Thresholds and drift definitions for the semantic alignment validation pipeline.
@@ -30,9 +40,10 @@ class ValidationConfig:
     # ── Alignment thresholds ──────────────────────────────────────────────────
     score_aligned: float = field(default_factory=lambda: _setting("validation_score_aligned", 0.75))
     score_intervention: float = field(default_factory=lambda: _setting("validation_score_intervention", 0.6))
-    cognitive_intervention: float = field(default_factory=lambda: _setting("validation_cognitive_intervention", 0.5))
+    cognitive_intervention: float = field(default_factory=lambda: _setting("validation_cognitive_intervention", 0.4))
     score_high_severity: float = field(default_factory=lambda: _setting("validation_score_high_severity", 0.4))
-    score_medium_severity: float = field(default_factory=lambda: _setting("validation_score_medium_severity", 0.75))
+    score_medium_severity: float = field(default_factory=lambda: _setting("validation_score_medium_severity", 0.70))
+    agreement_coherence_medium_threshold: float = field(default_factory=lambda: _setting("validation_agreement_coherence_medium_threshold", 0.85))
 
     # ── Critical-issue penalty caps ───────────────────────────────────────────
     constraint_fit_critical: float = field(default_factory=lambda: _setting("validation_constraint_fit_critical", 0.25))
@@ -53,6 +64,12 @@ class ValidationConfig:
     consistency_reversal_penalty: float = field(default_factory=lambda: _setting("validation_consistency_reversal_penalty", 0.35))
     focus_drift_threshold: float = field(default_factory=lambda: _setting("validation_focus_drift_threshold", 0.25))
     consistency_drift_threshold: float = field(default_factory=lambda: _setting("validation_consistency_drift_threshold", 0.4))
+
+    # ── Retry ─────────────────────────────────────────────────────────────────
+    retry_max_attempts: int = field(default_factory=lambda: int(_setting("retry_max_attempts", 3)))
+    retry_eligible_failure_modes: list = field(
+        default_factory=lambda: _setting_list("retry_eligible_failure_modes", ["SM-1", "SM-2", "SM-4"])
+    )
 
     # ── High-stakes detection ─────────────────────────────────────────────────
     high_stakes_keywords: frozenset = field(

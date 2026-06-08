@@ -179,7 +179,10 @@ class SemanticAlignmentEvaluator:
 
         if alignment_score < cfg.score_high_severity and cognitive_alignment < cfg.cognitive_intervention:
             severity = Severity.HIGH
-        elif alignment_score < cfg.score_medium_severity or cognitive_alignment < cfg.cognitive_intervention:
+        elif alignment_score < cfg.score_medium_severity or (
+            cognitive_alignment < cfg.cognitive_intervention
+            and agreement_coherence < cfg.agreement_coherence_medium_threshold
+        ):
             severity = Severity.MEDIUM
         else:
             severity = Severity.LOW

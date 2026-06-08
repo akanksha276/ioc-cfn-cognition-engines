@@ -279,7 +279,7 @@ class TestRunHeuristic:
 
     def test_escalate_recommendation_when_high_severity(self):
         """Patch ACSE evaluator to return high severity and check recommendation."""
-        from app.agent.acse.models import AlignmentEvaluation, Severity
+        from app.agent.sav.models import AlignmentEvaluation, IssueEvaluation, Severity
 
         bad_eval = AlignmentEvaluation(
             aligned=False,
@@ -295,7 +295,7 @@ class TestRunHeuristic:
             "app.agent.semantic_alignment_validation_pipeline.get_llm_provider",
             return_value=None,
         ), patch(
-            "app.agent.acse.evaluator.SemanticAlignmentEvaluator.evaluate",
+            "app.agent.sav.evaluator.SemanticAlignmentEvaluator.evaluate",
             return_value=bad_eval,
         ):
             pipeline = SemanticAlignmentValidationPipeline()
@@ -382,6 +382,107 @@ class TestSstpExtraction:
         _, _, _, neg_trace = self._extract(trace)
         assert len(neg_trace.rounds) >= 1
         assert neg_trace.rounds[0].offer == final_offer
+
+
+# ── should_retry flag ─────────────────────────────────────────────────────────
+
+
+class TestShouldRetry:
+    """Tests for the should_retry flag in ValidationResult.
+
+    should_retry is True iff:
+      - needs_intervention is True (severity != LOW and not timed out), AND
+      - at least one failure_mode starts with a retry-eligible code (default: SM-1, SM-2, SM-4)
+    """
+
+    def _make_eval(self, severity, failure_modes):
+        from app.agent.sav.models import AlignmentEvaluation, Severity
+
+        return AlignmentEvaluation(
+            aligned=severity == Severity.LOW,
+            alignment_score=0.85 if severity == Severity.LOW else 0.35,
+            issue_scores={},
+            cognitive_alignment=0.85 if severity == Severity.LOW else 0.35,
+            failure_modes=failure_modes,
+            needs_intervention=severity != Severity.LOW,
+            severity=severity,
+            reasoning="Test.",
+        )
+
+    def _run(self, eval_result, config=None, timed_out=False):
+        trace = _minimal_agreed_trace()
+        if timed_out:
+            trace[-1]["semantic_context"]["sao_response"]["response"] = "REJECT_OFFER"
+            trace[-1]["semantic_context"]["sao_response"]["outcome"] = None
+        with patch(
+            "app.agent.semantic_alignment_validation_pipeline.get_llm_provider",
+            return_value=None,
+        ), patch(
+            "app.agent.sav.evaluator.SemanticAlignmentEvaluator.evaluate",
+            return_value=eval_result,
+        ):
+            pipeline = SemanticAlignmentValidationPipeline(config=config)
+            return pipeline.run(trace, agreed=not timed_out)
+
+    def test_true_when_medium_with_sm1(self):
+        from app.agent.sav.models import Severity
+
+        result = self._run(self._make_eval(Severity.MEDIUM, ["SM-1: budget: ambiguous"]))
+        assert result.should_retry is True
+
+    def test_true_when_high_with_sm2(self):
+        from app.agent.sav.models import Severity
+
+        result = self._run(self._make_eval(Severity.HIGH, ["SM-2: timeline: violated"]))
+        assert result.should_retry is True
+
+    def test_false_when_low_severity(self):
+        from app.agent.sav.models import Severity
+
+        result = self._run(self._make_eval(Severity.LOW, []))
+        assert result.should_retry is False
+
+    def test_true_when_medium_with_sm4(self):
+        from app.agent.sav.models import Severity
+
+        result = self._run(self._make_eval(Severity.MEDIUM, ["SM-4: firmware cadence: unresolved"]))
+        assert result.should_retry is True
+
+    def test_false_when_no_retry_eligible_failure_mode(self):
+        """SM-3 and SM-5 are not in the default retry-eligible list (SM-1, SM-2, SM-4)."""
+        from app.agent.sav.models import Severity
+
+        result = self._run(self._make_eval(Severity.HIGH, ["SM-3: cross-issue conflict"]))
+        assert result.should_retry is False
+
+    def test_false_when_timed_out(self):
+        """Timed-out traces set needs_intervention=False, so retry never triggers."""
+        from app.agent.sav.models import Severity
+
+        result = self._run(
+            self._make_eval(Severity.HIGH, ["SM-1: budget: ambiguous"]), timed_out=True
+        )
+        assert result.should_retry is False
+
+    def test_any_matching_failure_mode_is_sufficient(self):
+        """should_retry=True if any failure mode matches — not all need to."""
+        from app.agent.sav.models import Severity
+
+        result = self._run(
+            self._make_eval(Severity.MEDIUM, ["SM-3: coherence", "SM-2: timeline: violated"])
+        )
+        assert result.should_retry is True
+
+    def test_custom_retry_codes_respected(self):
+        """ValidationConfig.retry_eligible_failure_modes overrides the default list."""
+        from app.agent.sav.models import Severity
+        from app.agent.sav import ValidationConfig
+
+        config = ValidationConfig(retry_eligible_failure_modes=["SM-3"])
+        result = self._run(
+            self._make_eval(Severity.HIGH, ["SM-3: cross-issue conflict"]), config=config
+        )
+        assert result.should_retry is True
 
 
 # ── run() — fixture-based smoke tests ────────────────────────────────────────
