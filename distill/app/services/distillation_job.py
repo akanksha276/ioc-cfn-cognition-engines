@@ -593,6 +593,11 @@ async def execute_distillation_run(
             if agent_id:
                 ok_body["agent_id"] = agent_id
             await _send_callback(http, callback_url, ok_body)
+            logger.info(
+                "[CoDi distill] complete | op=%s workspace=%s mas=%s "
+                "codin_nodes=%d anchor_links=%d updated_edges=%d",
+                operation_id, wid, mid, added_nodes, added_anchor_links, updated_edges,
+            )
     except Exception as run_exc:
         logger.exception("[CoDi distill] run failed | op=%s", operation_id)
         try:
