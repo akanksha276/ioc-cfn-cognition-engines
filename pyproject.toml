@@ -20,6 +20,7 @@ packages = [
     { include = "common" },
     { include = "ingestion" },
     { include = "evidence" },
+    { include = "distill" },
     { include = "caching" },
     { include = "gateway" },
     { include = "protocol" },
@@ -102,6 +103,7 @@ testpaths = [
     "evidence/tests",
     "caching/tests",
     "semantic_negotiation/tests",
+    "distill/tests",
     "tests",
 ]
 python_files = "test_*.py"

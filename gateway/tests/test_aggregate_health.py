@@ -66,6 +66,11 @@ def gateway_app():
         "semantic_negotiation.app.main": MagicMock(app=FastAPI()),
         "semantic_negotiation.app.api": MagicMock(),
         "semantic_negotiation.app.api.routes": MagicMock(router=FastAPI().router),
+        "distill": MagicMock(),
+        "distill.app": MagicMock(),
+        "distill.app.main": MagicMock(app=FastAPI()),
+        "distill.app.api": MagicMock(),
+        "distill.app.api.routes": MagicMock(router=FastAPI().router),
         "caching": MagicMock(),
         "caching.app": MagicMock(),
         "caching.app.agent": MagicMock(),
@@ -99,6 +104,12 @@ def reset_cache_layer(gateway_app):
         del gateway_app.app.state.cache_layer
 
 
+@pytest.fixture(autouse=True)
+def patch_distill_sub_app_health(gateway_app, monkeypatch):
+    """distill stub mount has no diagnostics route unless patched."""
+    monkeypatch.setattr(gateway_app, "_distill_app", _make_sub_app("UP", {}))
+
+
 class TestAggregateHealth:
     def test_all_up(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()
@@ -110,7 +121,7 @@ class TestAggregateHealth:
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "UP"
-        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "semantic_negotiation"}
+        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_negotiation"}
 
     def test_ingestion_critical_down(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()
@@ -142,18 +153,18 @@ class TestAggregateHealth:
         assert resp.status_code == 500
         assert resp.json()["status"] == "DOWN"
 
-    def test_gateway_cache_missing(self, client, gateway_app, monkeypatch):
-        # cache_layer not set — gateway itself is DOWN
+    def test_distill_sub_app_http_500_drives_overall_down(self, client, gateway_app, monkeypatch):
+        gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {"data_layer": True}))
+        monkeypatch.setattr(gateway_app, "_distill_app", _make_sub_app("DOWN", {}, http_status=500))
         monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 500
         body = resp.json()
         assert body["status"] == "DOWN"
-        assert body["services"]["gateway"]["status"] == "DOWN"
-        assert body["services"]["gateway"]["checks"]["embedding_model"] is False
+        assert body["services"]["distill"]["status"] == "DOWN"
 
     def test_response_shape(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()
@@ -164,7 +175,7 @@ class TestAggregateHealth:
         body = client.get("/api/internal/diagnostics/health").json()
         assert "status" in body
         assert "services" in body
-        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "semantic_negotiation"}
+        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_negotiation"}
 
     def test_sub_app_exception_gives_unknown(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()

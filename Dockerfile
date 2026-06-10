@@ -101,6 +101,7 @@ COPY --chown=1000:1000 common/                 /app/common/
 COPY --chown=1000:1000 gateway/app/            /app/gateway/app/
 COPY --chown=1000:1000 ingestion/app/          /app/ingestion/app/
 COPY --chown=1000:1000 evidence/app/           /app/evidence/app/
+COPY --chown=1000:1000 distill/app/            /app/distill/app/
 COPY --chown=1000:1000 semantic_negotiation/   /app/semantic_negotiation/
 COPY --chown=1000:1000 protocol/               /app/protocol/
 
@@ -108,7 +109,7 @@ RUN adduser --disabled-password --gecos "" --uid 1000 app 2>/dev/null || true
 
 USER app
 
-# Single process: unified app mounts ingestion and evidence; one port (9004 per Confluence)
+# Single process: unified app mounts ingestion, evidence, distill; one port (9004 per Confluence)
 ENV PYTHONPATH=/app
 EXPOSE 9004
 WORKDIR /app
