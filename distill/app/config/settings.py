@@ -22,7 +22,7 @@ class Settings:
     CODI_GRAPH_UPDATE_SEGMENT: str = (os.getenv("CODI_GRAPH_UPDATE_SEGMENT") or "update").strip().strip("/") or "update"
     CODI_GRAPH_UPDATE_DESCRIPTOR: str = (os.getenv("CODI_GRAPH_UPDATE_DESCRIPTOR") or "Cognition Distillation").strip()
     # §3 — server-side distillation controls (async /distillation/run; clients cannot override).
-    CODI_MIN_EDGES: int = int(os.getenv("CODI_MIN_EDGES", "10"))
+    CODI_MIN_RELATIONS: int = int(os.getenv("CODI_MIN_RELATIONS", "10"))
     # CFN distillation/read filters (see ioc-cfn-svc graph/distillation/read).
     CODI_DISTILL_STATUS_FILTER: str = os.getenv("CODI_DISTILL_STATUS_FILTER", "")
     CODI_RETURN_MISSING_DISTILL_STATUS: bool = _env_bool("CODI_RETURN_MISSING_DISTILL_STATUS", True)

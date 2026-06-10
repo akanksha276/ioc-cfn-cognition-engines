@@ -148,7 +148,7 @@ async def _distill_one_batch_payload(
     request_id: str,
 ) -> tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Returns (new_concept_dict, list of relation payloads [edge patches..., new anchor→CoDiN], batch_debug).
+    Returns (new_concept_dict, list of relation payloads [relation patches..., new anchor→CoDiN], batch_debug).
     Relations match CFN ``/graph/update``: ``id``, ``node_ids``, ``relationship``, ``attributes``,
     and ``internal_attributes`` (``distill_status`` + ``owner`` for distillation/read filters).
     """
@@ -266,7 +266,7 @@ async def _put_json(client: httpx.AsyncClient, url: str, payload: Dict[str, Any]
 
 
 def _normalize_relation_dict(rel: Dict[str, Any]) -> Dict[str, Any]:
-    """Align memory-service ``relation`` with CoDi/CFN ``relationship`` on edge dicts."""
+    """Align memory-service ``relation`` with CoDi/CFN ``relationship`` on relation dicts."""
     out = dict(rel)
     rel_label = out.get("relationship")
     if rel_label is None or (isinstance(rel_label, str) and not rel_label.strip()):
@@ -328,10 +328,10 @@ def _coerce_distillation_read_lists(raw: Dict[str, Any]) -> tuple[List[Dict[str,
 
 def _relations_cnt_gte_filter() -> int:
     """Read at call time so .env changes apply without re-importing Settings."""
-    raw = os.getenv("CODI_MIN_EDGES")
+    raw = os.getenv("CODI_MIN_RELATIONS")
     if raw is not None and str(raw).strip():
         return int(raw)
-    return int(settings.CODI_MIN_EDGES)
+    return int(settings.CODI_MIN_RELATIONS)
 
 
 def _distillation_read_request_body(header: Header, request_id: str) -> Dict[str, Any]:
@@ -435,9 +435,9 @@ async def execute_distillation_run(
 
         mutation_concepts: List[Dict[str, Any]] = []
         mutation_relations: List[Dict[str, Any]] = []
-        added_nodes = 0
+        added_concepts = 0
         added_anchor_links = 0
-        updated_edges = 0
+        updated_relations = 0
 
         if not anchor_ids:
             records_n = len(raw.get("records") or []) if isinstance(raw, dict) else 0
@@ -445,7 +445,7 @@ async def execute_distillation_run(
                 "[CoDi distill] no anchors from graph read | request_id=%s "
                 "parsed_concepts=%d parsed_relations=%d records=%d "
                 "filters.relations_cnt_gte=%d distill_status=%r owner=%s "
-                "(if manual curl used relations_cnt_gte=1, set CODI_MIN_EDGES=1 in .env)",
+                "(if manual curl used relations_cnt_gte=1, set CODI_MIN_RELATIONS=1 in .env)",
                 request_id,
                 len(concepts_raw),
                 len(relations_raw),
@@ -486,18 +486,18 @@ async def execute_distillation_run(
                     )
                     mutation_concepts.append(new_c)
                     mutation_relations.extend(rel_ops)
-                    added_nodes += 1
+                    added_concepts += 1
                     added_anchor_links += 1
-                    updated_edges += len(batch)
+                    updated_relations += len(batch)
                     for r in batch:
                         rid = str(r.get("id", "")).strip()
                         if rid:
                             processed_relation_ids.add(rid)
 
         metadata = {
-            "added_distilled_nodes": added_nodes,
+            "added_distilled_concepts": added_concepts,
             "added_distilled_relations": added_anchor_links,
-            "updated_relations": updated_edges,
+            "updated_relations": updated_relations,
             "operation_id": operation_id,
             "distill_run_at": distill_run_at,
             "distill_mode": settings.CODI_DIST_MODE,
@@ -584,9 +584,9 @@ async def execute_distillation_run(
                 "distill_run_at": distill_run_at,
                 "distill_mode": settings.CODI_DIST_MODE,
                 "meta": {
-                    "added_distilled_nodes": added_nodes,
+                    "added_distilled_concepts": added_concepts,
                     "added_distilled_relations": added_anchor_links,
-                    "updated_relations": updated_edges,
+                    "updated_relations": updated_relations,
                     "distill_mode": settings.CODI_DIST_MODE,
                 },
             }
@@ -595,8 +595,8 @@ async def execute_distillation_run(
             await _send_callback(http, callback_url, ok_body)
             logger.info(
                 "[CoDi distill] complete | op=%s workspace=%s mas=%s "
-                "codin_nodes=%d anchor_links=%d updated_edges=%d",
-                operation_id, wid, mid, added_nodes, added_anchor_links, updated_edges,
+                "codin_concepts=%d anchor_links=%d updated_relations=%d",
+                operation_id, wid, mid, added_concepts, added_anchor_links, updated_relations,
             )
     except Exception as run_exc:
         logger.exception("[CoDi distill] run failed | op=%s", operation_id)

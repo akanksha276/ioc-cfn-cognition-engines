@@ -17,7 +17,7 @@ from distill.app.services import distillation_job as job_mod
 async def test_execute_posts_mutation_then_callback_success(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     monkeypatch.setattr(settings_mod.settings, "CFN_MUTATION_APPLY_URL", None)
-    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
+    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_RELATIONS", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_DIST_MODE", "Summary")
@@ -139,7 +139,7 @@ async def test_execute_posts_mutation_then_callback_success(monkeypatch):
 async def test_execute_skips_callback_when_mutation_non_2xx(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     monkeypatch.setattr(settings_mod.settings, "CFN_MUTATION_APPLY_URL", None)
-    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
+    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_RELATIONS", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_DIST_MODE", "Summary")
