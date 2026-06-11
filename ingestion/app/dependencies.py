@@ -13,15 +13,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from common.cognition_engine import ModelConfig
-
-from .agent.ingest_data import IngestDataService
-from .agent.ingestion_ce import IngestionCognitionEngine
-from .agent.knowledge_processor import EmbeddingManager, KnowledgeProcessor
-from .agent.service import ConceptRelationshipExtractionService, TelemetryExtractionService
 from .config.settings import settings
+from .agent.ingest_data import IngestDataService
+from .agent.service import TelemetryExtractionService, ConceptRelationshipExtractionService
+from .agent.knowledge_processor import KnowledgeProcessor, EmbeddingManager
+from .agent.ingestion_ce import IngestionCognitionEngine
 from .data.mock_repo import MockDataRepository
-
+from common.cognition_engine import ModelConfig
 
 @lru_cache()
 def get_data_repository() -> MockDataRepository:

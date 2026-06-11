@@ -4,15 +4,18 @@
 
 """Unit tests for ingestion routes.py — all endpoints routed through IngestionCognitionEngine."""
 
+import json
+
+import pytest
+from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi.testclient import TestClient
-
-from ingestion.app.agent.ingestion_ce import IngestionCognitionEngine
+from ingestion.app.api import routes as api_routes
+from ingestion.app.main import app
 from ingestion.app.dependencies import (
     get_ingestion_cognition_engine,
 )
-from ingestion.app.main import app
+from ingestion.app.agent.ingestion_ce import IngestionCognitionEngine
 
 # ---------------------------------------------------------------------------
 # Shared stub results
@@ -81,6 +84,96 @@ def test_extraction_endpoint_delegates_to_ce():
         assert body["concepts"] == _STUB_INGEST_RESULT["concepts"]
     finally:
         app.dependency_overrides.clear()
+
+
+def test_otel_trace_span_rows_are_normalized_for_extraction():
+    records = api_routes._normalize_records_for_format(
+        [
+            {
+                "start_time": "2026-06-03T19:00:00.000000123Z",
+                "trace_id": "trace-1",
+                "span_id": "span-1",
+                "parent_span_id": "",
+                "name": "agent.reply",
+                "service_name": "openclaw",
+                "kind": 1,
+                "duration_nano": 2_500,
+                "status_code": 1,
+                "attributes": {"ioa_observe.span.kind": "agent"},
+                "events": [],
+                "links": [],
+                "resource": {"service.name": "openclaw"},
+            }
+        ],
+        "otel-trace",
+    )
+    assert records[0]["traceId"] == "trace-1"
+    assert records[0]["spanId"] == "span-1"
+    assert records[0]["startTime"][0] != 0
+
+
+def test_normalize_records_rejects_unsupported_format():
+    with pytest.raises(ValueError, match="Unsupported format"):
+        api_routes._normalize_records_for_format([], "unknown-format")
+
+
+@pytest.mark.asyncio
+async def test_extraction_task_callback_payload(monkeypatch):
+    calls = []
+
+    class _FakeResponse:
+        status_code = 200
+        text = ""
+
+    class _FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json):
+            calls.append({"url": url, "json": json})
+            return _FakeResponse()
+
+    monkeypatch.setattr(api_routes.httpx, "AsyncClient", _FakeAsyncClient)
+
+    request = api_routes.ExtractionRequest.model_validate(
+        {
+            **_EXTRACTION_BODY,
+            "taskCallbackUrl": "http://cfn-svc/api/internal/tasks/callback",
+        }
+    )
+    response = api_routes.ExtractionResponseModel(
+        header=request.header,
+        response_id=request.request_id,
+        concepts=_STUB_INGEST_RESULT["concepts"],
+        relations=[],
+    )
+
+    await api_routes._post_task_callback(
+        body=request,
+        status="success",
+        response=response,
+    )
+
+    assert len(calls) == 1
+    callback = calls[0]["json"]
+    assert calls[0]["url"] == "http://cfn-svc/api/internal/tasks/callback"
+    assert callback["workspace_id"] == "ws-1"
+    assert callback["mas_id"] == "mas-1"
+    assert callback["task_name"] == "otel-task"
+    assert callback["status"] == "success"
+    result = json.loads(callback["result"])
+    assert result["response_id"] == "req-1"
+    assert result["concepts"] == _STUB_INGEST_RESULT["concepts"]
+
+
+def test_run_otel_task_endpoint_removed():
+    assert all("runOtelTask" not in getattr(route, "path", "") for route in app.routes)
 
 
 def test_extraction_endpoint_returns_500_on_engine_error():

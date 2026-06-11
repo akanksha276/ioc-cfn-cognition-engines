@@ -1007,6 +1007,7 @@ class ConceptRelationshipExtractionService(AdapterSDK):
         # Step 4 – format into knowledge-cognition output schema
         # Extract session_time from the last record in the batch, keyed by format
         _session_time_key = {
+            "otel-trace": "recordedAt",
             "openclaw": "timestamp",
             "locomo": "session_date_time",
             "semneg": "dt_created",

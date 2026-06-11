@@ -4,12 +4,12 @@
 
 """Unit tests for IngestionCognitionEngine (ingestion_ce.py)."""
 
-from pathlib import Path
-from unittest.mock import MagicMock
-
 import pytest
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 from ingestion.app.agent.ingestion_ce import IngestionAction, IngestionCognitionEngine
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -115,6 +115,33 @@ async def test_ingest_runs_knowledge_processor():
 
     processor.process.assert_called_once()
     assert result.get("extra") == "processed"
+
+
+@pytest.mark.asyncio
+async def test_ingest_awaits_async_ingest_service_before_processing():
+    ingest_service = MagicMock()
+    ingest_service.ingest = AsyncMock(
+        return_value={
+            "concepts": _SAMPLE_CONCEPTS,
+            "relations": [],
+            "meta": {"records_processed": 1},
+        }
+    )
+    processor = MagicMock()
+    processor.process.side_effect = lambda result: result
+    engine = _make_engine(ingest_service=ingest_service, knowledge_processor=processor)
+
+    result = await engine.run(
+        IngestionAction.INGEST,
+        {"records": _SAMPLE_RECORDS, "format": "otel-trace", "request_id": "req-async"},
+    )
+
+    ingest_service.ingest.assert_awaited_once_with(_SAMPLE_RECORDS, "req-async", "otel-trace")
+    processor.process.assert_called_once()
+    processed_arg = processor.process.call_args.args[0]
+    assert isinstance(processed_arg, dict)
+    assert processed_arg["meta"]["records_processed"] == 1
+    assert result["concepts"] == _SAMPLE_CONCEPTS
 
 
 @pytest.mark.asyncio

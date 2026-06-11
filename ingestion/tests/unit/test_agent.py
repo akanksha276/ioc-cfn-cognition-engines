@@ -11,13 +11,14 @@ import asyncio
 import pytest
 
 from ingestion.app.agent.ingest_data import IngestDataService
-from ingestion.app.agent.knowledge_processor import (
-    FASTEMBED_AVAILABLE,
-    EmbeddingManager,
-    KnowledgeProcessor,
-    cosine_similarity,
-)
 from ingestion.app.agent.service import ConceptRelationshipExtractionService
+from ingestion.app.agent.knowledge_processor import (
+    KnowledgeProcessor,
+    EmbeddingManager,
+    cosine_similarity,
+    FASTEMBED_AVAILABLE,
+)
+
 
 # ---------------------------------------------------------------------------
 # ConceptRelationshipExtractionService
@@ -103,7 +104,11 @@ class TestConceptRelationshipExtractionService:
             )
 
     def test_non_empty_compact_payload_requires_llm(self):
-        svc = ConceptRelationshipExtractionService(mock_mode=False)
+        class NoLlmConceptService(ConceptRelationshipExtractionService):
+            def _has_llm(self):
+                return False
+
+        svc = NoLlmConceptService(mock_mode=False)
         with pytest.raises(RuntimeError, match="LLM is not configured"):
             asyncio.run(
                 svc.extract_concepts_and_relationships(
@@ -118,20 +123,26 @@ class TestConceptRelationshipExtractionService:
                 return True
 
             async def _llm_extract_concepts(self, compact_payload, system_prompt):
-                return [
-                    {"name": "agent_a", "type": "agent", "description": "Agent A"},
-                    {"name": "agent_b", "type": "agent", "description": "Agent B"},
-                ]
+                return (
+                    [
+                        {"name": "agent_a", "type": "agent", "description": "Agent A"},
+                        {"name": "agent_b", "type": "agent", "description": "Agent B"},
+                    ],
+                    None,
+                )
 
             async def _llm_extract_relationships(self, concepts, compact_payload, system_prompt):
-                return [
-                    {
-                        "source": "agent_a",
-                        "target": "agent_b",
-                        "relationship": "NEGOTIATES_WITH",
-                        "description": "Agents negotiated an outcome.",
-                    }
-                ]
+                return (
+                    [
+                        {
+                            "source": "agent_a",
+                            "target": "agent_b",
+                            "relationship": "NEGOTIATES_WITH",
+                            "description": "Agents negotiated an outcome.",
+                        }
+                    ],
+                    None,
+                )
 
         svc = StubConceptService()
         payload = [
@@ -304,6 +315,151 @@ class TestIngestDataService:
 
         assert result["knowledge_cognition_request_id"] == "req-rag-fail"
         assert result["rag_chunks"] == []
+
+
+# ---------------------------------------------------------------------------
+# Deep Observability adapter tests
+# ---------------------------------------------------------------------------
+
+
+class TestOtelTraceAdapter:
+    """Tests for otel-trace format handling."""
+
+    def test_filter_keeps_all_valid_span_kinds(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        filtered = adapter.filter_spans_otel_trace(sample_otel_trace_records)
+        assert len(filtered) == 7
+        kinds = {r["attributes"]["ioa_observe.span.kind"] for r in filtered}
+        assert kinds == {"workflow", "agent", "tool", "task"}
+
+    def test_filter_excludes_unknown_span_kinds(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        records = sample_otel_trace_records + [
+            {
+                "name": "unknown.span",
+                "attributes": {"ioa_observe.span.kind": "unknown"},
+                "resource": {},
+            }
+        ]
+        adapter = ExtractionAdapter()
+        filtered = adapter.filter_spans_otel_trace(records)
+        assert len(filtered) == 7
+
+    def test_extract_fields_span_names(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        names = [e["span_name"] for e in extracted]
+        assert names == [
+            "openclaw.request",
+            "session.start",
+            "openclaw.agent.turn",
+            "tool.sessions_spawn",
+            "tool.sessions_spawn",
+            "openclaw.llm.call",
+            "openclaw.message.sent",
+        ]
+
+    def test_extract_fields_agent_and_model(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        agent_turn = extracted[2]
+        assert agent_turn["agent_id"] == "main"
+        assert agent_turn["model"] == "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+    def test_extract_fields_tool_calls(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        tool_span_error = extracted[3]
+        assert tool_span_error["tool_calls"] == ["sessions_spawn"]
+        assert "tool_input" in tool_span_error
+        assert "tool_output" in tool_span_error
+
+        tool_span_success = extracted[4]
+        assert tool_span_success["tool_calls"] == ["sessions_spawn"]
+        assert "tool_input" in tool_span_success
+        assert "tool_output" in tool_span_success
+
+    def test_extract_fields_service_name(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        for entry in extracted:
+            assert entry["ServiceName"] == "openclaw-gateway"
+
+    def test_extract_fields_user_prompt(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        request_span = extracted[0]
+        assert "spawn two agents" in request_span["user_prompt"]
+
+    def test_extract_fields_completion(self, sample_otel_trace_records):
+        from ingestion.app.agent.adapters import ExtractionAdapter
+
+        adapter = ExtractionAdapter()
+        extracted = adapter.extract_important_fields_otel_trace(
+            sample_otel_trace_records
+        )
+        agent_turn = extracted[2]
+        assert "completion" in agent_turn
+        assert "Sunny Season Advocate" in agent_turn["completion"]
+
+    def test_ingest_otel_trace_format(self, sample_otel_trace_records):
+        """End-to-end: IngestDataService accepts otel-trace records."""
+
+        class StubConceptService:
+            def __init__(self):
+                self.last_payload = None
+
+            async def extract_concepts_and_relationships(
+                self, compact_payload, request_id=None, format_descriptor=None
+            ):
+                self.last_payload = compact_payload
+                return {
+                    "knowledge_cognition_request_id": request_id or "stub-id",
+                    "concepts": [],
+                    "relations": [],
+                    "descriptor": format_descriptor or "otel-trace",
+                    "meta": {
+                        "records_processed": len(compact_payload),
+                        "concepts_extracted": 0,
+                        "relations_extracted": 0,
+                    },
+                }
+
+        stub = StubConceptService()
+        ingest = IngestDataService(stub, enable_rag_ingest=False)
+        result = asyncio.run(
+            ingest.ingest(
+                sample_otel_trace_records,
+                request_id="deep-obs-1",
+                format_descriptor="otel-trace",
+            )
+        )
+        assert result["knowledge_cognition_request_id"] == "deep-obs-1"
+        assert isinstance(stub.last_payload, list)
+        assert len(stub.last_payload) == 7
 
 
 # ---------------------------------------------------------------------------

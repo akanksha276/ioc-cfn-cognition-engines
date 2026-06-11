@@ -128,17 +128,13 @@ class IngestionCognitionEngine(CognitionEngine):
     @handles(IngestionAction.INGEST, IngestionAction.EXTRACT_AND_INGEST)
     async def _ingest(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Run the full ingestion pipeline: extract → process → store."""
-        import asyncio
-
         records: list = payload.get("records", [])
         fmt: str = payload.get("format", "observe-sdk-otel")
         request_id: str | None = payload.get("request_id")
         logger.info(
             "IngestionCognitionEngine._ingest records=%d fmt=%s", len(records), fmt
         )
-        result = await asyncio.to_thread(
-            self._ingest_service.ingest, records, request_id, fmt
-        )
+        result = await self._call_ingest_service(records, request_id, fmt)
         if not isinstance(result, dict):
             result = {"result": result}
 
@@ -203,8 +199,6 @@ class IngestionCognitionEngine(CognitionEngine):
     @handles(IngestionAction.INGEST_FROM_FILE)
     async def _ingest_from_file(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Load OTEL data from a file path and run the full ingestion pipeline."""
-        import asyncio
-
         if self._data_repository is None:
             raise RuntimeError(
                 "data_repository is required for ingest_from_file action"
@@ -217,7 +211,7 @@ class IngestionCognitionEngine(CognitionEngine):
         save_output: bool = payload.get("save_output", False)
         logger.info("IngestionCognitionEngine._ingest_from_file path=%s", file_path)
         otel_data = self._data_repository.load_from_file(Path(file_path))
-        result = await asyncio.to_thread(self._ingest_service.ingest, otel_data, request_id, fmt)
+        result = await self._call_ingest_service(otel_data, request_id, fmt)
         if not isinstance(result, dict):
             result = {"result": result}
         if self._knowledge_processor is not None:
@@ -225,4 +219,23 @@ class IngestionCognitionEngine(CognitionEngine):
         if save_output:
             output_filename = f"concept_relationships_{result.get('knowledge_cognition_request_id', 'no_id')}.json"
             self._data_repository.save_output(result, output_filename)
+        return result
+
+    async def _call_ingest_service(
+        self,
+        records: list,
+        request_id: str | None,
+        fmt: str,
+    ) -> Any:
+        """Call sync or async ingest implementations and return the completed result."""
+        import asyncio
+        import inspect
+
+        ingest = self._ingest_service.ingest
+        if inspect.iscoroutinefunction(ingest):
+            return await ingest(records, request_id, fmt)
+
+        result = await asyncio.to_thread(ingest, records, request_id, fmt)
+        if inspect.isawaitable(result):
+            return await result
         return result

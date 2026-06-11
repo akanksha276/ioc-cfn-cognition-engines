@@ -15,13 +15,14 @@ from typing import Any, Dict, List
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
 from ..agent.ingestion_ce import IngestionAction, IngestionCognitionEngine
 from ..agent.prompts import SUPPORTED_FORMATS
 from ..config.settings import settings
 from ..dependencies import get_ingestion_cognition_engine
+from ..tasks.span_transformer import spans_to_extraction_records
 from .schemas import ExtractionError, ExtractionRequest, ExtractionResponseModel
 
 logger = logging.getLogger(__name__)
@@ -74,9 +75,13 @@ async def knowledge_extraction(
                 },
             ),
         )
-        return JSONResponse(status_code=400, content=error_resp.model_dump())
+        await _post_task_callback(body, "failed", error_resp)
+        return JSONResponse(
+            status_code=400,
+            content=error_resp.model_dump(),
+        )
 
-    payload_data = body.payload.data
+    payload_data = _normalize_records_for_format(body.payload.data, data_format)
     if not payload_data:
         error_resp = ExtractionResponseModel(
             header=body.header,
@@ -88,7 +93,11 @@ async def knowledge_extraction(
                 },
             ),
         )
-        return JSONResponse(status_code=400, content=error_resp.model_dump())
+        await _post_task_callback(body, "failed", error_resp)
+        return JSONResponse(
+            status_code=400,
+            content=error_resp.model_dump(),
+        )
 
     try:
         result = await engine.run(
@@ -148,7 +157,7 @@ async def knowledge_extraction(
                     ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
                 )
 
-        return ExtractionResponseModel(
+        response = ExtractionResponseModel(
             header=body.header,
             response_id=response_id,
             concepts=result.get("concepts", []),
@@ -158,6 +167,8 @@ async def knowledge_extraction(
             rag_chunks=result.get("rag_chunks", []),
             meta=token_meta,
         )
+        await _post_task_callback(body, "success", response)
+        return response
 
     except Exception as e:
         logger.error(f"Error in batch extraction {response_id}: {e}")
@@ -170,7 +181,69 @@ async def knowledge_extraction(
             ),
             concepts=[],
         )
-        return JSONResponse(status_code=500, content=error_resp.model_dump())
+        await _post_task_callback(body, "failed", error_resp)
+        return JSONResponse(
+            status_code=500,
+            content=error_resp.model_dump(),
+        )
+
+
+def _normalize_records_for_format(
+    payload_data: List[Dict[str, Any]],
+    data_format: str,
+) -> List[Dict[str, Any]]:
+    """Keep /extraction shape stable while accepting cfn-svc raw OTel span rows."""
+    if data_format not in SUPPORTED_FORMATS:
+        raise ValueError(f"Unsupported format: {data_format!r}")
+    if data_format != "otel-trace":
+        return payload_data
+
+    records = _flatten_trace_span_records(payload_data)
+    # cfn-svc pushes persisted OTel span rows from its DB/internal API using
+    # snake_case field names. The existing extraction pipeline expects the
+    # Observe-style camelCase span shape, so normalize here to reuse it unchanged.
+    return spans_to_extraction_records(records)
+
+
+def _flatten_trace_span_records(payload_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    spans: List[Dict[str, Any]] = []
+    saw_trace_group = False
+    for item in payload_data:
+        item_spans = item.get("spans") if isinstance(item, dict) else None
+        if isinstance(item_spans, list):
+            saw_trace_group = True
+            spans.extend(s for s in item_spans if isinstance(s, dict))
+    return spans if saw_trace_group else payload_data
+
+
+async def _post_task_callback(
+    body: ExtractionRequest,
+    status: str,
+    response: ExtractionResponseModel,
+) -> None:
+    if not body.task_callback_url:
+        return
+    callback_payload = {
+        "workspace_id": body.header.workspace_id,
+        "mas_id": body.header.mas_id,
+        "task_name": _task_name_from_request(body),
+        "status": status,
+        "error": response.error.message if response.error else "",
+        "result": response.model_dump_json(exclude_none=True),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(body.task_callback_url, json=callback_payload)
+            if resp.status_code >= 400:
+                logger.warning("Task callback returned %d: %s", resp.status_code, resp.text[:200])
+    except Exception:
+        logger.exception("Failed to POST task callback to %s", body.task_callback_url)
+
+
+def _task_name_from_request(body: ExtractionRequest) -> str:
+    metadata_extra = getattr(body.payload.metadata, "model_extra", None) or {}
+    task_name = metadata_extra.get("task_name") or metadata_extra.get("taskName")
+    return str(task_name or "otel-task")
 
 
 # ============== Similarity API Helper ==============

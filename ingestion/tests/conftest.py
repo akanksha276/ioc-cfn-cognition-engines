@@ -5,6 +5,8 @@
 """
 Shared pytest fixtures and test utilities.
 """
+import json
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
@@ -82,6 +84,13 @@ SAMPLE_OTEL_RECORDS: List[Dict[str, Any]] = [
 ]
 
 
+_FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+SAMPLE_OTEL_TRACE_RECORDS: List[Dict[str, Any]] = json.loads(
+    (_FIXTURES_DIR / "sample_otel_trace_records.json").read_text()
+)
+
+
 def build_extraction_request(
     otel_records: List[Dict[str, Any]],
     workspace_id: str = "test-ws",
@@ -110,6 +119,12 @@ def build_extraction_request(
 def sample_otel_records() -> List[Dict[str, Any]]:
     """Provide sample OTel records for testing."""
     return [r.copy() for r in SAMPLE_OTEL_RECORDS]
+
+
+@pytest.fixture
+def sample_otel_trace_records() -> List[Dict[str, Any]]:
+    """Provide sample otel-trace raw OTel NDJSON records for testing."""
+    return [r.copy() for r in SAMPLE_OTEL_TRACE_RECORDS]
 
 
 @pytest.fixture

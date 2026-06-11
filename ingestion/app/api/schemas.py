@@ -21,6 +21,7 @@ class ExtractionHeader(BaseModel):
 
 class PayloadFormat(str, Enum):
     observe_sdk_otel = "observe-sdk-otel"
+    otel_trace = "otel-trace"
     openclaw = "openclaw"
     locomo = "locomo"
     semneg = "semneg"
@@ -30,7 +31,10 @@ class PayloadMetadata(BaseModel):
     """Metadata describing the payload format and additional labels."""
     format: PayloadFormat = Field(
         ...,
-        description="Data format: 'observe-sdk-otel', 'openclaw', 'locomo', or 'semneg'",
+        description=(
+            "Data format: 'observe-sdk-otel', 'otel-trace', 'openclaw', "
+            "'locomo', or 'semneg'"
+        ),
     )
 
     class Config:
@@ -53,6 +57,14 @@ class ExtractionRequest(BaseModel):
         description="Client-supplied request ID; service echoes it back as response_id",
     )
     payload: ExtractionPayload
+    task_callback_url: Optional[str] = Field(
+        None,
+        alias="taskCallbackUrl",
+        description="Optional task callback URL used by cfn-svc task execution.",
+    )
+
+    class Config:
+        populate_by_name = True
 
 
 # ============== Extraction API Response Models ==============
@@ -260,4 +272,3 @@ class HealthResponse(BaseModel):
     initialized: bool
     metrics: Dict[str, Any]
     recent_errors: List[str]
-

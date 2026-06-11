@@ -26,7 +26,6 @@ if str(_gateway_root) not in sys.path:
     sys.path.insert(0, str(_gateway_root))
 
 
-# Import sub-apps once (used in lifespan and for mount)
 import httpx
 from fastapi.responses import JSONResponse
 

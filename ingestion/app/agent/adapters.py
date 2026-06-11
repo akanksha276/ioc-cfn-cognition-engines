@@ -301,10 +301,78 @@ class ExtractionAdapter:
 
         return extracted
 
+    @staticmethod
+    def filter_spans_otel_trace(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Keep spans with ioa_observe.span.kind in workflow/agent/tool/task."""
+        allowed_kinds = {"workflow", "agent", "tool", "task"}
+        filtered = []
+        for r in records:
+            attrs = r.get("attributes") or {}
+            kind = attrs.get("ioa_observe.span.kind")
+            if kind in allowed_kinds:
+                filtered.append(r)
+        return filtered
+
+    @staticmethod
+    def extract_important_fields_otel_trace(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Extract important fields from otel-trace span records.
+
+        Handles the NDJSON export format where top-level keys are:
+        name, kind, traceId, spanId, attributes, resource, timestamp,
+        startTime, endTime, duration, status, events, links.
+        """
+        extracted: List[Dict[str, Any]] = []
+
+        for record in records:
+            attrs = record.get("attributes") or {}
+            resource = record.get("resource") or {}
+            entry: Dict[str, Any] = {
+                "ServiceName": resource.get("service.name") or attrs.get("service.name"),
+                "agent_id": attrs.get("gen_ai.agent.id") or attrs.get("gen_ai.agent.name"),
+                "model": attrs.get("gen_ai.request.model") or attrs.get("gen_ai.response.model"),
+                "span_kind": attrs.get("ioa_observe.span.kind"),
+                "span_name": record.get("name") or record.get("spanName"),
+            }
+
+            user_prompt = (
+                attrs.get("ioa_observe.entity.input")
+                or attrs.get("openclaw.request.input")
+                or attrs.get("openclaw.agent.input")
+            )
+            if user_prompt:
+                entry["user_prompt"] = user_prompt
+
+            completion = (
+                attrs.get("ioa_observe.entity.output")
+                or attrs.get("openclaw.agent.output")
+                or attrs.get("openclaw.request.output")
+                or attrs.get("openclaw.message.output")
+            )
+            if completion:
+                entry["completion"] = completion
+
+            tool_name = attrs.get("gen_ai.tool.name") or attrs.get("openclaw.tool.name")
+            if tool_name:
+                entry["tool_calls"] = [tool_name]
+
+            tool_input = attrs.get("openclaw.tool.input")
+            if tool_input:
+                entry["tool_input"] = tool_input
+
+            tool_output = attrs.get("openclaw.tool.output")
+            if tool_output:
+                entry["tool_output"] = tool_output
+
+            extracted.append(entry)
+
+        return extracted
+
     def filter_records(self, records: List[Dict[str, Any]], data_format: str) -> List[Dict[str, Any]]:
         """Apply format-specific filtering."""
         if data_format == "observe-sdk-otel":
             return self.filter_spans(records)
+        if data_format == "otel-trace":
+            return self.filter_spans_otel_trace(records)
         if data_format == "openclaw":
             turns: List[Dict[str, Any]] = []
             for record in records:
@@ -320,12 +388,15 @@ class ExtractionAdapter:
         """Extract important fields using the format-appropriate method."""
         extractors = {
             "observe-sdk-otel": self.extract_important_fields,
+            "otel-trace": self.extract_important_fields_otel_trace,
             "openclaw": self.extract_important_fields_openclaw,
             "locomo": self.extract_important_fields_locomo,
             "semneg": self.extract_important_fields_negotiation,
         }
         extractor = extractors.get(data_format, self.extract_important_fields)
         return extractor(records)
+
+
 def _normalize_timestamp_value(value: Any) -> str:
     """Normalize a timestamp value to string (empty string when unavailable)."""
     if value is None:
@@ -339,6 +410,7 @@ def _raw_timestamp_for_format(data: dict[str, Any], data_format: str) -> Any:
     """Get raw timestamp from compact data using known format-specific keys."""
     timestamp_keys = {
         "observe-sdk-otel": ("Timestamp", "timestamp", "dt_created", "session_date_time"),
+        "otel-trace": ("timestamp", "recordedAt", "startAt"),
         "openclaw": ("timestamp", "Timestamp"),
         "locomo": ("session_date_time", "timestamp", "Timestamp"),
         "semneg": ("dt_created", "timestamp", "Timestamp"),
