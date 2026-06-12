@@ -5,7 +5,7 @@
 from enum import StrEnum
 
 
-class DistillStatus(StrEnum):
+class DistillationStatus(StrEnum):
     DISTILLED   = "distilled"    # existing relation was processed in a distillation batch
     SYNTHESIZED = "synthesized"  # relation was created by CoDi (anchor → CoDiN summary link)
     PRUNED      = "pruned"       # removed from active graph

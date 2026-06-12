@@ -52,7 +52,7 @@ def _validate_distillation_start(req: DistillationRunRequest) -> str | None:
         return "mas_id is required"
     cb = (req.payload.callback_url or "").strip()
     if not cb.startswith(("https://", "http://")):
-        return "callback_url must be an HTTP or HTTPS URL"
+        return "callback_url must be HTTP or HTTPS URL"
     if not (settings.DATA_LAYER_BASE_URL or "").strip():
         return "DATA_LAYER_BASE_URL is not configured"
     return None

@@ -31,7 +31,7 @@ from distill.app.agent.embeddings_bge import embed_text_bge_small
 from distill.app.agent.llm_distill import run_distillation_llm
 from distill.app.agent.rag_retrieval import retrieve_rag_top_k
 from distill.app.config.settings import settings
-from distill.app.constants import DistillStatus
+from distill.app.constants import DistillationStatus
 from distill.app.data.graph_client import CoDiGraphClient, graph_update_post_url
 from distill.app.services import distillation_lock
 
@@ -78,7 +78,7 @@ def _relation_internal_attributes(
     existing: Any,
     *,
     owner: str,
-    status: DistillStatus,
+    status: DistillationStatus,
 ) -> List[Dict[str, Any]]:
     """
     Build ``internal_attributes`` for graph/update (CFN/KM nested shape).
@@ -231,7 +231,7 @@ async def _distill_one_batch_payload(
                 "internal_attributes": _relation_internal_attributes(
                     rel.get("internal_attributes"),
                     owner=mas_id,
-                    status=DistillStatus.DISTILLED,
+                    status=DistillationStatus.DISTILLED,
                 ),
             }
         )
@@ -251,7 +251,7 @@ async def _distill_one_batch_payload(
             "internal_attributes": _relation_internal_attributes(
                 None,
                 owner=mas_id,
-                status=DistillStatus.SYNTHESIZED,
+                status=DistillationStatus.SYNTHESIZED,
             ),
         }
     )
