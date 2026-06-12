@@ -13,19 +13,17 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Any, Dict
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from distill.app.api.routes import _probe_callback_url, _validate_distillation_start
-from distill.app.api.schemas import DistillationErrorResponse, DistillationRunRequest, DistillationStartPayload
+from distill.app.api.routes import _validate_distillation_start
+from distill.app.api.schemas import DistillationRunRequest, DistillationStartPayload
 from distill.app.services import distillation_lock
-from distill.app.services.distillation_job import (
-    _coerce_distillation_read_lists,
-    execute_distillation_run,
-    fetch_distillation_graph_read,
-)
+from distill.app.services.distillation_job import execute_distillation_run
 from evidence.app.api.schemas import Header
 
 router = APIRouter(tags=["cfn-compat"])
@@ -55,74 +53,87 @@ async def run_distillation_task(
     """
     Entry point for cfn-svc task framework to trigger an async distillation run.
 
-    Adapts the flat TaskExecutionRequest from cfn-svc into a DistillationRunRequest
-    and delegates to the distillation service. Returns 202 with execution_id on
-    acceptance; cfn-svc receives the completion signal via callback_url.
+    Always returns 202 immediately. All validation, lock acquisition, and
+    execution happen in the background; any failure is reported back to cfn-svc
+    via callback_url so it is recorded in task execution history.
     """
-    distill_req = DistillationRunRequest(
-        header=Header(workspace_id=req.workspace_id, mas_id=req.mas_id),
-        request_id=str(uuid.uuid4()),
-        payload=DistillationStartPayload(callback_url=req.callback_url),
-    )
-
-    err = _validate_distillation_start(distill_req)
-    if err:
-        return JSONResponse(
-            status_code=400,
-            content=DistillationErrorResponse(message=err).model_dump(mode="json"),
-        )
-
-    probe_err = await _probe_callback_url(req.callback_url.strip())
-    if probe_err:
-        return JSONResponse(
-            status_code=400,
-            content=DistillationErrorResponse(message=probe_err).model_dump(mode="json"),
-        )
-
-    wid = req.workspace_id.strip()
-    mid = req.mas_id.strip()
-    if not await distillation_lock.try_begin_run(wid, mid):
-        return JSONResponse(
-            status_code=409,
-            content={"message": "distillation already in progress", "workspace_id": wid, "mas_id": mid},
-        )
-
     operation_id = str(uuid.uuid4())
     distill_run_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    try:
-        graph_payload = await fetch_distillation_graph_read(distill_req.header, distill_req.request_id)
-        concepts_preview, relations_preview = _coerce_distillation_read_lists(
-            graph_payload if isinstance(graph_payload, dict) else {}
-        )
-        logger.info(
-            "[CoDi runDistillation] graph read ok | request_id=%s concepts=%d relations=%d",
-            distill_req.request_id,
-            len(concepts_preview),
-            len(relations_preview),
-        )
-    except Exception as exc:
-        logger.exception(
-            "[CoDi runDistillation] graph read failed | workspace_id=%s mas_id=%s", wid, mid
-        )
-        await distillation_lock.end_run(wid, mid)
-        return JSONResponse(
-            status_code=502,
-            content=DistillationErrorResponse(message=f"graph read failed: {exc}").model_dump(mode="json"),
-        )
-
     background_tasks.add_task(
-        execute_distillation_run,
-        header=distill_req.header,
-        request_id=distill_req.request_id,
-        callback_url=req.callback_url.strip(),
+        _run_with_callback,
+        req=req,
         operation_id=operation_id,
         distill_run_at=distill_run_at,
-        rag_layer=None,
-        prefetched_graph_read=graph_payload,
     )
 
     return JSONResponse(
         status_code=202,
         content=TaskExecutionResponse(execution_id=operation_id).model_dump(),
     )
+
+
+async def _run_with_callback(
+    *,
+    req: TaskExecutionRequest,
+    operation_id: str,
+    distill_run_at: str,
+) -> None:
+    """Background task: validate, acquire lock, then delegate to the distillation job."""
+    callback_url = req.callback_url.strip()
+    wid = req.workspace_id.strip()
+    mid = req.mas_id.strip()
+    request_id = str(uuid.uuid4())
+
+    distill_req = DistillationRunRequest(
+        header=Header(workspace_id=wid, mas_id=mid),
+        request_id=request_id,
+        payload=DistillationStartPayload(callback_url=callback_url),
+    )
+
+    err = _validate_distillation_start(distill_req)
+    if err:
+        logger.warning("[CoDi task] validation failed | op=%s reason=%s", operation_id, err)
+        await _post_failure_callback(callback_url, wid, mid, operation_id, err)
+        return
+
+    if not await distillation_lock.try_begin_run(wid, mid):
+        msg = "distillation already in progress"
+        logger.warning("[CoDi task] lock conflict | op=%s ws=%s mas=%s", operation_id, wid, mid)
+        await _post_failure_callback(callback_url, wid, mid, operation_id, msg)
+        return
+
+    # Lock is held — execute_distillation_run releases it in its finally block.
+    await execute_distillation_run(
+        header=distill_req.header,
+        request_id=request_id,
+        callback_url=callback_url,
+        operation_id=operation_id,
+        distill_run_at=distill_run_at,
+        rag_layer=None,
+        prefetched_graph_read=None,
+    )
+
+
+async def _post_failure_callback(
+    callback_url: str,
+    workspace_id: str,
+    mas_id: str,
+    operation_id: str,
+    reason: str,
+) -> None:
+    payload: Dict[str, Any] = {
+        "status": "unsuccessful",
+        "operation_id": operation_id,
+        "workspace_id": workspace_id,
+        "mas_id": mas_id,
+        "reason_code": "TASK_REJECTED",
+        "message": reason,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http:
+            r = await http.post(callback_url, json=payload)
+            if r.status_code >= 300:
+                logger.warning("[CoDi task] failure callback non-2xx | status=%s op=%s", r.status_code, operation_id)
+    except Exception:
+        logger.exception("[CoDi task] failure callback POST failed | op=%s", operation_id)
