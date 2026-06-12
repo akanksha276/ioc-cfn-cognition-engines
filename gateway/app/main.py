@@ -30,6 +30,7 @@ import httpx
 from fastapi.responses import JSONResponse
 
 from common.diagnostics.router import make_diagnostics_router
+from distill.app.api.cfn_compat import router as distill_cfn_compat_router
 from distill.app.api.routes import router as distill_api_router
 from distill.app.main import app as _distill_app
 from evidence.app.api.routes import router as evidence_api_router
@@ -41,7 +42,6 @@ from ingestion.app.main import app as _ingestion_app
 from semantic_negotiation.app.api.cfn_compat import router as cfn_compat_router
 from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
 from semantic_negotiation.app.main import app as _semantic_negotiation_app
-from .task_routes import router as task_router
 
 
 @asynccontextmanager
@@ -76,7 +76,7 @@ app.mount("/semantic-negotiation", _semantic_negotiation_app)
 app.include_router(ingestion_extraction_router)
 app.include_router(evidence_api_router, prefix="/api/knowledge-mgmt")
 app.include_router(distill_api_router, prefix="/api/knowledge-mgmt")
-app.include_router(task_router)
+app.include_router(distill_cfn_compat_router, prefix="/api")
 
 
 @app.get("/api/internal/diagnostics/health", include_in_schema=False)

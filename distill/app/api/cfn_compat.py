@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-Task execution endpoints called by cfn-svc to dispatch async CE work.
+"""CFN-compatible distillation task endpoint.
 
-cfn-svc dispatches tasks using a flat TaskExecutionRequest payload.
-Each endpoint here adapts that payload to the relevant CE feature's
-internal request schema and returns 202 Accepted with an execution_id.
+Receives task dispatch requests from cfn-svc and adapts them to the
+internal distillation job pipeline. Mirrors the pattern used by
+semantic_negotiation/app/api/cfn_compat.py.
 """
 from __future__ import annotations
 
@@ -19,20 +18,23 @@ from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from distill.app.api.routes import _probe_callback_url, _validate_distillation_start
+from distill.app.api.schemas import DistillationErrorResponse, DistillationRunRequest, DistillationStartPayload
+from distill.app.services import distillation_lock
+from distill.app.services.distillation_job import (
+    _coerce_distillation_read_lists,
+    execute_distillation_run,
+    fetch_distillation_graph_read,
+)
 from evidence.app.api.schemas import Header
 
-from distill.app.api.routes import _probe_callback_url, _validate_distillation_start
-from distill.app.api.schemas import DistillationRunRequest, DistillationStartPayload, DistillationErrorResponse
-from distill.app.services import distillation_lock
-from distill.app.services.distillation_job import execute_distillation_run, fetch_distillation_graph_read
-from distill.app.services.distillation_job import _coerce_distillation_read_lists
-
-router = APIRouter()
+router = APIRouter(tags=["cfn-compat"])
 logger = logging.getLogger(__name__)
 
 
 class TaskExecutionRequest(BaseModel):
     """Flat payload cfn-svc sends when dispatching a task to a CE."""
+
     workspace_id: str
     mas_id: str
     ce_id: str
@@ -41,10 +43,11 @@ class TaskExecutionRequest(BaseModel):
 
 class TaskExecutionResponse(BaseModel):
     """202 Accepted response returned to cfn-svc."""
+
     execution_id: str
 
 
-@router.post("/api/knowledge-mgmt/runDistillation")
+@router.post("/knowledge-mgmt/runDistillation")
 async def run_distillation_task(
     req: TaskExecutionRequest,
     background_tasks: BackgroundTasks,
