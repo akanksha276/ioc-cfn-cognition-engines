@@ -114,7 +114,7 @@ async def register_cognition_engines() -> None:
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
                 "distill_mode": os.getenv("CODI_DIST_MODE", "Summary"),
             },
-            mas_config={"schedule": os.getenv("CODI_SCHEDULE", "0 2 * * *")},  # Daily at 2am by default
+            mas_config=None,
             mas_auto_associate=True,
         ),
     ]
