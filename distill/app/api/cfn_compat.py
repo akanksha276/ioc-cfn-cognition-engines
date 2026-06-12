@@ -47,7 +47,7 @@ class TaskExecutionResponse(BaseModel):
     execution_id: str
 
 
-@router.post("/knowledge-mgmt/runDistillation")
+@router.post("/knowledge-mgmt/distillation")
 async def run_distillation_task(
     req: TaskExecutionRequest,
     background_tasks: BackgroundTasks,
