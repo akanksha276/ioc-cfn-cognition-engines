@@ -27,7 +27,7 @@ class Settings:
     CODI_DISTILL_STATUS_FILTER: str = os.getenv("CODI_DISTILL_STATUS_FILTER", "")
     CODI_RETURN_MISSING_DISTILL_STATUS: bool = _env_bool("CODI_RETURN_MISSING_DISTILL_STATUS", True)
     CODI_MAX_RELATIONS_PER_BATCH: int = int(os.getenv("CODI_MAX_RELATIONS_PER_BATCH", "10"))
-    CODI_DIST_MODE: str = (os.getenv("CODI_DIST_MODE", "Summary") or "Summary").strip() or "Summary"
+    DISTILLATION_MODE: str = (os.getenv("DISTILLATION_MODE", "Summary") or "Summary").strip() or "Summary"
     # Distillation LLM: LiteLLM via CODI_LLM_* (falls back to LLM_* like Evidence).
     CODI_LLM_MODEL: str = (os.getenv("CODI_LLM_MODEL") or os.getenv("LLM_MODEL") or "openai/gpt-4o").strip()
     CODI_LLM_API_KEY: str | None = (os.getenv("CODI_LLM_API_KEY") or os.getenv("LLM_API_KEY") or "").strip() or None

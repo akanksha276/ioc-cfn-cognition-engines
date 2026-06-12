@@ -457,7 +457,7 @@ async def execute_distillation_run(
         else:
             buckets = bucket_relations_incident_to_anchors(anchor_ids, relations_raw)
             policy = _load_policy()
-            dist_mode = settings.CODI_DIST_MODE
+            dist_mode = settings.DISTILLATION_MODE
             processed_relation_ids: set[str] = set()
 
             for anchor_id in sorted(buckets.keys()):
@@ -500,7 +500,7 @@ async def execute_distillation_run(
             "updated_relations": updated_edges,
             "operation_id": operation_id,
             "distill_run_at": distill_run_at,
-            "distill_mode": settings.CODI_DIST_MODE,
+            "distill_mode": settings.DISTILLATION_MODE,
         }
 
         mutation_body: Dict[str, Any] = {
@@ -523,7 +523,7 @@ async def execute_distillation_run(
                     "workspace_id": wid,
                     "mas_id": mid,
                     "distill_run_at": distill_run_at,
-                    "distill_mode": settings.CODI_DIST_MODE,
+                    "distill_mode": settings.DISTILLATION_MODE,
                     "meta": metadata,
                     "message": "no anchors or relations to distill",
                 }
@@ -582,12 +582,12 @@ async def execute_distillation_run(
                 "workspace_id": wid,
                 "mas_id": mid,
                 "distill_run_at": distill_run_at,
-                "distill_mode": settings.CODI_DIST_MODE,
+                "distill_mode": settings.DISTILLATION_MODE,
                 "meta": {
                     "added_distilled_nodes": added_nodes,
                     "added_distilled_relations": added_anchor_links,
                     "updated_relations": updated_edges,
-                    "distill_mode": settings.CODI_DIST_MODE,
+                    "distill_mode": settings.DISTILLATION_MODE,
                 },
             }
             if agent_id:

@@ -112,9 +112,9 @@ async def register_cognition_engines() -> None:
             metrics=get_llm_metric_names(),
             config={
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
-                "distill_mode": os.getenv("CODI_DIST_MODE", "Summary"),
+                "distill_mode": os.getenv("DISTILLATION_MODE", "Summary"),
             },
-            mas_config={"schedule": "0 2 * * *"},  # Daily at 2am
+            mas_config={"schedule": "0 * * * *"},  # Hourly
             mas_auto_associate=True,
         ),
     ]

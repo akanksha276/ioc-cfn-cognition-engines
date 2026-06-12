@@ -20,7 +20,7 @@ async def test_execute_posts_mutation_then_callback_success(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
-    monkeypatch.setattr(settings_mod.settings, "CODI_DIST_MODE", "Summary")
+    monkeypatch.setattr(settings_mod.settings, "DISTILLATION_MODE", "Summary")
 
     graph_instance = MagicMock()
     graph_instance.distillation_graph_read = AsyncMock(
@@ -142,7 +142,7 @@ async def test_execute_skips_callback_when_mutation_non_2xx(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
-    monkeypatch.setattr(settings_mod.settings, "CODI_DIST_MODE", "Summary")
+    monkeypatch.setattr(settings_mod.settings, "DISTILLATION_MODE", "Summary")
 
     graph_instance = MagicMock()
     graph_instance.distillation_graph_read = AsyncMock(
