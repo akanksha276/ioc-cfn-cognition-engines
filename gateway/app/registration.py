@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 CE_VERSION = os.getenv("CE_VERSION", "1.2.3")
 CE_KNOWLEDGE_NAME = "Knowledge Management CE"
 CE_SEMANTIC_NEG_NAME = "Semantic Negotiation CE"
+CE_DISTILLATION_NAME = "Cognition Distillation CE"
 
 # Global lifecycle clients (one per CE type)
 _lifecycle_clients: List[CELifecycleClient] = []
@@ -99,6 +100,21 @@ async def register_cognition_engines() -> None:
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
             },
             mas_config={"schedule": "0 0 * * *"},  # Daily at midnight
+            mas_auto_associate=True,
+        ),
+        CERegistrationRequest(
+            name=CE_DISTILLATION_NAME,
+            url=ce_url,
+            version=CE_VERSION,
+            kind="knowledge",
+            subkind="distillation",
+            capabilities=["graph_distillation", "knowledge_summarization"],
+            metrics=get_llm_metric_names(),
+            config={
+                "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
+                "distill_mode": os.getenv("CODI_DIST_MODE", "Summary"),
+            },
+            mas_config={"schedule": os.getenv("CODI_SCHEDULE", "0 2 * * *")},  # Daily at 2am by default
             mas_auto_associate=True,
         ),
     ]
@@ -215,6 +231,11 @@ def get_semantic_neg_ce_id() -> Optional[str]:
         CE ID for Semantic Negotiation CE, or None if not registered.
     """
     return _ce_registry.get(CE_SEMANTIC_NEG_NAME)
+
+
+def get_distillation_ce_id() -> Optional[str]:
+    """Convenience: Get Cognition Distillation CE ID."""
+    return _ce_registry.get(CE_DISTILLATION_NAME)
 
 
 def get_cfn_id() -> Optional[str]:
