@@ -31,6 +31,7 @@ from distill.app.agent.embeddings_bge import embed_text_bge_small
 from distill.app.agent.llm_distill import run_distillation_llm
 from distill.app.agent.rag_retrieval import retrieve_rag_top_k
 from distill.app.config.settings import settings
+from distill.app.constants import DistillStatus
 from distill.app.data.graph_client import CoDiGraphClient, graph_update_post_url
 from distill.app.services import distillation_lock
 
@@ -66,17 +67,18 @@ def _sanitize_graph_string_attributes(attrs: Dict[str, Any], *, max_len: int = 4
     return out
 
 
-def _codin_display_name(anchor_name: str, codin_id: str) -> str:
+def _codin_display_name(anchor_name: str, codin_id: str, dist_mode: str = "CoDiN") -> str:
     base = (anchor_name or "anchor").strip() or "anchor"
     short_id = (codin_id or "")[:8]
-    return _graph_safe_single_line(f"CoDiN-{base}-{short_id}", max_len=256)
+    prefix = (dist_mode or "CoDiN").strip() or "CoDiN"
+    return _graph_safe_single_line(f"{prefix}-{base}-{short_id}", max_len=256)
 
 
 def _relation_internal_attributes(
     existing: Any,
     *,
     owner: str,
-    distill_status: str,
+    status: DistillStatus,
 ) -> List[Dict[str, Any]]:
     """
     Build ``internal_attributes`` for graph/update (CFN/KM nested shape).
@@ -105,7 +107,8 @@ def _relation_internal_attributes(
                 continue
             if item_attrs:
                 out.append({"owner": item_owner, "attributes": item_attrs})
-    owner_attrs["distill_status"] = distill_status
+    owner_attrs.pop("distill_status", None)
+    owner_attrs["status"] = status
     out.append({"owner": owner_key, "attributes": owner_attrs})
     return out
 
@@ -201,7 +204,7 @@ async def _distill_one_batch_payload(
 
     new_concept: Dict[str, Any] = {
         "id": codin_id,
-        "name": _codin_display_name(anchor_name, codin_id),
+        "name": _codin_display_name(anchor_name, codin_id, dist_mode),
         "description": description_text,
         "type": "CoDiN",
         "attributes": {
@@ -218,7 +221,7 @@ async def _distill_one_batch_payload(
             continue
         u, v = str(ids[0]), str(ids[1])
         attrs = _sanitize_graph_string_attributes(relation_attributes(rel))
-        attrs.pop("distill_status", None)
+        attrs.pop("status", None)
         relation_mutations.append(
             {
                 "id": rid,
@@ -228,7 +231,7 @@ async def _distill_one_batch_payload(
                 "internal_attributes": _relation_internal_attributes(
                     rel.get("internal_attributes"),
                     owner=mas_id,
-                    distill_status="updated",
+                    status=DistillStatus.DISTILLED,
                 ),
             }
         )
@@ -237,18 +240,18 @@ async def _distill_one_batch_payload(
         {
             "id": new_rel_id,
             "node_ids": [anchor_id, codin_id],
-            "relationship": "summary",
+            "relationship": "SUMMARIZED_BY",
             "attributes": _sanitize_graph_string_attributes(
                 {
                     "source_name": anchor_name,
-                    "target_name": "CoDiN",
+                    "target_name": new_concept["name"],
                     "summarized_context": summarized_safe,
                 }
             ),
             "internal_attributes": _relation_internal_attributes(
                 None,
                 owner=mas_id,
-                distill_status="CoDi",
+                status=DistillStatus.SYNTHESIZED,
             ),
         }
     )

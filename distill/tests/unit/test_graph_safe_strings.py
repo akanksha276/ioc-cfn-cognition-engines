@@ -14,8 +14,8 @@ def test_graph_safe_single_line_strips_newlines():
 
 
 def test_codin_display_name_is_short():
-    name = _codin_display_name("website_selector_agent", "667b1296-fd13-42e9-a958-7c03e078e4af")
-    assert name.startswith("CoDiN-website_selector_agent-")
+    name = _codin_display_name("website_selector_agent", "667b1296-fd13-42e9-a958-7c03e078e4af", "Summary")
+    assert name.startswith("Summary-website_selector_agent-")
     assert "\n" not in name
     assert len(name) <= 256
 
