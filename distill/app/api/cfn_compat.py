@@ -94,13 +94,13 @@ async def _run_with_callback(
     err = _validate_distillation_start(distill_req)
     if err:
         logger.warning("[CoDi task] validation failed | op=%s reason=%s", operation_id, err)
-        await _post_failure_callback(callback_url, wid, mid, operation_id, err)
+        await _post_failure_callback(callback_url, wid, mid, req.ce_id, operation_id, err)
         return
 
     if not await distillation_lock.try_begin_run(wid, mid):
         msg = "distillation already in progress"
         logger.warning("[CoDi task] lock conflict | op=%s ws=%s mas=%s", operation_id, wid, mid)
-        await _post_failure_callback(callback_url, wid, mid, operation_id, msg)
+        await _post_failure_callback(callback_url, wid, mid, req.ce_id, operation_id, msg)
         return
 
     # Lock is held — execute_distillation_run releases it in its finally block.
@@ -110,6 +110,7 @@ async def _run_with_callback(
         callback_url=callback_url,
         operation_id=operation_id,
         distill_run_at=distill_run_at,
+        ce_id=req.ce_id,
         rag_layer=None,
         prefetched_graph_read=None,
     )
@@ -119,16 +120,16 @@ async def _post_failure_callback(
     callback_url: str,
     workspace_id: str,
     mas_id: str,
+    ce_id: str,
     operation_id: str,
     reason: str,
 ) -> None:
     payload: Dict[str, Any] = {
-        "status": "unsuccessful",
-        "operation_id": operation_id,
+        "status": "failed",
         "workspace_id": workspace_id,
         "mas_id": mas_id,
-        "reason_code": "TASK_REJECTED",
-        "message": reason,
+        "ce_id": ce_id,
+        "error": reason,
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as http:

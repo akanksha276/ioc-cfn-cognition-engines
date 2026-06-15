@@ -226,4 +226,4 @@ async def test_execute_skips_callback_when_mutation_non_2xx(monkeypatch):
     assert "graph/update" in str(http_calls[0][1])
     assert http_calls[1][0] == "post"
     assert http_calls[1][1] == "https://cb.test/done"
-    assert http_calls[1][2]["status"] == "unsuccessful"
+    assert http_calls[1][2]["status"] == "failed"

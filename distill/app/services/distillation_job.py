@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import random
@@ -384,6 +385,7 @@ async def execute_distillation_run(
     callback_url: str,
     operation_id: str,
     distill_run_at: str,
+    ce_id: str = "",
     rag_layer: Any = None,
     prefetched_graph_read: Optional[Dict[str, Any]] = None,
 ) -> None:
@@ -517,18 +519,12 @@ async def execute_distillation_run(
         async with httpx.AsyncClient(timeout=timeout) as http:
             if not mutation_concepts and not mutation_relations:
                 ok_body = {
-                    "status": "successful",
-                    "operation_id": operation_id,
-                    "response_id": request_id,
+                    "status": "success",
                     "workspace_id": wid,
                     "mas_id": mid,
-                    "distill_run_at": distill_run_at,
-                    "distill_mode": settings.DISTILLATION_MODE,
-                    "meta": metadata,
-                    "message": "no anchors or relations to distill",
+                    "ce_id": ce_id,
+                    "result": json.dumps({**metadata, "message": "no anchors or relations to distill"}),
                 }
-                if agent_id:
-                    ok_body["agent_id"] = agent_id
                 await _send_callback(http, callback_url, ok_body)
                 return
 
@@ -540,14 +536,11 @@ async def execute_distillation_run(
                     http,
                     callback_url,
                     {
-                        "status": "unsuccessful",
-                        "operation_id": operation_id,
-                        "response_id": request_id,
+                        "status": "failed",
                         "workspace_id": wid,
                         "mas_id": mid,
-                        "reason_code": "MUTATION_POST_FAILED",
-                        "message": str(post_exc),
-                        **({"agent_id": agent_id} if agent_id else {}),
+                        "ce_id": ce_id,
+                        "error": f"MUTATION_POST_FAILED: {post_exc}",
                     },
                 )
                 return
@@ -563,35 +556,22 @@ async def execute_distillation_run(
                     http,
                     callback_url,
                     {
-                        "status": "unsuccessful",
-                        "operation_id": operation_id,
-                        "response_id": request_id,
+                        "status": "failed",
                         "workspace_id": wid,
                         "mas_id": mid,
-                        "reason_code": "MUTATION_REJECTED",
-                        "message": f"HTTP {mut_resp.status_code}",
-                        **({"agent_id": agent_id} if agent_id else {}),
+                        "ce_id": ce_id,
+                        "error": f"MUTATION_REJECTED: HTTP {mut_resp.status_code}",
                     },
                 )
                 return
 
             ok_body: Dict[str, Any] = {
-                "status": "successful",
-                "operation_id": operation_id,
-                "response_id": request_id,
+                "status": "success",
                 "workspace_id": wid,
                 "mas_id": mid,
-                "distill_run_at": distill_run_at,
-                "distill_mode": settings.DISTILLATION_MODE,
-                "meta": {
-                    "added_distilled_nodes": added_nodes,
-                    "added_distilled_relations": added_anchor_links,
-                    "updated_relations": updated_edges,
-                    "distill_mode": settings.DISTILLATION_MODE,
-                },
+                "ce_id": ce_id,
+                "result": json.dumps(metadata),
             }
-            if agent_id:
-                ok_body["agent_id"] = agent_id
             await _send_callback(http, callback_url, ok_body)
     except Exception as run_exc:
         logger.exception("[CoDi distill] run failed | op=%s", operation_id)
@@ -601,14 +581,11 @@ async def execute_distillation_run(
                     http,
                     callback_url,
                     {
-                        "status": "unsuccessful",
-                        "operation_id": operation_id,
-                        "response_id": request_id,
+                        "status": "failed",
                         "workspace_id": wid,
                         "mas_id": mid,
-                        "reason_code": "RUN_FAILED",
-                        "message": str(run_exc),
-                        **({"agent_id": agent_id} if agent_id else {}),
+                        "ce_id": ce_id,
+                        "error": str(run_exc),
                     },
                 )
         except Exception:
