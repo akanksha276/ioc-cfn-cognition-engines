@@ -138,6 +138,7 @@ class SemanticNegotiationPipeline:
         self,
         trace: List[Dict[str, Any]],
         status: str = "",
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> Optional[ValidationResult]:
         """Run Step 4 — semantic alignment validation on the completed negotiation trace.
 
@@ -155,7 +156,7 @@ class SemanticNegotiationPipeline:
         """
         logger.info("run_alignment_validation trace_len=%d", len(trace))
         try:
-            validation = self._alignment_validator.run(trace, agreed=(status == "agreed"))
+            validation = self._alignment_validator.run(trace, agreed=(status == "agreed"), token_accumulator=token_accumulator)
             logger.info(
                 "run_alignment_validation done severity=%s score=%.2f "
                 "needs_intervention=%s recommendation=%s timed_out=%s",
@@ -284,6 +285,7 @@ class SemanticNegotiationPipeline:
         sess: Any,
         retry_count: int,
         validation: ValidationResult,
+        token_accumulator: Optional[TokenAccumulator] = None,
     ) -> list:
         """Re-generate options with exclusion guidance and re-seed the SAO."""
         history_parts = []
@@ -315,8 +317,8 @@ class SemanticNegotiationPipeline:
             fabric_node_base_url=settings.cfn_url,
             workspace_id=workspace_id,
             mas_id=mas_id,
-
             failure_context=failure_context,
+            token_accumulator=token_accumulator,
         )
         new_options = gen_out.options_per_issue
 
@@ -650,6 +652,9 @@ class SemanticNegotiationPipeline:
             raise SemanticNegotiationExecutionError(
                 f"Unexpected error executing pipeline for session_id='{session_id}'"
             ) from exc
+        # Token accumulator for decide-path LLM calls (retry options generation).
+        token_accumulator = TokenAccumulator()
+
         if status == "ongoing":
             logger.info(
                 "execute ongoing session_id=%s round=%s",
@@ -697,6 +702,7 @@ class SemanticNegotiationPipeline:
                 n_steps=sess.n_steps,
             ),
             status=status,
+            token_accumulator=token_accumulator,
         )
         if validation is not None:
             logger.info(
@@ -765,12 +771,13 @@ class SemanticNegotiationPipeline:
                 session_id,
                 {iss: opts for iss, opts in (sess.options_per_issue or {}).items()},
             )
-            messages = self._run_retry(session_key, sess, retry_count, validation)
+            messages = self._run_retry(session_key, sess, retry_count, validation, token_accumulator)
             return {
                 "status": "ongoing",
                 "session_id": session_id,
                 "round": 1,
                 "messages": messages,
+                "token_metadata": token_accumulator.to_metadata(),
             }
 
         # No more retries — commit and clean up.
@@ -864,6 +871,7 @@ class SemanticNegotiationPipeline:
             "final_result": commit,
             "validation": validation_dict,
             "retry_history": retry_history,
+            "token_metadata": token_accumulator.to_metadata(),
         }
 
     def build_commit_envelope(

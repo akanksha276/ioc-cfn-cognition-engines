@@ -405,23 +405,45 @@ async def negotiate_decide(
             content={"error": f"No active session for session_id={session_id!r}"},
         )
 
+    token_metadata = exec_result.get("token_metadata")
+    meta_dict = None
+    if token_metadata is not None:
+        from gateway.app.registration import CE_SEMANTIC_NEG_NAME, get_ce_id
+        from .schemas import TokenUsage, TokenUsageMeta
+        meta_dict = TokenUsageMeta(
+            tokens=TokenUsage(
+                prompt=token_metadata.prompt_tokens,
+                completion=token_metadata.completion_tokens,
+                total=token_metadata.total_tokens,
+                model=token_metadata.model,
+            ),
+            latency_ms=token_metadata.latency_ms,
+            cost_usd=token_metadata.cost_usd,
+            timestamp=token_metadata.timestamp,
+            ce_id=get_ce_id(CE_SEMANTIC_NEG_NAME),
+        ).model_dump()
+
     if exec_result["status"] == "ongoing":
-        return JSONResponse(
-            content={
-                "session_id": session_id,
-                "status": "ongoing",
-                "round": exec_result["round"],
-                "messages": exec_result["messages"],
-            }
-        )
+        resp = {
+            "session_id": session_id,
+            "status": "ongoing",
+            "round": exec_result["round"],
+            "messages": exec_result["messages"],
+        }
+        if meta_dict is not None:
+            resp["meta"] = meta_dict
+        return JSONResponse(content=resp)
 
     # Terminal — commit envelope was built inside pipeline.execute().
     _status_str = exec_result["status"]
     total_rounds = exec_result["round"]
     final_envelope = exec_result["final_result"]
-    return JSONResponse(content={
+    resp = {
         "session_id": session_id,
         "status": _status_str,
         "round": total_rounds,
         "final_result": final_envelope.model_dump(mode="json"),
-    })
+    }
+    if meta_dict is not None:
+        resp["meta"] = meta_dict
+    return JSONResponse(content=resp)

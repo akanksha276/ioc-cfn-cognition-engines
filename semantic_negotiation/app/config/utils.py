@@ -48,11 +48,12 @@ async def litellm_acompletion_compat(**kwargs: Any) -> Any:
     return await litellm.acompletion(**kwargs)
 
 
-def get_llm_provider(model: Optional[str] = None) -> Callable[[str], str]:
+def get_llm_provider(model: Optional[str] = None, token_accumulator: Any = None) -> Callable[[str], str]:
     """Return a callable(prompt) -> str backed by litellm."""
     _model = model or settings.llm_model
 
     def _call(prompt: str) -> str:
+        import time
         kwargs: dict = {
             "model": _model,
             "messages": [{"role": "user", "content": prompt}],
@@ -63,7 +64,13 @@ def get_llm_provider(model: Optional[str] = None) -> Callable[[str], str]:
             kwargs["api_key"] = settings.llm_api_key
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
+        t0 = time.monotonic()
         resp = litellm_completion_compat(**kwargs)
+        latency_ms = (time.monotonic() - t0) * 1000
+        if token_accumulator is not None and hasattr(resp, "usage"):
+            token_accumulator.add(resp.usage)
+            token_accumulator.add_latency(latency_ms)
+            token_accumulator.set_model(getattr(resp, "model", _model))
         return resp.choices[0].message.content or ""
 
     return _call

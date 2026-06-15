@@ -273,7 +273,7 @@ class SemanticAlignmentValidationPipeline:
                 + "\n".join(f"  - {e}" for e in errors)
             )
 
-    def run(self, trace: Any, agreed: bool = False) -> ValidationResult:
+    def run(self, trace: Any, agreed: bool = False, token_accumulator: Any = None) -> ValidationResult:
         """Validate a completed SSTP negotiation message trace.
 
         Args:
@@ -299,7 +299,7 @@ class SemanticAlignmentValidationPipeline:
             "timeout" if neg_trace.timedout else "agreed",
         )
 
-        llm_provider = get_llm_provider()
+        llm_provider = get_llm_provider(token_accumulator=token_accumulator)
         goal_spec = GoalSpecExtractor(llm_provider=llm_provider).extract(
             mission_goal=mission_goal,
             issues=issues,
