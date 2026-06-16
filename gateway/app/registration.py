@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Constants
 CE_VERSION = os.getenv("CE_VERSION", "1.2.3")
 CE_KNOWLEDGE_NAME = "Knowledge Management CE"
-CE_SEMANTIC_NEG_NAME = "Semantic Negotiation CE"
+CE_SEMANTIC_NEG_NAME = "Semantic Alignment CE"
 
 # Global lifecycle clients (one per CE type)
 _lifecycle_clients: List[CELifecycleClient] = []
@@ -39,7 +39,7 @@ async def register_cognition_engines() -> None:
     Register Cognition Engines with Management Plane on startup.
 
     This function:
-    1. Creates CELifecycleClient for each CE (Knowledge Management, Semantic Negotiation)
+    1. Creates CELifecycleClient for each CE (Knowledge Management, Semantic Alignment)
     2. Calls client.register() to register with Management Plane (via CFN)
     3. Starts heartbeat background tasks for successfully registered CEs
     4. Stores clients in global list for cleanup on shutdown
@@ -93,7 +93,7 @@ async def register_cognition_engines() -> None:
             version=CE_VERSION,
             kind="negotiation",
             subkind="semantic",
-            capabilities=["semantic_negotiation", "multi_party_coordination"],
+            capabilities=["semantic_alignment", "multi_party_coordination"],
             metrics=get_llm_metric_names(),  # LLM metrics captured by CFN
             config={
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
@@ -192,7 +192,7 @@ def get_all_ce_ids() -> Dict[str, str]:
 
     Example:
         ce_ids = get_all_ce_ids()
-        # {"Knowledge Management CE": "uuid-aaa", "Semantic Negotiation CE": "uuid-bbb"}
+        # {"Knowledge Management CE": "uuid-aaa", "Semantic Alignment CE": "uuid-bbb"}
     """
     return _ce_registry.copy()
 
@@ -207,12 +207,12 @@ def get_knowledge_ce_id() -> Optional[str]:
     return _ce_registry.get(CE_KNOWLEDGE_NAME)
 
 
-def get_semantic_neg_ce_id() -> Optional[str]:
+def get_semantic_alignment_ce_id() -> Optional[str]:
     """
-    Convenience: Get Semantic Negotiation CE ID.
+    Convenience: Get Semantic Alignment CE ID.
 
     Returns:
-        CE ID for Semantic Negotiation CE, or None if not registered.
+        CE ID for Semantic Alignment CE, or None if not registered.
     """
     return _ce_registry.get(CE_SEMANTIC_NEG_NAME)
 

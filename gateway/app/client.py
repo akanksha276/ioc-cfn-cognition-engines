@@ -50,14 +50,14 @@ async def register_knowledge_management_engine(
     )
 
 
-async def register_semantic_negotiation_engine(
+async def register_semantic_alignment_engine(
     mgmt_plane_url: str,
     engine_host: str,
     engine_port: int = 9004,
     workspace_name: str = "Default Workspace",
 ) -> dict:
     """
-    Register the Semantic Negotiation Cognitive Engine with the management plane.
+    Register the Semantic Alignment Cognitive Engine with the management plane.
 
     Args:
         mgmt_plane_url: Management plane URL (e.g., "http://localhost:9000")
@@ -69,18 +69,18 @@ async def register_semantic_negotiation_engine(
         dict with status information
 
     Example:
-        >>> await register_semantic_negotiation_engine(
+        >>> await register_semantic_alignment_engine(
         ...     mgmt_plane_url="http://localhost:9000",
         ...     engine_host="cognition-engine.prod.example.com",
         ...     engine_port=443
         ... )
-        {'status': 'success', 'engine': 'Semantic Negotiation Cognitive Engine'}
+        {'status': 'success', 'engine': 'Semantic Alignment Cognitive Engine'}
     """
     return await _register_engine(
         mgmt_plane_url=mgmt_plane_url,
         engine_host=engine_host,
         engine_port=engine_port,
-        engine_name="Semantic Negotiation Cognitive Engine",
+        engine_name="Semantic Alignment Cognitive Engine",
         workspace_name=workspace_name,
     )
 
@@ -92,7 +92,7 @@ async def register_both_engines(
     workspace_name: str = "Default Workspace",
 ) -> dict:
     """
-    Register both Knowledge Management and Semantic Negotiation engines.
+    Register both Knowledge Management and Semantic Alignment engines.
 
     Args:
         mgmt_plane_url: Management plane URL
@@ -110,19 +110,19 @@ async def register_both_engines(
         ... )
         {
             'knowledge_management': {'status': 'success', ...},
-            'semantic_negotiation': {'status': 'success', ...}
+            'semantic_alignment': {'status': 'success', ...}
         }
     """
     km_result = await register_knowledge_management_engine(
         mgmt_plane_url, engine_host, engine_port, workspace_name
     )
-    sn_result = await register_semantic_negotiation_engine(
+    sn_result = await register_semantic_alignment_engine(
         mgmt_plane_url, engine_host, engine_port, workspace_name
     )
 
     return {
         "knowledge_management": km_result,
-        "semantic_negotiation": sn_result,
+        "semantic_alignment": sn_result,
     }
 
 

@@ -4,7 +4,7 @@
 
 """
 Unified app: single process, one uvicorn. Mounts ingestion, evidence, distill, and
-semantic-negotiation as sub-apps.
+semantic-alignment as sub-apps.
 Run: uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004
 With PYTHONPATH set to the repo root containing gateway, ingestion, evidence, distill, etc. (e.g. /app in Docker).
 """
@@ -38,9 +38,9 @@ from evidence.app.main import app as _evidence_app
 # Routers for Confluence paths (no /ingestion or /evidence prefix)
 from ingestion.app.api.routes import extraction_router as ingestion_extraction_router
 from ingestion.app.main import app as _ingestion_app
-from semantic_negotiation.app.api.cfn_compat import router as cfn_compat_router
-from semantic_negotiation.app.api.routes import router as semantic_negotiation_api_router
-from semantic_negotiation.app.main import app as _semantic_negotiation_app
+from semantic_alignment.app.api.cfn_compat import router as cfn_compat_router
+from semantic_alignment.app.api.routes import router as semantic_alignment_api_router
+from semantic_alignment.app.main import app as _semantic_alignment_app
 
 
 @asynccontextmanager
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="IoC CFN Cognitive Agents (Unified)",
-    description="Single process: ingestion, evidence, distill, and semantic-negotiation sub-apps",
+    description="Single process: ingestion, evidence, distill, and semantic-alignment sub-apps",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -69,7 +69,7 @@ app.mount("/ingestion", _ingestion_app)
 app.mount("/evidence", _evidence_app)
 app.mount("/distill", _distill_app)
 
-app.mount("/semantic-negotiation", _semantic_negotiation_app)
+app.mount("/semantic-alignment", _semantic_alignment_app)
 
 # Confluence paths: /api/knowledge-mgmt/... (no /ingestion or /evidence prefix)
 app.include_router(ingestion_extraction_router)
@@ -93,7 +93,7 @@ async def aggregate_health(dependencies: bool = False):
         ("ingestion", _ingestion_app),
         ("evidence", _evidence_app),
         ("distill", _distill_app),
-        ("semantic_negotiation", _semantic_negotiation_app),
+        ("semantic_alignment", _semantic_alignment_app),
     ]:
         try:
             transport = httpx.ASGITransport(app=sub_app)
@@ -118,14 +118,14 @@ app.include_router(
     make_diagnostics_router(
         service_name="IoC CFN Cognitive Agents (Unified)",
         version="0.2.0",
-        description="Single process: ingestion, evidence, distill, and semantic-negotiation sub-apps",
+        description="Single process: ingestion, evidence, distill, and semantic-alignment sub-apps",
         include_health=False,
     ),
     prefix="/api/internal/diagnostics",
     include_in_schema=False,
 )
 
-app.include_router(semantic_negotiation_api_router, prefix="/api/semantic-negotiation")
+app.include_router(semantic_alignment_api_router, prefix="/api/semantic-alignment")
 # CFN-compatible routes: mirrors the Go cfn-svc binary's API so evaluation scripts
 # can point to this gateway instead of the Go binary.
 app.include_router(cfn_compat_router, prefix="/api")

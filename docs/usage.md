@@ -7,7 +7,7 @@ A unified knowledge extraction, evidence gathering, and semantic negotiation eng
 - [Quick Start](#-quick-start) - Installation & environment setup
 - [Core Components](#-core-components) - Overview of the three main components
 - [Usage Examples](#-usage-examples) - Code examples for common use cases
-  - [Semantic Negotiation](#example-1-semantic-negotiation)
+  - [Semantic Alignment](#example-1-semantic-alignment)
   - [FastAPI with Multiple Endpoints](#example-2-fastapi-application-with-multiple-endpoints)
   - [Standalone Scripts](#example-3-standalone-script-knowledge--evidence)
 - [Best Practices](#-best-practices) - Cache sharing, embeddings, LLM providers
@@ -64,13 +64,13 @@ The engine includes three main components:
 |-----------|---------|-------------|
 | **Knowledge Extraction** | Extract concepts and relationships from telemetry data | `ConceptRelationshipExtractionService`, `KnowledgeProcessor` |
 | **Evidence Gathering** | Retrieve relevant evidence from knowledge cache | `process_evidence()`, `CachingLayer` |
-| **Semantic Negotiation** | Multi-issue negotiation between agents | `SemanticNegotiationPipeline`, `IntentDiscovery`, `OptionsGeneration` |
+| **Semantic Alignment** | Multi-issue negotiation between agents | `SemanticNegotiationPipeline`, `IntentDiscovery`, `OptionsGeneration` |
 
 ---
 
 ## 💡 Usage Examples
 
-### Example 1: Semantic Negotiation
+### Example 1: Semantic Alignment
 
 **Use case:** Multi-agent negotiation to reach consensus on multiple issues.
 
@@ -85,9 +85,9 @@ The semantic negotiation pipeline follows a **3-component flow**:
 ```python
 import os
 from dotenv import load_dotenv
-from semantic_negotiation.app.agent.intent_discovery import IntentDiscovery
-from semantic_negotiation.app.agent.options_generation import OptionsGeneration
-from semantic_negotiation.app.agent.negotiation_model import (
+from semantic_alignment.app.agent.intent_discovery import IntentDiscovery
+from semantic_alignment.app.agent.options_generation import OptionsGeneration
+from semantic_alignment.app.agent.negotiation_model import (
     NegotiationModel,
     NegotiationParticipant,
 )
@@ -174,7 +174,7 @@ automatically based on whether a session already exists:
   (`step_negotiation`).
 
 ```python
-from semantic_negotiation.app.agent.semantic_negotiation import SemanticNegotiationPipeline
+from semantic_alignment.app.agent.semantic_alignment import SemanticNegotiationPipeline
 
 pipeline = SemanticNegotiationPipeline(n_steps=20)
 
@@ -234,7 +234,7 @@ session, then repeated `/decide` calls until a terminal status is returned.
 Start the server:
 
 ```bash
-cd semantic_negotiation
+cd semantic_alignment
 uvicorn app.main:app --port 8089
 ```
 
@@ -703,7 +703,7 @@ processor = KnowledgeProcessor(enable_embeddings=True, enable_dedup=False)
 
 Without embeddings enabled, concepts cannot be searched semantically.
 
-### 4. LLM Provider Configuration (Semantic Negotiation)
+### 4. LLM Provider Configuration (Semantic Alignment)
 
 Choose your LLM provider via `LLM_PROVIDER` environment variable:
 
@@ -751,7 +751,7 @@ pytest tests/integration/test_usage_examples_mock.py -v
 pytest tests/integration/test_usage_examples_live.py -v -m ''
 
 # Semantic negotiation integration tests
-cd semantic_negotiation && pytest ../test_semantic_negotiation_integration.py -v
+cd semantic_alignment && pytest ../test_semantic_alignment_integration.py -v
 ```
 
 See [tests/integration/README.md](../tests/integration/README.md) for details.
@@ -769,7 +769,7 @@ AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4o
 AZURE_OPENAI_API_VERSION=2025-01-01-preview
 
-# ─── LLM Provider (Semantic Negotiation) ────────────────────────────────────
+# ─── LLM Provider (Semantic Alignment) ────────────────────────────────────
 LLM_PROVIDER=azure-openai  # Options: azure-openai, openai, bedrock
 
 # Azure OpenAI (if LLM_PROVIDER=azure-openai)
@@ -883,12 +883,12 @@ response = await process_evidence(
 # Returns: ReasonerCognitionResponse with records
 ```
 
-### Semantic Negotiation
+### Semantic Alignment
 
 #### `IntentDiscovery`
 
 ```python
-from semantic_negotiation.app.agent.intent_discovery import IntentDiscovery
+from semantic_alignment.app.agent.intent_discovery import IntentDiscovery
 
 discovery = IntentDiscovery()
 issues = discovery.discover(sentence="...", context=None)
@@ -898,7 +898,7 @@ issues = discovery.discover(sentence="...", context=None)
 #### `OptionsGeneration`
 
 ```python
-from semantic_negotiation.app.agent.options_generation import OptionsGeneration
+from semantic_alignment.app.agent.options_generation import OptionsGeneration
 
 gen = OptionsGeneration()
 options = gen.generate_options(
@@ -914,7 +914,7 @@ options = gen.generate_options(
 Top-level orchestrator.  Use `execute()` for both the initiate and decide phases.
 
 ```python
-from semantic_negotiation.app.agent.semantic_negotiation import SemanticNegotiationPipeline
+from semantic_alignment.app.agent.semantic_alignment import SemanticNegotiationPipeline
 
 pipeline = SemanticNegotiationPipeline(n_steps=100)
 
@@ -954,7 +954,7 @@ pipeline.release_session(session_id)
 #### `NegotiationParticipant`
 
 ```python
-from semantic_negotiation.app.agent.negotiation_model import NegotiationParticipant
+from semantic_alignment.app.agent.negotiation_model import NegotiationParticipant
 
 # Minimal — id and name only (preferences default to empty dict)
 participant = NegotiationParticipant(
@@ -979,7 +979,7 @@ Used internally by `BatchCallbackRunner`.  You can also call it directly for
 in-process negotiations where participants supply explicit preferences.
 
 ```python
-from semantic_negotiation.app.agent.negotiation_model import NegotiationModel
+from semantic_alignment.app.agent.negotiation_model import NegotiationModel
 
 model = NegotiationModel(n_steps=20)
 result = model.run(

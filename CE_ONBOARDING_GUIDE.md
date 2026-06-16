@@ -23,7 +23,7 @@ A step-by-step guide to onboard your own Cognition Engine with registration, hea
 
 A **Cognition Engine (CE)** is a specialized service that provides intelligence capabilities to the Multi-Agent System (MAS). Examples:
 - Knowledge Management CE: Document ingestion, retrieval, search
-- Semantic Negotiation CE: Multi-party coordination, semantic reasoning
+- Semantic Alignment CE: Multi-party coordination, semantic reasoning
 - Evidence CE: Evidence extraction and analysis
 
 Each CE:
@@ -435,7 +435,7 @@ curl "http://localhost:9002/api/cognition-engines/{ce_id}/metrics?start_time=202
 
 ### Pattern 1: Multiple CEs in One Service
 
-If you have multiple logical CEs in one service (like gateway with Knowledge + Semantic Negotiation):
+If you have multiple logical CEs in one service (like gateway with Knowledge + Semantic Alignment):
 
 ```python
 ce_configs = [

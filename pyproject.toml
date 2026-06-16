@@ -23,7 +23,7 @@ packages = [
     { include = "distill" },
     { include = "gateway" },
     { include = "protocol" },
-    { include = "semantic_negotiation" },
+    { include = "semantic_alignment" },
 ]
 exclude = [
     "test_callback_agents_go",
@@ -32,15 +32,15 @@ exclude = [
     "sample_trace/**",
     "neg_trace",
     "neg_trace/**",
-    "semantic_negotiation/neg_trace",
-    "semantic_negotiation/neg_trace/**",
-    "semantic_negotiation/tests",
-    "semantic_negotiation/tests/**",
-    "semantic_negotiation/test_*.py",
-    "semantic_negotiation/*.sh",
-    "semantic_negotiation/.env",
-    "semantic_negotiation/evaluation",
-    "semantic_negotiation/evaluation/**",
+    "semantic_alignment/neg_trace",
+    "semantic_alignment/neg_trace/**",
+    "semantic_alignment/tests",
+    "semantic_alignment/tests/**",
+    "semantic_alignment/test_*.py",
+    "semantic_alignment/*.sh",
+    "semantic_alignment/.env",
+    "semantic_alignment/evaluation",
+    "semantic_alignment/evaluation/**",
 ]
 
 # ── Shared runtime dependencies (union of all four services) ─────────────────
@@ -67,7 +67,7 @@ numpy = ">=1.26,<3"
 # Text splitting (RAG chunking in ingestion)
 langchain-text-splitters = ">=0.2"
 
-# Negotiation framework (semantic_negotiation)
+# Negotiation framework (semantic_alignment)
 negmas = ">=0.10"
 rapidfuzz = ">=3.0"   # fast fuzzy string matching for offer validation (no transformers)
 bleach = ">=6.0.0"    # strip HTML from agent reason text (metadata sanitization)
@@ -100,7 +100,7 @@ testpaths = [
     "gateway/tests",
     "ingestion/tests",
     "evidence/tests",
-    "semantic_negotiation/tests",
+    "semantic_alignment/tests",
     "distill/tests",
     "tests",
 ]
