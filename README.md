@@ -6,7 +6,7 @@ A collection of cognitive agents for processing OpenTelemetry data and evidence 
 
 - **[Ingestion Service](ingestion/)** – Extracts knowledge from OpenTelemetry traces (entities, relations, embeddings).
 - **[Evidence Gathering Service](evidence/)** – Retrieves relevant evidence from the knowledge graph (e.g. "What does Miss-Marple do?").
-- **[Semantic Negotiation Agent](semantic_negotiation/)** – Handles multi-party semantic negotiation using NegMAS and SSTP (Semantic State Transfer Protocol).
+- **[Semantic Alignment Agent](semantic_alignment/)** – Handles multi-party semantic negotiation using NegMAS and SSTP (Semantic State Transfer Protocol).
 
 The evidence and ingestion services retrieve and store knowledge via the CFN service (`CFN_URL`), which routes requests to `ioc-knowledge-memory-svc`.
 
@@ -19,7 +19,7 @@ The evidence and ingestion services retrieve and store knowledge via the CFN ser
     - [Run the gateway with Docker (recommended)](#run-the-gateway-with-docker-recommended)
     - [Run the gateway locally (no Docker)](#run-the-gateway-locally-no-docker)
     - [Run agents individually (development only)](#run-agents-individually-development-only)
-    - [Testing Semantic Negotiation](#testing-semantic-negotiation)
+    - [Testing Semantic Alignment](#testing-semantic-alignment)
   - [Development](#development)
     - [Prerequisites](#prerequisites)
     - [Environment setup (required for local and Docker)](#environment-setup-required-for-local-and-docker)
@@ -50,7 +50,7 @@ The evidence and ingestion services retrieve and store knowledge via the CFN ser
 
 ### Run the gateway with Docker (recommended)
 
-The gateway serves ingestion, evidence and semantic negotiation on **port 9004**. It uses a **`.env` file** at repo root (see [Environment setup](#environment-setup-required-for-local-and-docker)); create it from `.env.example` if needed.
+The gateway serves ingestion, evidence and semantic alignment on **port 9004**. It uses a **`.env` file** at repo root (see [Environment setup](#environment-setup-required-for-local-and-docker)); create it from `.env.example` if needed.
 
 ```bash
 # From repo root (ensure .env exists)
@@ -59,11 +59,11 @@ docker compose up --build
 
 Then use the API at `http://localhost:9004`:
 
-| Backend        | Path                                          | Example                                                            |
-|----------------|-----------------------------------------------|--------------------------------------------------------------------|
-| Gateway health | `/api/internal/diagnostics/health`                                     | `GET http://localhost:9004/api/internal/diagnostics/health`                                 |
-| Ingestion      | `/api/knowledge-mgmt/extraction`              | `POST http://localhost:9004/api/knowledge-mgmt/extraction`         |
-| Evidence       | `/api/knowledge-mgmt/reasoning/evidence`      | `POST http://localhost:9004/api/knowledge-mgmt/reasoning/evidence` |
+| Backend        | Path                                     | Example                                                            |
+| -------------- | ---------------------------------------- | ------------------------------------------------------------------ |
+| Gateway health | `/api/internal/diagnostics/health`       | `GET http://localhost:9004/api/internal/diagnostics/health`        |
+| Ingestion      | `/api/knowledge-mgmt/extraction`         | `POST http://localhost:9004/api/knowledge-mgmt/extraction`         |
+| Evidence       | `/api/knowledge-mgmt/reasoning/evidence` | `POST http://localhost:9004/api/knowledge-mgmt/reasoning/evidence` |
 
 Prefixed paths also work: `/ingestion/...`, `/evidence/...`.
 
@@ -91,40 +91,44 @@ For development/testing, you can run agents as standalone services:
 <summary><b>Click to expand: Individual agent commands</b></summary>
 
 **Ingestion Agent** (standalone, port 8080):
+
 ```bash
 cd ingestion
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
 **Evidence Agent** (standalone, port 8087):
+
 ```bash
 cd evidence
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8087
 ```
 
-**Semantic Negotiation Agent** (independent service, port 8089):
+**Semantic Alignment Agent** (independent service, port 8089):
+
 ```bash
-cd semantic_negotiation
+cd semantic_alignment
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8089
 ```
 
 </details>
 
-**Note:** The gateway (port 9004) is the recommended setup. It runs ingestion + evidence in a single process. The semantic negotiation agent is a separate service that runs independently.
+**Note:** The gateway (port 9004) is the recommended setup. It runs ingestion + evidence in a single process. The semantic alignment agent is a separate service that runs independently.
 
-### Testing Semantic Negotiation
+### Testing Semantic Alignment
 
-Two test harnesses are available under `semantic_negotiation/evaluation/framework/`:
+Two test harnesses are available under `semantic_alignment/evaluation/framework/`:
 
-- **`test_via_semantic_neg_agents_configured.py`** — Spawns a multi-agent system (MAS) in-process and tests semantic negotiation directly. Use `--filter` to run a specific mission.
+- **`test_via_semantic_alignment_agents_configured.py`** — Spawns a multi-agent system (MAS) in-process and tests semantic alignment directly. Use `--filter` to run a specific mission.
+
   ```bash
-  poetry run python semantic_negotiation/evaluation/framework/test_via_semantic_neg_agents_configured.py
-  poetry run python semantic_negotiation/evaluation/framework/test_via_semantic_neg_agents_configured.py --filter "Quick deal"
+  poetry run python semantic_alignment/evaluation/framework/test_via_semantic_alignment_agents_configured.py
+  poetry run python semantic_alignment/evaluation/framework/test_via_semantic_alignment_agents_configured.py --filter "Quick deal"
   ```
 
 - **`test_via_cfn_service.py`** — Calls the full CFN service end-to-end for integration testing.
   ```bash
-  poetry run python semantic_negotiation/evaluation/framework/test_via_cfn_service.py
+  poetry run python semantic_alignment/evaluation/framework/test_via_cfn_service.py
   ```
 
 ---
@@ -149,19 +153,19 @@ This single file is used by local development, Docker Compose, and CI/CD workflo
 
 **Required and optional variables:**
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LLM_BASE_URL` | Yes | LLM endpoint URL (e.g. LiteLLM proxy). |
-| `LLM_API_KEY` | Yes | LLM API key. |
-| `LLM_MODEL` | Yes | Model name (e.g. `openai/azure/gpt-4o`). |
-| `CFN_URL` | Yes | URL of the CFN service (e.g. `http://localhost:9002`). CEs auto-register if set. |
-| `CE_HEARTBEAT_INTERVAL_SEC` | No | Heartbeat interval in seconds (default: `30`). |
-| `COGNITION_ENGINE_HOST` | No | Advertised host for this CE (used during registration, default: `localhost`). |
-| `COGNITION_ENGINE_PORT` | No | Advertised port for this CE (default: `9004`). |
-| `EMBEDDING_MODEL_PATH` | No | Path to local `bge-small-en-v1.5` folder. Uses Hugging Face download if unset. |
-| `ENABLE_EMBEDDINGS` | No | Enable embedding generation (default: `true`). |
-| `ENABLE_DEDUP` | No | Enable semantic deduplication (default: `true`). |
-| `SIMILARITY_THRESHOLD` | No | Dedup threshold 0.0–1.0 (default: `0.95`). |
+| Variable                    | Required | Description                                                                      |
+| --------------------------- | -------- | -------------------------------------------------------------------------------- |
+| `LLM_BASE_URL`              | Yes      | LLM endpoint URL (e.g. LiteLLM proxy).                                           |
+| `LLM_API_KEY`               | Yes      | LLM API key.                                                                     |
+| `LLM_MODEL`                 | Yes      | Model name (e.g. `openai/azure/gpt-4o`).                                         |
+| `CFN_URL`                   | Yes      | URL of the CFN service (e.g. `http://localhost:9002`). CEs auto-register if set. |
+| `CE_HEARTBEAT_INTERVAL_SEC` | No       | Heartbeat interval in seconds (default: `30`).                                   |
+| `COGNITION_ENGINE_HOST`     | No       | Advertised host for this CE (used during registration, default: `localhost`).    |
+| `COGNITION_ENGINE_PORT`     | No       | Advertised port for this CE (default: `9004`).                                   |
+| `EMBEDDING_MODEL_PATH`      | No       | Path to local `bge-small-en-v1.5` folder. Uses Hugging Face download if unset.   |
+| `ENABLE_EMBEDDINGS`         | No       | Enable embedding generation (default: `true`).                                   |
+| `ENABLE_DEDUP`              | No       | Enable semantic deduplication (default: `true`).                                 |
+| `SIMILARITY_THRESHOLD`      | No       | Dedup threshold 0.0–1.0 (default: `0.95`).                                       |
 
 Each app ignores unknown keys, so the same `.env` can contain variables for multiple services. See [.env.example](.env.example) for a full template.
 
@@ -188,10 +192,10 @@ Also update `COGNITION_ENGINE_SVC_URL` in `docker-compose.yml` under `ioc-cfn-sv
 
 The remaining services and their ports:
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| `ioc-cfn-mgmt-plane-svc` | `9000` | Management plane backend |
-| `ioc-cfn-svc` | `9002` | Cognition Fabric Node |
+| Service                    | Port   | Purpose                        |
+| -------------------------- | ------ | ------------------------------ |
+| `ioc-cfn-mgmt-plane-svc`   | `9000` | Management plane backend       |
+| `ioc-cfn-svc`              | `9002` | Cognition Fabric Node          |
 | `ioc-knowledge-memory-svc` | `9003` | Knowledge graph + vector store |
 
 **2. Configure `.env`**
@@ -217,23 +221,25 @@ COGNITION_ENGINE_PORT=9004
 **3. Run the Cognition Engine**
 
 ```bash
-# From repo root — gateway serves ingestion + evidence + semantic negotiation on port 9004
+# From repo root — gateway serves ingestion + evidence + semantic alignment on port 9004
 PYTHONPATH=. poetry run uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004 --reload
 ```
 
 On startup, the gateway will automatically:
+
 1. Register 2 Cognition Engines with the Management Plane (via CFN):
    - Knowledge Management CE
-   - Semantic Negotiation CE
+   - Semantic Alignment CE
 2. Start heartbeat background tasks (every 30s) to maintain "online" status
 
 **Expected startup logs:**
+
 ```
 INFO - Starting CE registration with cfn_url=http://localhost:9002
 INFO - CE 'Knowledge Management CE' created: ce_id=abc-123, status=offline
 INFO - Heartbeat task started for 'Knowledge Management CE'
-INFO - CE 'Semantic Negotiation CE' created: ce_id=def-456, status=offline
-INFO - Heartbeat task started for 'Semantic Negotiation CE'
+INFO - CE 'Semantic Alignment CE' created: ce_id=def-456, status=offline
+INFO - Heartbeat task started for 'Semantic Alignment CE'
 INFO - Application startup complete
 ```
 
@@ -254,13 +260,13 @@ The gateway automatically registers itself with the Management Plane on startup 
 
 **Configuration:**
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CE_REGISTRATION_ENABLED` | `true` | Enable/disable auto-registration |
-| `CE_VERSION` | `1.2.3` | CE version for registration |
-| `CE_HEARTBEAT_INTERVAL_SEC` | `30` | Heartbeat interval (seconds) |
-| `COGNITION_ENGINE_HOST` | `localhost` | Advertised host |
-| `COGNITION_ENGINE_PORT` | `9004` | Advertised port |
+| Variable                    | Default     | Description                      |
+| --------------------------- | ----------- | -------------------------------- |
+| `CE_REGISTRATION_ENABLED`   | `true`      | Enable/disable auto-registration |
+| `CE_VERSION`                | `1.2.3`     | CE version for registration      |
+| `CE_HEARTBEAT_INTERVAL_SEC` | `30`        | Heartbeat interval (seconds)     |
+| `COGNITION_ENGINE_HOST`     | `localhost` | Advertised host                  |
+| `COGNITION_ENGINE_PORT`     | `9004`      | Advertised port                  |
 
 **Registration Flow:**
 
@@ -277,6 +283,7 @@ The gateway automatically registers itself with the Management Plane on startup 
 **Graceful Degradation:**
 
 If CFN/Management Plane is unavailable:
+
 - Gateway logs warning and continues startup (doesn't crash)
 - CEs operate normally but without Management Plane visibility
 - No heartbeats sent
@@ -284,6 +291,7 @@ If CFN/Management Plane is unavailable:
 **Verification:**
 
 Check registered CEs in Management Plane database:
+
 ```sql
 SELECT ce_id, name, version, status, last_seen
 FROM cognition_engine
@@ -316,7 +324,7 @@ COGNITION_ENGINE_PORT=9004
 **3. Run the Cognition Engine**
 
 ```bash
-# From repo root — gateway serves ingestion + evidence + semantic negotiation on port 9004
+# From repo root — gateway serves ingestion + evidence + semantic alignment on port 9004
 PYTHONPATH=. poetry run uvicorn gateway.app.main:app --host 0.0.0.0 --port 9004 --reload
 ```
 
@@ -490,7 +498,7 @@ ioc-cfn-cognitive-agents/
 │   └── app/
 ├── evidence/               # Evidence gathering service
 │   └── app/
-└── semantic_negotiation/   # Semantic negotiation service (port 8089)
+└── semantic_alignment/   # Semantic negotiation service (port 8089)
     └── app/
 ```
 
@@ -505,6 +513,7 @@ The CI pipeline automatically builds and publishes a unified Docker image using 
 #### Pull Request (Build Validation)
 
 When you open a PR:
+
 ```bash
 git checkout -b feature/my-changes
 git push origin feature/my-changes
@@ -512,6 +521,7 @@ git push origin feature/my-changes
 ```
 
 **What happens:**
+
 - Runs unit tests
 - Builds unified Docker image (validation only, does **not** push to registry)
 
@@ -520,10 +530,12 @@ git push origin feature/my-changes
 When you merge to `main`:
 
 **What happens:**
+
 - Runs unit tests
 - Builds and pushes image with `latest` tag to GHCR
 
 **Published image:**
+
 ```
 ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
 ```
@@ -531,17 +543,20 @@ ghcr.io/<org>/ioc-cfn-cognitive-agents:latest
 #### Tag Push (Versioned Release)
 
 To create a production release:
+
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
 **What happens:**
+
 - Validates tag follows semantic versioning (`vX.Y.Z`)
 - Runs unit tests
 - Builds and pushes image with version tag to GHCR
 
 **Published image:**
+
 ```
 ghcr.io/<org>/ioc-cfn-cognitive-agents:v1.0.0
 ```

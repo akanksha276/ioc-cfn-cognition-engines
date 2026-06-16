@@ -27,6 +27,7 @@ from .llm_clients import (
     EvidenceRanker,
     QueryDecomposer,
     ResponseGenerator,
+    TokenAccumulator,
 )
 from .multi_entities import MultiEntityConfig, MultiEntityEvidenceEngine
 from .rag_retrieval import retrieve_rag_top_k
@@ -125,8 +126,11 @@ async def process_evidence(
         agent_id=request.header.agent_id,
     )
 
+    # Accumulates tokens across all LLM calls (entity extractor, decomposer, judge, ranker, response generator)
+    accumulator = TokenAccumulator()
+
     logger.info("[Evidence] Starting entity extraction via LLM.")
-    entities = await LLMEntityExtractor(temperature=0).extract_entities_from_request(request)
+    entities = await LLMEntityExtractor(temperature=0, token_accumulator=accumulator).extract_entities_from_request(request)
     logger.info("[Evidence] Extracted %d entities.", len(entities))
     if not entities:
         return ReasonerCognitionResponse(
@@ -151,7 +155,7 @@ async def process_evidence(
     decomposition: List[Dict[str, Any]] = []
     if n_entities >= 3:
         try:
-            decomposer = QueryDecomposer()
+            decomposer = QueryDecomposer(token_accumulator=accumulator)
             decomposition = await decomposer.async_decompose(intent, ent_names)
         except Exception:
             decomposition = []
@@ -177,9 +181,9 @@ async def process_evidence(
     except Exception:
         pass
 
-    judge = EvidenceJudge()
-    ranker = EvidenceRanker()
-    response_generator = ResponseGenerator(temperature=0.2)
+    judge = EvidenceJudge(token_accumulator=accumulator)
+    ranker = EvidenceRanker(token_accumulator=accumulator)
+    response_generator = ResponseGenerator(temperature=0.2, token_accumulator=accumulator)
 
     path_formatter = PathFormatter()
     repo = ConceptRepository(repo_adapter, request_id=response_id)
@@ -361,21 +365,22 @@ async def process_evidence(
             combined_content["trace"]["rag_snippets"] = rag_snippets
         combined_record = KnowledgeRecord(type="json", content=combined_content)
 
-        # Convert token metadata to response format
+        # Build response meta from all accumulated LLM calls in this request
         response_meta = None
-        if token_meta:
+        accumulated_meta = accumulator.to_metadata()
+        if accumulated_meta:
             from ..api.schemas import TokenUsage, TokenUsageMeta
             from gateway.app.registration import CE_KNOWLEDGE_NAME, get_ce_id
             response_meta = TokenUsageMeta(
                 tokens=TokenUsage(
-                    prompt=token_meta.prompt_tokens,
-                    completion=token_meta.completion_tokens,
-                    total=token_meta.total_tokens,
-                    model=token_meta.model,
+                    prompt=accumulated_meta.prompt_tokens,
+                    completion=accumulated_meta.completion_tokens,
+                    total=accumulated_meta.total_tokens,
+                    model=accumulated_meta.model,
                 ),
-                latency_ms=token_meta.latency_ms,
-                cost_usd=token_meta.cost_usd,
-                timestamp=token_meta.timestamp,
+                latency_ms=accumulated_meta.latency_ms,
+                cost_usd=accumulated_meta.cost_usd,
+                timestamp=accumulated_meta.timestamp,
                 ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
             )
 
@@ -419,21 +424,22 @@ async def process_evidence(
             tr = (rec.content or {}).setdefault("trace", {})
             tr["rag_snippets"] = rag_snippets
 
-        # Convert last token metadata to response format (if available)
+        # Build response meta from all accumulated LLM calls in this request
         response_meta_final = None
-        if use_unified_rag_final and last_token_meta:
+        accumulated_meta_final = accumulator.to_metadata()
+        if accumulated_meta_final:
             from ..api.schemas import TokenUsage, TokenUsageMeta
             from gateway.app.registration import CE_KNOWLEDGE_NAME, get_ce_id
             response_meta_final = TokenUsageMeta(
                 tokens=TokenUsage(
-                    prompt=last_token_meta.prompt_tokens,
-                    completion=last_token_meta.completion_tokens,
-                    total=last_token_meta.total_tokens,
-                    model=last_token_meta.model,
+                    prompt=accumulated_meta_final.prompt_tokens,
+                    completion=accumulated_meta_final.completion_tokens,
+                    total=accumulated_meta_final.total_tokens,
+                    model=accumulated_meta_final.model,
                 ),
-                latency_ms=last_token_meta.latency_ms,
-                cost_usd=last_token_meta.cost_usd,
-                timestamp=last_token_meta.timestamp,
+                latency_ms=accumulated_meta_final.latency_ms,
+                cost_usd=accumulated_meta_final.cost_usd,
+                timestamp=accumulated_meta_final.timestamp,
                 ce_id=get_ce_id(CE_KNOWLEDGE_NAME),
             )
 
