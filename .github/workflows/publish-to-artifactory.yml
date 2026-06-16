@@ -11,7 +11,7 @@ on:
       - 'evidence/**'
       - 'caching/**'
       - 'gateway/**'
-      - 'semantic_negotiation/**'
+      - 'semantic_alignment/**'
       - 'pyproject.toml'
       - 'poetry.lock'
     # Folders explicitly excluded from triggering this workflow:

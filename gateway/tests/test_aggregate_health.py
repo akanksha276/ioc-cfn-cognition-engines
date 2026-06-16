@@ -61,11 +61,11 @@ def gateway_app():
         "evidence.app.main": MagicMock(app=FastAPI()),
         "evidence.app.api": MagicMock(),
         "evidence.app.api.routes": MagicMock(router=FastAPI().router),
-        "semantic_negotiation": MagicMock(),
-        "semantic_negotiation.app": MagicMock(),
-        "semantic_negotiation.app.main": MagicMock(app=FastAPI()),
-        "semantic_negotiation.app.api": MagicMock(),
-        "semantic_negotiation.app.api.routes": MagicMock(router=FastAPI().router),
+        "semantic_alignment": MagicMock(),
+        "semantic_alignment.app": MagicMock(),
+        "semantic_alignment.app.main": MagicMock(app=FastAPI()),
+        "semantic_alignment.app.api": MagicMock(),
+        "semantic_alignment.app.api.routes": MagicMock(router=FastAPI().router),
         "distill": MagicMock(),
         "distill.app": MagicMock(),
         "distill.app.main": MagicMock(app=FastAPI()),
@@ -115,19 +115,19 @@ class TestAggregateHealth:
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {"data_layer": True}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "UP"
-        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_negotiation"}
+        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_alignment"}
 
     def test_ingestion_critical_down(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("DOWN", {"embedding_model": False}, http_status=500))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {"data_layer": True}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 500
@@ -137,7 +137,7 @@ class TestAggregateHealth:
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("DEGRADED", {"data_layer": False}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 200
@@ -147,7 +147,7 @@ class TestAggregateHealth:
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("DOWN", {"embedding_model": False}, http_status=500))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("DEGRADED", {"data_layer": False}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 500
@@ -158,7 +158,7 @@ class TestAggregateHealth:
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {"data_layer": True}))
         monkeypatch.setattr(gateway_app, "_distill_app", _make_sub_app("DOWN", {}, http_status=500))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 500
@@ -170,12 +170,12 @@ class TestAggregateHealth:
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         body = client.get("/api/internal/diagnostics/health").json()
         assert "status" in body
         assert "services" in body
-        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_negotiation"}
+        assert set(body["services"]) == {"gateway", "ingestion", "evidence", "distill", "semantic_alignment"}
 
     def test_sub_app_exception_gives_unknown(self, client, gateway_app, monkeypatch):
         gateway_app.app.state.cache_layer = object()
@@ -188,7 +188,7 @@ class TestAggregateHealth:
 
         monkeypatch.setattr(gateway_app, "_ingestion_app", broken)
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}))
 
         resp = client.get("/api/internal/diagnostics/health")
         assert resp.status_code == 500
@@ -205,21 +205,21 @@ class TestAggregateHealth:
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
 
         body = client.get("/api/internal/diagnostics/health").json()
         assert body["status"] == "UP"
         assert body["services"]["evidence"]["checks"] == {}
-        assert body["services"]["semantic_negotiation"]["checks"] == {}
+        assert body["services"]["semantic_alignment"]["checks"] == {}
 
     def test_dependencies_param_forwarded_to_sub_apps(self, client, gateway_app, monkeypatch):
         """With ?dependencies=true, the param is forwarded and external checks appear."""
         gateway_app.app.state.cache_layer = object()
         monkeypatch.setattr(gateway_app, "_ingestion_app", _make_sub_app("UP", {"embedding_model": True}))
         monkeypatch.setattr(gateway_app, "_evidence_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
-        monkeypatch.setattr(gateway_app, "_semantic_negotiation_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
+        monkeypatch.setattr(gateway_app, "_semantic_alignment_app", _make_sub_app("UP", {}, dependencies_checks={"cognition_fabric_node": True}))
 
         body = client.get("/api/internal/diagnostics/health?dependencies=true").json()
         assert body["status"] == "UP"
         assert body["services"]["evidence"]["checks"]["cognition_fabric_node"] is True
-        assert body["services"]["semantic_negotiation"]["checks"]["cognition_fabric_node"] is True
+        assert body["services"]["semantic_alignment"]["checks"]["cognition_fabric_node"] is True

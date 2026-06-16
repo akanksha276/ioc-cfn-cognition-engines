@@ -30,6 +30,44 @@ class LLMTokenMetadata:
     cost_usd: Optional[float]
     timestamp: str
 
+
+class TokenAccumulator:
+    """Accumulates token usage across multiple LLM calls within a single request."""
+
+    def __init__(self):
+        self.total_prompt = 0
+        self.total_completion = 0
+        self.total_tokens = 0
+        self.total_latency_ms = 0.0
+        self.model: Optional[str] = None
+        self.call_count = 0
+        self.first_timestamp: Optional[str] = None
+
+    def add(self, meta: LLMTokenMetadata) -> None:
+        self.total_prompt += meta.prompt_tokens
+        self.total_completion += meta.completion_tokens
+        self.total_tokens += meta.total_tokens
+        self.total_latency_ms += meta.latency_ms
+        if self.model is None:
+            self.model = meta.model
+        if self.first_timestamp is None:
+            self.first_timestamp = meta.timestamp
+        self.call_count += 1
+
+    def to_metadata(self) -> Optional[LLMTokenMetadata]:
+        if self.call_count == 0:
+            return None
+        return LLMTokenMetadata(
+            prompt_tokens=self.total_prompt,
+            completion_tokens=self.total_completion,
+            total_tokens=self.total_tokens,
+            model=self.model or "unknown",
+            latency_ms=self.total_latency_ms,
+            cost_usd=None,
+            timestamp=self.first_timestamp or datetime.now(timezone.utc).isoformat(),
+        )
+
+
 # Global counter of successful LLM chat calls
 _LLM_CALL_COUNT = 0
 _MAX_RETRIES = 5
@@ -113,9 +151,10 @@ class _LLMBaseClient:
     Subclasses use _call_chat_structured(...) for all LLM interactions.
     """
 
-    def __init__(self, temperature: float, client_label: str):
+    def __init__(self, temperature: float, client_label: str, token_accumulator: Optional[TokenAccumulator] = None):
         self.temperature = temperature
         self._client_label = client_label
+        self._token_accumulator = token_accumulator
         logger.info(
             "[%s] init | model='%s' | api_key=%s | base_url=%s",
             client_label,
@@ -187,6 +226,10 @@ class _LLMBaseClient:
         except Exception:
             pass  # Cost calculation is optional
 
+        # Accumulate tokens across all LLM calls in the request
+        if self._token_accumulator is not None:
+            self._token_accumulator.add(token_metadata)
+
         choice = resp.choices[0] if resp.choices else None
         finish_reason = getattr(choice, "finish_reason", None) if choice else None
 
@@ -226,8 +269,8 @@ class EvidenceJudge(_LLMBaseClient):
     Raises on failure after retries.
     """
 
-    def __init__(self, temperature: float = 0.2):
-        super().__init__(temperature=temperature, client_label="EvidenceJudge")
+    def __init__(self, temperature: float = 0.2, token_accumulator: Optional[TokenAccumulator] = None):
+        super().__init__(temperature=temperature, client_label="EvidenceJudge", token_accumulator=token_accumulator)
 
     async def select_paths_and_check_sufficiency(
         self, question: str, candidate_paths: List[str], select_k: int
@@ -281,8 +324,8 @@ class EvidenceRanker(_LLMBaseClient):
     Raises on failure after retries.
     """
 
-    def __init__(self, temperature: float = 0.2):
-        super().__init__(temperature=temperature, client_label="EvidenceRanker")
+    def __init__(self, temperature: float = 0.2, token_accumulator: Optional[TokenAccumulator] = None):
+        super().__init__(temperature=temperature, client_label="EvidenceRanker", token_accumulator=token_accumulator)
 
     async def rank_paths(self, question: str, candidate_paths_repr: List[str]) -> Dict[int, float]:
         if not candidate_paths_repr:
@@ -333,8 +376,8 @@ class ResponseGenerator(_LLMBaseClient):
     Raises on failure after retries.
     """
 
-    def __init__(self, temperature: float = 0.2):
-        super().__init__(temperature=temperature, client_label="ResponseGenerator")
+    def __init__(self, temperature: float = 0.2, token_accumulator: Optional[TokenAccumulator] = None):
+        super().__init__(temperature=temperature, client_label="ResponseGenerator", token_accumulator=token_accumulator)
 
     async def generate_final_response(
         self,
@@ -459,8 +502,8 @@ class EntityExtractor(_LLMBaseClient):
         "- Return all relevant entities found."
     )
 
-    def __init__(self, temperature: float = 0.1):
-        super().__init__(temperature=temperature, client_label="EntityExtractor")
+    def __init__(self, temperature: float = 0.1, token_accumulator: Optional[TokenAccumulator] = None):
+        super().__init__(temperature=temperature, client_label="EntityExtractor", token_accumulator=token_accumulator)
 
     async def extract_entities_from_request(self, request) -> List[Dict]:
         intent = request.payload.intent or ""
@@ -522,8 +565,8 @@ class QueryDecomposer(_LLMBaseClient):
         "- Return at least one item."
     )
 
-    def __init__(self, temperature: float = 0.2):
-        super().__init__(temperature=temperature, client_label="QueryDecomposer")
+    def __init__(self, temperature: float = 0.2, token_accumulator: Optional[TokenAccumulator] = None):
+        super().__init__(temperature=temperature, client_label="QueryDecomposer", token_accumulator=token_accumulator)
 
     @staticmethod
     def _reorder_entities(sentence: str, raw_entities: List[str], safe_ents: List[str]) -> List[str]:
