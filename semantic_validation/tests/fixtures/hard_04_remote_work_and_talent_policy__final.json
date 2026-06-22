@@ -1,0 +1,45 @@
+{
+  "name": "Hard 04 - Remote Work and Talent Policy",
+  "snapshot_round": 4,
+  "is_final_snapshot": true,
+  "sav_input": {
+    "mission": "The people team and the executive leadership need to align on a working arrangement that allows the company to attrac\u2026",
+    "participants": [
+      {
+        "id": "agent-a",
+        "name": "Agent A",
+        "role": null
+      },
+      {
+        "id": "agent-b",
+        "name": "Agent B",
+        "role": null
+      },
+      {
+        "id": "agent-c",
+        "name": "Agent C",
+        "role": null
+      }
+    ],
+    "context": null,
+    "final_decision": "{\n  \"attract the best talent\": \"Allow hiring in any country where a compliant Employer-of-Record is available\",\n  \"keeps teams genuinely collaborative and productive\": \"Core collaboration hours daily (e.g., 4 hours overlap) plus async-first practices\",\n  \"protects the culture\": \"Regular company-wide onsite events (e.g., twice per year) to reinforce culture\",\n  \"regardless of location\": \"No location restrictions for roles that are fully remote-eligible\",\n  \"regardless of where they choose to work\": \"Employee choice: remote/hybrid/office with manager alignment and role eligibility rules\",\n  \"treats all employees fairly\": \"Location-based pay bands with transparent methodology and parity within bands\",\n  \"working arrangement\": \"Fully remote by default with optional office access\"\n}",
+    "latest_message": "[round 4] [agent-a] action=accept | reason: Offer matches my lowest-overhead preferred options across all issues, so accepting.",
+    "interaction_history": [
+      "[round 1] [agent-b] action=reject | voting_on={attract the best talent: Expand hiring to specific time-zone bands only (e.g., \u00b13 hours from HQ); keeps teams genuinely collaborative and productive: Core collaboration hours daily (e.g., 4 hours overlap) plus async-first practices; protects the culture: Define culture rituals in a written playbook and measure engagement quarterly; regardless of location: No location restrictions for roles that are fully remote-eligible; regardless of where they choose to work: Employee choice within a pre-approved list of countries/regions; treats all employees fairly: Equal benefits baseline globally + localized top-ups where required by law; working arrangement: Office-first with remote exceptions via approval process} | reason: Rejecting because the offer sets the working arrangement to the lowest-quality option (office-first with remote exceptions), which is unacceptable this early in the negotiation (t=0.03; 29 rounds remaining).",
+      "[round 1] [agent-a] action=reject | reason: Rejecting because the offer sets 'working arrangement' to the most burdensome option (office-first with remote exceptions), and we are at t=0.03 with 29 rounds remaining; too early to accept the highest-overhead stance.",
+      "[round 1] [agent-c] action=counter_offer | offer={attract the best talent: Expand hiring to specific time-zone bands only (e.g., \u00b13 hours from HQ); keeps teams genuinely collaborative and productive: Core collaboration hours daily (e.g., 4 hours overlap) plus async-first practices; protects the culture: Define culture rituals in a written playbook and measure engagement quarterly; regardless of location: No location restrictions for roles that are fully remote-eligible; regardless of where they choose to work: Employee choice within a pre-approved list of countries/regions; treats all employees fairly: Single global pay bands by role/level regardless of location; working arrangement: Hybrid with 2 fixed in-office days per week (team-set)} | reason: Round 1/30 (t=0.03), 29 rounds remaining. I\u2019m keeping the collaboration approach as-is and moving working arrangement and pay bands to a middle-ground hybrid + single global pay bands to help converge quickly while staying workable.",
+      "[round 2] [agent-b] action=reject | reason: Too many mid-tier terms; I need a more premium package, especially on culture and talent scope, and we are early in the negotiation (t=0.07).",
+      "[round 2] [agent-c] action=accept | reason: Early agreement with a strong overall package; most items align with my higher-utility options and it avoids delay risk.",
+      "[round 2] [agent-a] action=counter_offer | offer={working arrangement: Fully remote by default with optional office access; attract the best talent: Expand hiring to specific time-zone bands only (e.g., \u00b13 hours from HQ); regardless of location: No location restrictions for roles that are fully remote-eligible; keeps teams genuinely collaborative and productive: Core collaboration hours daily (e.g., 4 hours overlap) plus async-first practices; protects the culture: Define culture rituals in a written playbook and measure engagement quarterly; treats all employees fairly: Single global pay bands by role/level regardless of location; regardless of where they choose to work: Employee choice within a pre-approved list of countries/regions} | reason: Round 2/30 (28 rounds remaining, t=0.07). I can agree to keep your current terms across talent/location/collaboration/culture/fairness/choice, but I need the lowest-overhead working arrangement: fully remote by default with optional office access.",
+      "[round 3] [agent-c] action=accept | reason: Offer is broadly aligned with my preferences (especially fully-remote, no location restrictions, and core collaboration hours). Remaining differences (culture and pay approach) are acceptable to secure agreement early.",
+      "[round 3] [agent-a] action=accept | reason: Offer matches my lowest-overhead preference on the top priority issue (working arrangement) and is acceptable across the remaining issues.",
+      "[round 3] [agent-b] action=counter_offer | offer={working arrangement: Fully remote by default with optional office access; attract the best talent: Allow hiring in any country where a compliant Employer-of-Record is available; regardless of location: No location restrictions for roles that are fully remote-eligible; keeps teams genuinely collaborative and productive: Core collaboration hours daily (e.g., 4 hours overlap) plus async-first practices; protects the culture: Regular company-wide onsite events (e.g., twice per year) to reinforce culture; treats all employees fairly: Location-based pay bands with transparent methodology and parity within bands; regardless of where they choose to work: Employee choice: remote/hybrid/office with manager alignment and role eligibility rules} | reason: Round 3/30 (t=0.10, 27 rounds remaining). I\u2019m keeping the current offer\u2019s fully-remote working arrangement as-is, and countering to strengthen culture protection (premium option) while moving other items to higher-quality, comprehensive choices.",
+      "[round 4] [agent-c] action=accept | reason: t=0.13 with 26 rounds remaining; this offer matches my preferred options across all issues and secures an early agreement.",
+      "[round 4] [agent-b] action=accept | reason: Offer matches the highest-quality option on all issues, so it is fully acceptable."
+    ]
+  },
+  "expected": {
+    "needs_intervention": false,
+    "severity": "low"
+  }
+}

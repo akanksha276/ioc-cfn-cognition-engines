@@ -1,0 +1,39 @@
+{
+  "name": "Hard 02 - Data Platform Architecture",
+  "snapshot_round": 2,
+  "is_final_snapshot": true,
+  "sav_input": {
+    "mission": "The data engineering team and the business units need to agree on a data platform architecture that gives teams genui\u2026",
+    "participants": [
+      {
+        "id": "agent-a",
+        "name": "Agent A",
+        "role": null
+      },
+      {
+        "id": "agent-b",
+        "name": "Agent B",
+        "role": null
+      },
+      {
+        "id": "agent-c",
+        "name": "Agent C",
+        "role": null
+      }
+    ],
+    "context": null,
+    "final_decision": "{\n  \"data platform architecture\": \"Centralised data lakehouse with governed shared platform services (single platform team, shared tooling)\",\n  \"genuine ownership of their data\": \"Ownership limited to transformation layers; central team owns raw ingestion/storage and core models\",\n  \"keeps costs under control\": \"Adopt FinOps controls: autoscaling, storage lifecycle policies, reserved capacity/commitments\",\n  \"reliable and consistent data quality across the board\": \"Minimum org-wide quality standards (tests, DQ dimensions) + domain-specific rules; automated checks in CI/CD\",\n  \"remains auditable for regulatory purposes\": \"Full lineage + immutable audit logs for access/changes; retention period set (e.g., 7 years)\",\n  \"without compromising capability\": \"Allow domain tool flexibility if it integrates with central governance/observability standards\"\n}",
+    "latest_message": "[round 2] [agent-c] action=accept | reason: This offer is already strong on governance, auditability, and data quality, and is sufficiently cost-controlled via FinOps; accepting now avoids unnecessary delay and keeps us on track.",
+    "interaction_history": [
+      "[round 1] [agent-b] action=counter_offer | offer={data platform architecture: Centralised data lakehouse with governed shared platform services (single platform team, shared tooling); genuine ownership of their data: Ownership limited to transformation layers; central team owns raw ingestion/storage and core models; keeps costs under control: Adopt FinOps controls: autoscaling, storage lifecycle policies, reserved capacity/commitments; reliable and consistent data quality across the board: Minimum org-wide quality standards (tests, DQ dimensions) + domain-specific rules; automated checks in CI/CD; remains auditable for regulatory purposes: Full lineage + immutable audit logs for access/changes; retention period set (e.g., 7 years); without compromising capability: Allow domain tool flexibility if it integrates with central governance/observability standards} | reason: Round 1/30 (29 remaining, t=0.03). Keeping your proposed cross-org DQ standards + CI/CD checks as-is; proposing a more premium architecture (centralised governed lakehouse) and strengthening auditability to full lineage + immutable logs, while offering mid-range options on cost controls and capability flexibility.",
+      "[round 1] [agent-a] action=reject | voting_on={data platform architecture: Hybrid: shared core (identity, catalog, governance, observability) + domain-owned pipelines/storage per business unit; genuine ownership of their data: Ownership limited to transformation layers; central team owns raw ingestion/storage and core models; keeps costs under control: Standardise tooling to reduce duplication; limit tech choices to an approved stack; reliable and consistent data quality across the board: Minimum org-wide quality standards (tests, DQ dimensions) + domain-specific rules; automated checks in CI/CD; remains auditable for regulatory purposes: Data classification and tagging mandatory; automated compliance reports generated monthly/quarterly; without compromising capability: Extensibility approach: plugin/adapter model for new sources/tools vs strict standardisation} | reason: Too many issues are set to higher-overhead options (hybrid architecture, limited domain ownership, approved-stack standardisation, monthly/quarterly compliance reporting, plugin/adapter extensibility). At t=0.03 with 29 rounds remaining, I prefer pushing for the minimal/low-overhead options first.",
+      "[round 1] [agent-c] action=accept | reason: Early agreement is preferable; offer is coherent and acceptable across all issues despite not matching my top choices.",
+      "[round 2] [agent-b] action=accept | voting_on={data platform architecture: Centralised data lakehouse with governed shared platform services (single platform team, shared tooling); genuine ownership of their data: Ownership limited to transformation layers; central team owns raw ingestion/storage and core models; reliable and consistent data quality across the board: Minimum org-wide quality standards (tests, DQ dimensions) + domain-specific rules; automated checks in CI/CD; keeps costs under control: Adopt FinOps controls: autoscaling, storage lifecycle policies, reserved capacity/commitments; without compromising capability: Allow domain tool flexibility if it integrates with central governance/observability standards; remains auditable for regulatory purposes: Full lineage + immutable audit logs for access/changes; retention period set (e.g., 7 years)} | reason: Offer aligns with premium quality priorities: top-tier architecture, strongest data quality approach, and highest auditability, with acceptable cost controls and capability stance.",
+      "[round 2] [agent-a] action=accept | reason: Offer is already near-minimal overhead across issues and includes my preferred lowest-overhead architecture and quality/audit approach; early agreement reduces risk and cost."
+    ]
+  },
+  "expected": {
+    "needs_intervention": false,
+    "severity": "low"
+  }
+}

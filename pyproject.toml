@@ -24,6 +24,7 @@ packages = [
     { include = "gateway" },
     { include = "protocol" },
     { include = "semantic_alignment" },
+    { include = "semantic_validation" },
 ]
 exclude = [
     "test_callback_agents_go",
