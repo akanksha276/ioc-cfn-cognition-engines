@@ -670,13 +670,13 @@ async def gather_evidence(query_request: QueryRequest) -> QueryResponse:
     )
 ```
 
-#### Example 3: Semantic Negotiation
+#### Example 3: Semantic Alignment
 
-**File:** `semantic_negotiation/app/agent/sao_engine.py`
+**File:** `semantic_alignment/app/agent/sao_engine.py`
 
 ```python
 """
-semantic_negotiation/app/agent/sao_engine.py
+semantic_alignment/app/agent/sao_engine.py
 
 SAO negotiation with token tracking.
 """
@@ -724,7 +724,7 @@ async def discover_issues(request: NegotiationStartRequest) -> NegotiationStartR
             completion_tokens=llm_response.usage.completion_tokens,
             total_tokens=llm_response.usage.total_tokens,
             latency_ms=latency_ms,
-            operation="semantic_negotiation_start",
+            operation="semantic_alignment_start",
         )
     
     # Return with tokens
@@ -887,7 +887,7 @@ class NegotiationStartResponse(BaseModel):
 - [ ] Update API tests to verify tokens in response
 - [ ] Deploy to dev environment
 
-**Day 5: Semantic Negotiation Service**
+**Day 5: Semantic Alignment Service**
 - [ ] Update `discover_issues()` and other LLM calls to return tokens
 - [ ] Add optional metrics posting
 - [ ] Update API tests to verify tokens in response
@@ -1181,7 +1181,7 @@ check_token_usage() {
 | Attribute | Description |
 |-----------|-------------|
 | `model` | LLM model name |
-| `service` | Service name (ingestion/evidence/semantic_negotiation) |
+| `service` | Service name (ingestion/evidence/semantic_alignment) |
 | `operation` | Operation name (e.g. "knowledge_extraction") |
 
 ---

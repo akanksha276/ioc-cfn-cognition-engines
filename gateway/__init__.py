@@ -13,11 +13,11 @@ __version__ = "0.1.0"
 from gateway.app.client import (
     register_both_engines,
     register_knowledge_management_engine,
-    register_semantic_negotiation_engine,
+    register_semantic_alignment_engine,
 )
 
 __all__ = [
     "register_knowledge_management_engine",
-    "register_semantic_negotiation_engine",
+    "register_semantic_alignment_engine",
     "register_both_engines",
 ]
