@@ -24,7 +24,7 @@ CE_VERSION = os.getenv("CE_VERSION", "1.2.3")
 CE_KNOWLEDGE_NAME = "Knowledge Management CE"
 CE_SEMANTIC_NEG_NAME = "Semantic Alignment CE"
 CE_DISTILLATION_NAME = "Cognition Distillation CE"
-
+CE_SEMANTIC_VALIDATION_NAME = "Semantic Validation CE"
 
 # Global lifecycle clients (one per CE type)
 _lifecycle_clients: List[CELifecycleClient] = []
@@ -116,6 +116,20 @@ async def register_cognition_engines() -> None:
                 "distill_mode": os.getenv("DISTILLATION_MODE", "Summary"),
             },
             mas_config={"schedule": "0 * * * *"},  # Hourly
+            mas_auto_associate=True,
+        ),
+        CERegistrationRequest(
+            name=CE_SEMANTIC_VALIDATION_NAME,
+            url=ce_url,
+            version=CE_VERSION,
+            kind="validation",
+            subkind="semantic_alignment",
+            capabilities=["semantic_alignment_validation"],
+            metrics=get_llm_metric_names(),
+            config={
+                "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
+            },
+            mas_config=None,
             mas_auto_associate=True,
         ),
     ]
@@ -237,6 +251,16 @@ def get_semantic_alignment_ce_id() -> Optional[str]:
 def get_distillation_ce_id() -> Optional[str]:
     """Convenience: Get Cognition Distillation CE ID."""
     return _ce_registry.get(CE_DISTILLATION_NAME)
+
+
+def get_semantic_validation_ce_id() -> Optional[str]:
+    """
+    Convenience: Get Semantic Validation CE ID.
+
+    Returns:
+        CE ID for Semantic Validation CE, or None if not registered.
+    """
+    return _ce_registry.get(CE_SEMANTIC_VALIDATION_NAME)
 
 
 def get_cfn_id() -> Optional[str]:
