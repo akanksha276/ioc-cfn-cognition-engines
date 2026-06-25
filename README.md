@@ -175,12 +175,12 @@ Run the cognitive agents locally while connecting to the full CFN stack.
 
 **1. Start the CFN stack**
 
-Follow the instructions in the [ioc-cfn-mgmt-backend-svc README](https://github.com/cisco-eti/ioc-cfn-mgmt-backend-svc/tree/main) to bring up the full stack using the `full-stack` Docker Compose profile.
+Follow the instructions in the [ioc-cfn-mgmt-plane-svc README](https://github.com/outshift-open/ioc-cfn-mgmt-plane-svc/tree/main) to bring up the full stack using the `full-stack` Docker Compose profile.
 
 Once the stack is up, stop the `ioc-cfn-cognition-engine` container — you'll run this service locally instead:
 
 ```bash
-cd ioc-cfn-mgmt-backend-svc
+cd ioc-cfn-mgmt-plane-svc
 docker compose stop ioc-cfn-cognition-engine
 ```
 
