@@ -99,7 +99,7 @@ async def register_cognition_engines() -> None:
             config={
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
             },
-            mas_config={"schedule": "0 0 * * *"},  # Daily at midnight
+            # mas_config={"schedule": "0 0 * * *"},  # Daily at midnight
             mas_auto_associate=True,
         ),
         CERegistrationRequest(
