@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 # Constants
 CE_VERSION = os.getenv("CE_VERSION", "1.2.3")
 CE_KNOWLEDGE_NAME = "Knowledge Management CE"
-CE_SEMANTIC_NEG_NAME = "Semantic Alignment CE"
 CE_DISTILLATION_NAME = "Cognition Distillation CE"
+CE_SEMANTIC_ALIGNMENT_NAME = "Semantic Alignment CE"
 CE_SEMANTIC_VALIDATION_NAME = "Semantic Validation CE"
 
 # Global lifecycle clients (one per CE type)
@@ -90,7 +90,7 @@ async def register_cognition_engines() -> None:
             mas_auto_associate=True,
         ),
         CERegistrationRequest(
-            name=CE_SEMANTIC_NEG_NAME,
+            name=CE_SEMANTIC_ALIGNMENT_NAME,
             url=ce_url,
             version=CE_VERSION,
             kind="negotiation",
@@ -100,7 +100,7 @@ async def register_cognition_engines() -> None:
             config={
                 "model": os.getenv("LLM_MODEL", "openai/gpt-4o"),
             },
-            mas_config={"schedule": "0 0 * * *"},  # Daily at midnight
+            # mas_config={"schedule": "0 0 * * *"},  # Daily at midnight
             mas_auto_associate=True,
         ),
         CERegistrationRequest(
@@ -245,7 +245,7 @@ def get_semantic_alignment_ce_id() -> Optional[str]:
     Returns:
         CE ID for Semantic Alignment CE, or None if not registered.
     """
-    return _ce_registry.get(CE_SEMANTIC_NEG_NAME)
+    return _ce_registry.get(CE_SEMANTIC_ALIGNMENT_NAME)
 
 
 def get_distillation_ce_id() -> Optional[str]:
