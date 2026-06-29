@@ -315,7 +315,7 @@ async def negotiate_initiate(
     logger.info(f"Token metadata extracted: {token_metadata is not None}")
     if token_metadata:
         from .schemas import TokenUsage, TokenUsageMeta
-        from gateway.app.registration import CE_SEMANTIC_NEG_NAME, get_ce_id
+        from gateway.app.registration import CE_SEMANTIC_ALIGNMENT_NAME, get_ce_id
         # Construct meta field
         result_meta = TokenUsageMeta(
             tokens=TokenUsage(
@@ -327,7 +327,7 @@ async def negotiate_initiate(
             latency_ms=token_metadata.latency_ms,
             cost_usd=token_metadata.cost_usd,
             timestamp=token_metadata.timestamp,
-            ce_id=get_ce_id(CE_SEMANTIC_NEG_NAME),
+            ce_id=get_ce_id(CE_SEMANTIC_ALIGNMENT_NAME),
         )
         logger.info(f"Token meta constructed: prompt={result_meta.tokens.prompt} completion={result_meta.tokens.completion}")
         # Add to result payload
@@ -408,7 +408,7 @@ async def negotiate_decide(
     token_metadata = exec_result.get("token_metadata")
     meta_dict = None
     if token_metadata is not None:
-        from gateway.app.registration import CE_SEMANTIC_NEG_NAME, get_ce_id
+        from gateway.app.registration import CE_SEMANTIC_ALIGNMENT_NAME, get_ce_id
         from .schemas import TokenUsage, TokenUsageMeta
         meta_dict = TokenUsageMeta(
             tokens=TokenUsage(
@@ -420,7 +420,7 @@ async def negotiate_decide(
             latency_ms=token_metadata.latency_ms,
             cost_usd=token_metadata.cost_usd,
             timestamp=token_metadata.timestamp,
-            ce_id=get_ce_id(CE_SEMANTIC_NEG_NAME),
+            ce_id=get_ce_id(CE_SEMANTIC_ALIGNMENT_NAME),
         ).model_dump()
 
     if exec_result["status"] == "ongoing":
