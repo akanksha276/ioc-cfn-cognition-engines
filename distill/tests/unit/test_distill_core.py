@@ -9,7 +9,7 @@ from distill.app.agent.distill_core import (
 )
 
 
-def test_bucket_incident_includes_edge_for_both_anchor_endpoints():
+def test_bucket_incident_includes_relation_for_both_anchor_endpoints():
     anchors = ["a", "b"]
     rels = [{"id": "r1", "node_ids": ["a", "b"], "relationship": "LINK"}]
     b = bucket_relations_incident_to_anchors(anchors, rels)

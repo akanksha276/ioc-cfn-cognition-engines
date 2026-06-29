@@ -6,6 +6,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 
@@ -27,6 +28,22 @@ def _distill_run_at_rfc3339() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+async def _probe_callback_url(url: str, timeout: float = 5.0) -> str | None:
+    """Return error message if callback URL host is unreachable, None if ok.
+
+    Any HTTP response (even 4xx/5xx) is treated as reachable — only connection
+    errors and timeouts indicate the host cannot be reached.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.head(url, timeout=timeout, follow_redirects=True)
+        return None
+    except httpx.TimeoutException:
+        return "callback_url is not reachable: connection timed out"
+    except Exception as exc:
+        return f"callback_url is not reachable: {exc}"
+
+
 def _validate_distillation_start(req: DistillationRunRequest) -> str | None:
     """Return error message or None if ok."""
     if not (req.header.workspace_id or "").strip():
@@ -34,8 +51,8 @@ def _validate_distillation_start(req: DistillationRunRequest) -> str | None:
     if not (req.header.mas_id or "").strip():
         return "mas_id is required"
     cb = (req.payload.callback_url or "").strip()
-    if not cb.startswith("https://"):
-        return "callback_url must be an HTTPS URL"
+    if not cb.startswith(("https://", "http://")):
+        return "callback_url must be HTTP or HTTPS URL"
     if not (settings.DATA_LAYER_BASE_URL or "").strip():
         return "DATA_LAYER_BASE_URL is not configured"
     return None
@@ -52,6 +69,13 @@ async def start_distillation_run(
         return JSONResponse(
             status_code=400,
             content=DistillationErrorResponse(message=err).model_dump(mode="json"),
+        )
+
+    probe_err = await _probe_callback_url(req.payload.callback_url.strip())
+    if probe_err:
+        return JSONResponse(
+            status_code=400,
+            content=DistillationErrorResponse(message=probe_err).model_dump(mode="json"),
         )
 
     wid = req.header.workspace_id.strip()
