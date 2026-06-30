@@ -9,8 +9,8 @@ from distill.app.services.distillation_job import _distillation_read_request_bod
 
 
 def test_distillation_read_request_body_uses_cfn_filters(monkeypatch):
-    monkeypatch.setenv("CODI_MIN_EDGES", "10")
-    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 10)
+    monkeypatch.setenv("CODI_MIN_RELATIONS", "10")
+    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_RELATIONS", 10)
     monkeypatch.setattr(settings_mod.settings, "CODI_DISTILL_STATUS_FILTER", "")
     monkeypatch.setattr(settings_mod.settings, "CODI_RETURN_MISSING_DISTILL_STATUS", True)
 

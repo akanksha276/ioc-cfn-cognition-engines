@@ -32,6 +32,7 @@ from distill.app.agent.embeddings_bge import embed_text_bge_small
 from distill.app.agent.llm_distill import run_distillation_llm
 from distill.app.agent.rag_retrieval import retrieve_rag_top_k
 from distill.app.config.settings import settings
+from distill.app.constants import DistillationStatus
 from distill.app.data.graph_client import CoDiGraphClient, graph_update_post_url
 from distill.app.services import distillation_lock
 
@@ -67,17 +68,18 @@ def _sanitize_graph_string_attributes(attrs: Dict[str, Any], *, max_len: int = 4
     return out
 
 
-def _codin_display_name(anchor_name: str, codin_id: str) -> str:
+def _codin_display_name(anchor_name: str, codin_id: str, dist_mode: str = "CoDiN") -> str:
     base = (anchor_name or "anchor").strip() or "anchor"
     short_id = (codin_id or "")[:8]
-    return _graph_safe_single_line(f"CoDiN-{base}-{short_id}", max_len=256)
+    prefix = (dist_mode or "CoDiN").strip() or "CoDiN"
+    return _graph_safe_single_line(f"{prefix}-{base}-{short_id}", max_len=256)
 
 
 def _relation_internal_attributes(
     existing: Any,
     *,
     owner: str,
-    distill_status: str,
+    status: DistillationStatus,
 ) -> List[Dict[str, Any]]:
     """
     Build ``internal_attributes`` for graph/update (CFN/KM nested shape).
@@ -106,7 +108,8 @@ def _relation_internal_attributes(
                 continue
             if item_attrs:
                 out.append({"owner": item_owner, "attributes": item_attrs})
-    owner_attrs["distill_status"] = distill_status
+    owner_attrs.pop("distill_status", None)
+    owner_attrs["status"] = status
     out.append({"owner": owner_key, "attributes": owner_attrs})
     return out
 
@@ -149,7 +152,7 @@ async def _distill_one_batch_payload(
     request_id: str,
 ) -> tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Returns (new_concept_dict, list of relation payloads [edge patches..., new anchor→CoDiN], batch_debug).
+    Returns (new_concept_dict, list of relation payloads [relation patches..., new anchor→CoDiN], batch_debug).
     Relations match CFN ``/graph/update``: ``id``, ``node_ids``, ``relationship``, ``attributes``,
     and ``internal_attributes`` (``distill_status`` + ``owner`` for distillation/read filters).
     """
@@ -202,7 +205,7 @@ async def _distill_one_batch_payload(
 
     new_concept: Dict[str, Any] = {
         "id": codin_id,
-        "name": _codin_display_name(anchor_name, codin_id),
+        "name": _codin_display_name(anchor_name, codin_id, dist_mode),
         "description": description_text,
         "type": "CoDiN",
         "attributes": {
@@ -219,7 +222,7 @@ async def _distill_one_batch_payload(
             continue
         u, v = str(ids[0]), str(ids[1])
         attrs = _sanitize_graph_string_attributes(relation_attributes(rel))
-        attrs.pop("distill_status", None)
+        attrs.pop("status", None)
         relation_mutations.append(
             {
                 "id": rid,
@@ -229,7 +232,7 @@ async def _distill_one_batch_payload(
                 "internal_attributes": _relation_internal_attributes(
                     rel.get("internal_attributes"),
                     owner=mas_id,
-                    distill_status="updated",
+                    status=DistillationStatus.DISTILLED,
                 ),
             }
         )
@@ -238,18 +241,18 @@ async def _distill_one_batch_payload(
         {
             "id": new_rel_id,
             "node_ids": [anchor_id, codin_id],
-            "relationship": "summary",
+            "relationship": "SUMMARIZED_BY",
             "attributes": _sanitize_graph_string_attributes(
                 {
                     "source_name": anchor_name,
-                    "target_name": "CoDiN",
+                    "target_name": new_concept["name"],
                     "summarized_context": summarized_safe,
                 }
             ),
             "internal_attributes": _relation_internal_attributes(
                 None,
                 owner=mas_id,
-                distill_status="CoDi",
+                status=DistillationStatus.SYNTHESIZED,
             ),
         }
     )
@@ -267,7 +270,7 @@ async def _put_json(client: httpx.AsyncClient, url: str, payload: Dict[str, Any]
 
 
 def _normalize_relation_dict(rel: Dict[str, Any]) -> Dict[str, Any]:
-    """Align memory-service ``relation`` with CoDi/CFN ``relationship`` on edge dicts."""
+    """Align memory-service ``relation`` with CoDi/CFN ``relationship`` on relation dicts."""
     out = dict(rel)
     rel_label = out.get("relationship")
     if rel_label is None or (isinstance(rel_label, str) and not rel_label.strip()):
@@ -329,10 +332,10 @@ def _coerce_distillation_read_lists(raw: Dict[str, Any]) -> tuple[List[Dict[str,
 
 def _relations_cnt_gte_filter() -> int:
     """Read at call time so .env changes apply without re-importing Settings."""
-    raw = os.getenv("CODI_MIN_EDGES")
+    raw = os.getenv("CODI_MIN_RELATIONS")
     if raw is not None and str(raw).strip():
         return int(raw)
-    return int(settings.CODI_MIN_EDGES)
+    return int(settings.CODI_MIN_RELATIONS)
 
 
 def _distillation_read_request_body(header: Header, request_id: str) -> Dict[str, Any]:
@@ -437,9 +440,9 @@ async def execute_distillation_run(
 
         mutation_concepts: List[Dict[str, Any]] = []
         mutation_relations: List[Dict[str, Any]] = []
-        added_nodes = 0
+        added_concepts = 0
         added_anchor_links = 0
-        updated_edges = 0
+        updated_relations = 0
 
         if not anchor_ids:
             records_n = len(raw.get("records") or []) if isinstance(raw, dict) else 0
@@ -447,7 +450,7 @@ async def execute_distillation_run(
                 "[CoDi distill] no anchors from graph read | request_id=%s "
                 "parsed_concepts=%d parsed_relations=%d records=%d "
                 "filters.relations_cnt_gte=%d distill_status=%r owner=%s "
-                "(if manual curl used relations_cnt_gte=1, set CODI_MIN_EDGES=1 in .env)",
+                "(if manual curl used relations_cnt_gte=1, set CODI_MIN_RELATIONS=1 in .env)",
                 request_id,
                 len(concepts_raw),
                 len(relations_raw),
@@ -488,18 +491,18 @@ async def execute_distillation_run(
                     )
                     mutation_concepts.append(new_c)
                     mutation_relations.extend(rel_ops)
-                    added_nodes += 1
+                    added_concepts += 1
                     added_anchor_links += 1
-                    updated_edges += len(batch)
+                    updated_relations += len(batch)
                     for r in batch:
                         rid = str(r.get("id", "")).strip()
                         if rid:
                             processed_relation_ids.add(rid)
 
         metadata = {
-            "added_distilled_nodes": added_nodes,
+            "added_distilled_concepts": added_concepts,
             "added_distilled_relations": added_anchor_links,
-            "updated_relations": updated_edges,
+            "updated_relations": updated_relations,
             "operation_id": operation_id,
             "distill_run_at": distill_run_at,
             "distill_mode": settings.DISTILLATION_MODE,
@@ -573,6 +576,11 @@ async def execute_distillation_run(
                 "result": json.dumps(metadata),
             }
             await _send_callback(http, callback_url, ok_body)
+            logger.info(
+                "[CoDi distill] complete | op=%s workspace=%s mas=%s "
+                "codin_concepts=%d anchor_links=%d updated_relations=%d",
+                operation_id, wid, mid, added_concepts, added_anchor_links, updated_relations,
+            )
     except Exception as run_exc:
         logger.exception("[CoDi distill] run failed | op=%s", operation_id)
         try:

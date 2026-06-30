@@ -14,23 +14,52 @@ def client():
     return TestClient(app)
 
 
-def test_distillation_run_rejects_non_https_callback(client, monkeypatch):
+async def _probe_ok(*_a, **_k):
+    return None
+
+
+async def _probe_fail(*_a, **_k):
+    return "callback_url is not reachable: connection refused"
+
+
+def test_distillation_run_rejects_bad_scheme_callback(client, monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     r = client.post(
         "/api/knowledge-mgmt/distillation/run",
         json={
             "header": {"workspace_id": "w", "mas_id": "m"},
             "request_id": "rid-1",
-            "payload": {"callback_url": "http://evil.test/cb"},
+            "payload": {"callback_url": "ftp://evil.test/cb"},
         },
     )
     assert r.status_code == 400
     assert r.json()["status"] == "error"
 
 
+def test_distillation_run_rejects_unreachable_callback(client, monkeypatch):
+    monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
+    import distill.app.api.routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_probe_callback_url", _probe_fail)
+    r = client.post(
+        "/api/knowledge-mgmt/distillation/run",
+        json={
+            "header": {"workspace_id": "w", "mas_id": "m"},
+            "request_id": "rid-probe",
+            "payload": {"callback_url": "https://unreachable.test/cb"},
+        },
+    )
+    assert r.status_code == 400
+    body = r.json()
+    assert body["status"] == "error"
+    assert "not reachable" in body["message"]
+
+
 def test_distillation_run_409_when_lock_held(client, monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     import distill.app.api.routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_probe_callback_url", _probe_ok)
 
     async def fake_try_begin(*_a, **_k):
         return False
@@ -53,11 +82,13 @@ def test_distillation_run_409_when_lock_held(client, monkeypatch):
 def test_distillation_run_202_shape(client, monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
 
-    async def fake_try_begin(*_a, **_k):
-        return True
-
     import distill.app.api.routes as routes_mod
     from distill.app.services import distillation_lock as dl
+
+    monkeypatch.setattr(routes_mod, "_probe_callback_url", _probe_ok)
+
+    async def fake_try_begin(*_a, **_k):
+        return True
 
     async def fake_fetch(*_a, **_k):
         return {"concepts": [], "relations": []}
@@ -90,11 +121,13 @@ def test_distillation_run_202_shape(client, monkeypatch):
 def test_distillation_run_502_when_graph_read_fails(client, monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
 
-    async def fake_try_begin(*_a, **_k):
-        return True
-
     import distill.app.api.routes as routes_mod
     from distill.app.services import distillation_lock as dl
+
+    monkeypatch.setattr(routes_mod, "_probe_callback_url", _probe_ok)
+
+    async def fake_try_begin(*_a, **_k):
+        return True
 
     ended: list[tuple[str, str]] = []
 

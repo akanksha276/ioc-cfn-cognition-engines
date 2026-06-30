@@ -17,7 +17,7 @@ from distill.app.services import distillation_job as job_mod
 async def test_execute_posts_mutation_then_callback_success(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     monkeypatch.setattr(settings_mod.settings, "CFN_MUTATION_APPLY_URL", None)
-    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
+    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_RELATIONS", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
     monkeypatch.setattr(settings_mod.settings, "DISTILLATION_MODE", "Summary")
@@ -54,7 +54,7 @@ async def test_execute_posts_mutation_then_callback_success(monkeypatch):
         return (
             {
                 "id": "codin-1",
-                "name": "CoDiN-Anchor One-codin-1",
+                "name": "Summary-Anchor One-codin-1",
                 "description": "distilled summary text",
                 "type": "CoDiN",
                 "attributes": {"embedding": [], "distill_mode": "Summary"},
@@ -68,19 +68,19 @@ async def test_execute_posts_mutation_then_callback_success(monkeypatch):
                     "internal_attributes": [
                         {
                             "owner": "m",
-                            "attributes": {"distill_status": "updated"},
+                            "attributes": {"status": "distilled"},
                         },
                     ],
                 },
                 {
                     "id": "newrel",
                     "node_ids": ["a1", "codin-1"],
-                    "relationship": "summary",
+                    "relationship": "SUMMARIZED_BY",
                     "attributes": {"summarized_context": "x"},
                     "internal_attributes": [
                         {
                             "owner": "m",
-                            "attributes": {"distill_status": "CoDi"},
+                            "attributes": {"status": "synthesized"},
                         },
                     ],
                 },
@@ -139,7 +139,7 @@ async def test_execute_posts_mutation_then_callback_success(monkeypatch):
 async def test_execute_skips_callback_when_mutation_non_2xx(monkeypatch):
     monkeypatch.setattr(settings_mod.settings, "DATA_LAYER_BASE_URL", "http://graph.test")
     monkeypatch.setattr(settings_mod.settings, "CFN_MUTATION_APPLY_URL", None)
-    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_EDGES", 2)
+    monkeypatch.setattr(settings_mod.settings, "CODI_MIN_RELATIONS", 2)
     monkeypatch.setattr(settings_mod.settings, "CODI_MAX_RELATIONS_PER_BATCH", 8)
     monkeypatch.setattr(settings_mod.settings, "CODI_RAG_TOP_K", 2)
     monkeypatch.setattr(settings_mod.settings, "DISTILLATION_MODE", "Summary")
@@ -176,7 +176,7 @@ async def test_execute_skips_callback_when_mutation_non_2xx(monkeypatch):
         return (
             {
                 "id": "codin-1",
-                "name": "CoDiN-Anchor One-codin-1",
+                "name": "Summary-Anchor One-codin-1",
                 "description": "distilled summary text",
                 "type": "CoDiN",
                 "attributes": {"distill_mode": "Summary"},
