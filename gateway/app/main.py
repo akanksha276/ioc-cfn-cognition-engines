@@ -79,7 +79,7 @@ app.mount("/semantic-validation", _semantic_validation_app)
 app.include_router(ingestion_extraction_router)
 app.include_router(evidence_api_router, prefix="/api/knowledge-mgmt")
 app.include_router(distill_api_router, prefix="/api/knowledge-mgmt")
-app.include_router(distill_cfn_compat_router, prefix="/api")
+app.include_router(distill_cfn_compat_router, prefix="/api/knowledge-mgmt")
 
 
 @app.get("/api/internal/diagnostics/health", include_in_schema=False)
