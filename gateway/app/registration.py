@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Constants
 CE_VERSION = os.getenv("CE_VERSION", "1.2.3")
 CE_KNOWLEDGE_NAME = "Knowledge Management CE"
-CE_DISTILLATION_NAME = "Cognition Distillation CE"
+CE_DISTILLATION_NAME = "Knowledge Distillation CE"
 CE_SEMANTIC_ALIGNMENT_NAME = "Semantic Alignment CE"
 CE_SEMANTIC_VALIDATION_NAME = "Semantic Validation CE"
 
